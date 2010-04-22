@@ -4,17 +4,36 @@
 #include <boost/optional.hpp>
 #include <string>
 
+struct defpoint {
+  int x, y;
+};
+
+BOOST_FUSION_ADAPT_STRUCT(
+  defpoint,
+  (int, x)
+  (int, y)
+)
+
+struct defrect {
+  defpoint ll, ur;
+};
+
+BOOST_FUSION_ADAPT_STRUCT(
+  defrect,
+  (defpoint, ll)
+  (defpoint, ur)
+)
+
 struct defplcinfo {
   std::string plcfix;       // BOZO make boolean "fixed" or something
-  int x, y;
+  defpoint origin;
   std::string orient;       // BOZO make this enum
 };
 
 BOOST_FUSION_ADAPT_STRUCT(
   defplcinfo,
   (std::string, plcfix)
-  (int, x)
-  (int, y)
+  (defpoint, origin)
   (std::string, orient)
 )
 
@@ -31,3 +50,17 @@ BOOST_FUSION_ADAPT_STRUCT(
   (boost::optional<defplcinfo>, placement)
 )
 
+struct def {
+  std::string name;
+  double version;
+  defrect diearea;
+  std::vector<defcomponent> components;
+};
+
+BOOST_FUSION_ADAPT_STRUCT(
+  def,
+  (std::string, name)
+  (double, version)
+  (defrect, diearea)
+  (std::vector<defcomponent>, components)
+)

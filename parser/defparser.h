@@ -6,7 +6,6 @@
 
 #include <boost/spirit/include/phoenix_operator.hpp>
 #include <boost/spirit/include/phoenix_fusion.hpp>
-#include <boost/spirit/include/phoenix_stl.hpp>
 #include <boost/spirit/include/phoenix_object.hpp>
 #include "keyword.h"
 #include "deftypes.h"
@@ -16,37 +15,49 @@
 // a starter DEF grammar
 template <typename Iterator>
 struct defparser : boost::spirit::qi::grammar<Iterator,
-                                              std::vector<defcomponent>(),
-                                              boost::spirit::qi::locals<int>, 
+                                              def(),
                                               boost::spirit::qi::space_type>
 {
 
   defparser() : defparser::base_type(def_file)
     {
       using namespace boost::spirit::qi;
-      using namespace distinct;
+      using namespace distinct;                 // for keywords.  We are a "phrase" (not character) parser
+                                                // so need to distinguish keywords from following alphanumerics
       using boost::spirit::_1;                  // access attributes for component count check
       using boost::phoenix::val;                // for error handling
       using boost::phoenix::construct;          // for error handling
-      using boost::phoenix::ref;                // for counting
+      using boost::phoenix::at_c;               // to refer to pieces of wrapped structs
 
-      version_stmt = keyword["VERSION"] >> double_ >> ';' ;
-      diearea_stmt = keyword["DIEAREA"] >> '(' >> int_ >> int_ >> ')' >> '(' >> int_ >> int_ >> ')' ;
+      // top-level elements in a DEF file
+      version_stmt %= keyword["VERSION"] > double_ > ';' ;
 
-      // define some major components
+      point %= '(' >> int_ >> int_ >> ')' ;       // points are parenthesized pairs, no comma
+      rect %= point >> point ;                    // rects are just two points in a row
+      diearea_stmt %= keyword["DIEAREA"] > rect > ';' ;
+
+      // identifiers
+      // design name: letter followed by letters, numbers, underscore, or hyphen
+      dname %= lexeme[alpha >> *(alnum | char_('-') | char_('_'))] ;
+      // instance names: letter followed by letters, numbers, underscore, hyphen, square brackets, slashes (hierarchy)
+      // BOZO support escapes
+      iname %= lexeme[alpha >> *(alnum | char_('-') | char_('_') | char_('[') | char_(']') | char_('/'))] ;
+      // celltypes: assuming only underscore might be used out of the non-alphanumeric chars
+      ctype %= lexeme[alpha >> *(alnum | char_('_'))] ;
+
+      // define some major elements
 
       // components (instances)
       orient %= lexeme[- char_("F") >> char_("NSEW")] ;
       // Using ">" here instead of ">>" implies a required sequence and allows the parser to check it
       // specifically (instead of simply failing on the whole input)
-      plcinfo %= '+' > (string("FIXED") | string("PLACED")) >
-		     '(' > int_ > int_ > ')' > orient > ';' ;    // location and orientation
+      plcinfo %= '+' >> (keyword[string("FIXED")] | keyword[string("PLACED")]) >
+		     point > orient ;    // location and orientation
 
-      component %= '-' > lexeme[alpha > *alnum] > lexeme[alpha > *alnum] >
-	           - plcinfo ;
+      weight %= '+' >> keyword["WEIGHT"] > int_ ;
 
-      // TBD rule - absorb everything up to the trailing semicolon
-      tbd_elt = '-' > *char_ > ';' ;
+      // components required instance name and celltype; optional any (or none) of placement and weight, in any order:
+      component %= '-' > iname > ctype > (plcinfo ^ omit[weight] ^ eps > ';') ;
 
       // define repeat rules for each element section
       // I tried to make this generic but failed.  You can pass in the rule as an inherited attribute,
@@ -56,43 +67,36 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 	               repeat(_a)[component] >                        // expect that many copies of the supplied rule
 	               keyword["END"] > keyword["COMPONENTS"] ;       // END followed by the section name again
 
-      pins_section = keyword["PINS"] > int_[_a = _1] > ';' >
-	             repeat(_a)[tbd_elt] >
-	             keyword["END"] > keyword["PINS"] ;
+      // This parser only handles components and a couple of misc. statements
+      // here's a catchall parser to discard all other data
+      // BOZO update this for all keywords we parse - make a symbol table out of them for ease of use and speed
+      // note the "string" below is the qi string, a built-in parser whose attribute is a string, not std::string
+      unparsed = ((keyword[string("VIAS")] | keyword[string("NETS")] |
+		   keyword[string("SPECIALNETS")] | keyword[string("PINS")])[_a = _1] > int_ > ';' >
+		  *('-' > *(char_ - ';') > ';') > keyword["END"] > keyword[_a] ) |
+	         (!(lit("DIEAREA") | "VERSION") >> +(char_ - ';') >> ';') ;
 
-      vias_section = keyword["VIAS"] > int_[_a = _1] > ';' >
-	             repeat(_a)[tbd_elt] >
-	             keyword["END"] > keyword["VIAS"] ;
+      def_file = keyword["DESIGN"] > dname[at_c<0>(_val) = _1] > ';' >
+                 *(version_stmt[at_c<1>(_val) = _1] |
+		   diearea_stmt[at_c<2>(_val) = _1] |
+      	           comps_section[at_c<3>(_val) = _1] |
+		   unparsed) >
+      	         keyword["END"] > keyword["DESIGN"] ;
 
-      nets_section = keyword["NETS"] > int_[_a = _1] > ';' >
-	             repeat(_a)[tbd_elt] >
-	             keyword["END"] > keyword["NETS"] ;
+      // Debugging assistance
 
-      snets_section = keyword["SPECIALNETS"] > int_[_a = _1] > ';' >
-	              repeat(_a)[tbd_elt] >
-	              keyword["END"] > keyword["SPECIALNETS"] ;
+      dname.name("Design Name");
+      iname.name("Instance Name");
+      ctype.name("Cell Type");
+      version_stmt.name("VERSION");
+      diearea_stmt.name("DIEAREA");
+      comps_section.name("COMPONENTS Section");
+      component.name("Component");
+      orient.name("Orientation");
+      plcinfo.name("Optional Placement Info");
 
-      // a generic rule describing how the multi-element sections (COMPONENTS, PINS, VIAS, etc.) work
-      // this is a rule with two "inherited parameters" (i.e., arguments), one of which is the name
-      // of the section, and one of which is the rule describing the element
-      // this doesn't work, actually, because we have to define the synthesized attribute differently for each caller
-      counted_elements %= keyword[_r1] > int_[_a = _1] > ';' >  // remember count in a local variable
-	                 repeat(_a)[_r2] >                     // expect that many copies of the supplied rule
-	                 keyword["END"] > keyword[_r1] ;       // END followed by the section name again
 
-      // apply the generic rule to several examples
-      //      comps_section %= counted_elements(val("COMPONENTS"), ref(component)) ;
-
-      // of the top-level statements, some can occur only once (VERSION) and others can occur many times (SITE)
-      // if not for that we could use permutation operator (^) which would check uniqueness for us
-      // topstmt %= version_stmt | comps_section | nets_section | diearea_stmt ;
-      topstmt %= version_stmt | comps_section | nets_section | diearea_stmt ;
-
-      def_file %= keyword["DESIGN"] >> omit[lexeme[+alnum]] >> ';' >> topstmt >> keyword["END"] >> keyword["DESIGN"] ;
-      // def_file %= keyword["DESIGN"] >> omit[lexeme[+alnum]] >> ';' >> *topstmt >> keyword["END"] >> keyword["DESIGN"] ;
-      // BOZO check there is at most one of components, nets, specialnets, pins, version, etc.
-
-        on_error<fail>
+      on_error<fail>
         (
 	 def_file
 	 , std::cerr
@@ -102,31 +106,38 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 	 << construct<std::string>(boost::spirit::_3, boost::spirit::_2)   // iterators to error-pos, end
 	 << val("\"")
 	 << std::endl
-        );
+	 );
     }
 
-  typedef boost::spirit::qi::rule<Iterator, boost::spirit::qi::space_type> Rule;
-  Rule end_design;
-  Rule version_stmt, diearea_stmt;
-  Rule tbd_elt;
+  // VERSION takes no parameters (a.k.a. "inherited attributes") and synthesizes a double for its attribute
+  boost::spirit::qi::rule<Iterator, double(), boost::spirit::qi::space_type> version_stmt;
+
+  // points "( x y )" produces defpoint structs (see deftypes.h)
+  boost::spirit::qi::rule<Iterator, defpoint(), boost::spirit::qi::space_type> point;
+  // rects "( llx lly ) ( urx ury )" synthesize defrect structs containing two points
+  boost::spirit::qi::rule<Iterator, defrect(), boost::spirit::qi::space_type> rect, diearea_stmt;
+
   typedef boost::spirit::qi::rule<Iterator, std::string(), boost::spirit::qi::space_type> StringRule;
-  StringRule orient;
-  typedef boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<int>, boost::spirit::qi::space_type> LocalVarRule;
-  LocalVarRule pins_section, nets_section, snets_section, vias_section;
+  StringRule orient, dname, iname, ctype;
 
-  // optional placement info for a component
-  typedef boost::spirit::qi::rule<Iterator, defplcinfo(), boost::spirit::qi::space_type > PlcRule;
-  PlcRule plcinfo;
+  // rules neither inheriting nor synthesizing an attribute
+  typedef boost::spirit::qi::rule<Iterator, boost::spirit::qi::space_type> NoAttrRule;
+  NoAttrRule weight;
 
-  // a component rule produces a defcomponent struct as its synthesized attribute
-  typedef boost::spirit::qi::rule<Iterator, defcomponent(), boost::spirit::qi::space_type > CompRule;
-  CompRule component;
+  // rules pertaining to COMPONENTS - see deftypes.h for data results
 
-  // a component rule producing a vector of defcomponents
-  typedef boost::spirit::qi::rule<Iterator, std::vector<defcomponent>(), boost::spirit::qi::locals<int>, boost::spirit::qi::space_type > CompVecRule;
-  CompVecRule comps_section, topstmt, def_file;   // BOZO def_file is more general, but leave it for now
+  // optional placement info (placed vs. fixed, location, orientation)
+  boost::spirit::qi::rule<Iterator, defplcinfo(), boost::spirit::qi::space_type > plcinfo;
+  // a single instance within the COMPONENTS section (name, celltype, placement)
+  boost::spirit::qi::rule<Iterator, defcomponent(), boost::spirit::qi::space_type > component;
+  // a rule representing the entire COMPONENTS section
+  boost::spirit::qi::rule<Iterator, std::vector<defcomponent>(), boost::spirit::qi::locals<int>, boost::spirit::qi::space_type > comps_section;
 
-  typedef boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<int>, void(std::string, Rule), boost::spirit::qi::space_type > CountRule;
-  CountRule counted_elements;
+  // a catchall rule for everything I don't (yet) parse.  No attribute synthesized.
+  boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string>, boost::spirit::qi::space_type > unparsed;
+
+  // The DEF file as a whole
+  boost::spirit::qi::rule<Iterator, def(), boost::spirit::qi::space_type> def_file;
+
 };
 
