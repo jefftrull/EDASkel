@@ -1,2 +1,2 @@
-include_directories( "/home/jet/boost_1_42_0" )
+include_directories( ${Boost_INCLUDE_DIRS} )
 add_subdirectory( tests )
