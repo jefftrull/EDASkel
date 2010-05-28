@@ -16,6 +16,10 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 // This file contains result types for DEF parsing
+#if !defined(EDASKEL_DEF_TYPES)
+#define EDASKEL_DEF_TYPES
+
+
 #include <boost/fusion/include/adapt_struct.hpp>
 #include <boost/optional.hpp>
 #include <string>
@@ -80,3 +84,5 @@ BOOST_FUSION_ADAPT_STRUCT(
   (defrect, diearea)
   (std::vector<defcomponent>, components)
 )
+
+#endif
