@@ -23,6 +23,7 @@
 #include <string>
 #include <iostream>
 
+using namespace DefParse;
 defparser<std::string::const_iterator> defp;
 using boost::spirit::qi::space;
 

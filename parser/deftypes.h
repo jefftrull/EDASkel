@@ -24,25 +24,15 @@
 #include <boost/optional.hpp>
 #include <string>
 
+namespace DefParse {
+
 struct defpoint {
   int x, y;
 };
 
-BOOST_FUSION_ADAPT_STRUCT(
-  defpoint,
-  (int, x)
-  (int, y)
-)
-
 struct defrect {
   defpoint ll, ur;
 };
-
-BOOST_FUSION_ADAPT_STRUCT(
-  defrect,
-  (defpoint, ll)
-  (defpoint, ur)
-)
 
 struct defplcinfo {
   std::string plcfix;       // BOZO make boolean "fixed" or something
@@ -50,25 +40,11 @@ struct defplcinfo {
   std::string orient;       // BOZO make this enum
 };
 
-BOOST_FUSION_ADAPT_STRUCT(
-  defplcinfo,
-  (std::string, plcfix)
-  (defpoint, origin)
-  (std::string, orient)
-)
-
 struct defcomponent {
   std::string name;
   std::string celltype;
   boost::optional<defplcinfo> placement;
 };
-
-BOOST_FUSION_ADAPT_STRUCT(
-  defcomponent,
-  (std::string, name)
-  (std::string, celltype)
-  (boost::optional<defplcinfo>, placement)
-)
 
 struct def {
   std::string name;
@@ -77,12 +53,40 @@ struct def {
   std::vector<defcomponent> components;
 };
 
+}
+
 BOOST_FUSION_ADAPT_STRUCT(
-  def,
+  DefParse::defpoint,
+  (int, x)
+  (int, y)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+  DefParse::defrect,
+  (DefParse::defpoint, ll)
+  (DefParse::defpoint, ur)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+  DefParse::defplcinfo,
+  (std::string, plcfix)
+  (DefParse::defpoint, origin)
+  (std::string, orient)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+  DefParse::defcomponent,
+  (std::string, name)
+  (std::string, celltype)
+  (boost::optional<DefParse::defplcinfo>, placement)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+  DefParse::def,
   (std::string, name)
   (double, version)
-  (defrect, diearea)
-  (std::vector<defcomponent>, components)
+  (DefParse::defrect, diearea)
+  (std::vector<DefParse::defcomponent>, components)
 )
 
 #endif

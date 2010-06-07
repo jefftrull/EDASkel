@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#if !defined(EDASKEL_DEF_PARSER)
+#define EDASKEL_DEF_PARSER
 
 
 #include <boost/spirit/include/qi.hpp>
@@ -26,6 +28,8 @@
 #include "deftypes.h"
 
 #include <vector>
+
+namespace DefParse {
 
 // a starter DEF grammar
 template <typename Iterator>
@@ -156,3 +160,6 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 
 };
 
+}
+
+#endif
