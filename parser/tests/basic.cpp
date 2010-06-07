@@ -56,6 +56,15 @@ BOOST_AUTO_TEST_CASE ( version_parse_nonnum ) {
 
 }
 
+BOOST_AUTO_TEST_CASE ( version_parse_spaced_keywd ) {
+
+  std::string testdef("DESIGN test ;\nVER SION 1.211 ;\nEND DESIGN\n");
+  std::string::const_iterator beg = testdef.begin();
+  std::string::const_iterator end = testdef.end();
+  BOOST_CHECK( !phrase_parse(beg, end, defp, space) );
+
+}
+
 BOOST_AUTO_TEST_CASE ( components_parse_empty ) {
   std::string testdef("DESIGN test ;\nCOMPONENTS 0 ;\nEND COMPONENTS\nEND DESIGN\n");
   std::string::const_iterator beg = testdef.begin();

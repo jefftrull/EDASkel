@@ -17,10 +17,8 @@
 #if !defined(EDASKEL_DEF_PARSER)
 #define EDASKEL_DEF_PARSER
 
-
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix_core.hpp>
-
 #include <boost/spirit/include/phoenix_operator.hpp>
 #include <boost/spirit/include/phoenix_fusion.hpp>
 #include <boost/spirit/include/phoenix_object.hpp>
@@ -49,7 +47,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       using boost::phoenix::at_c;               // to refer to pieces of wrapped structs
 
       // top-level elements in a DEF file
-      version_stmt %= keyword["VERSION"] > double_ > ';' ;
+      version_stmt = keyword["VERSION"] > double_ > ';' ;
 
       point %= '(' >> int_ >> int_ >> ')' ;       // points are parenthesized pairs, no comma
       rect %= point >> point ;                    // rects are just two points in a row
@@ -86,14 +84,19 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 	               repeat(_a)[component] >                        // expect that many copies of the supplied rule
 	               keyword["END"] > keyword["COMPONENTS"] ;       // END followed by the section name again
 
+      // We don't handle rows and sites yet but we do check the syntax
+      // My copy of the LEF/DEF reference does not show this SITE command as valid for DEF yet my example data does...
+      // The example data's syntax is very similar to that defined for ROW, so I'll combine them
+      site_stmt = ((keyword["ROW"] > ctype) | keyword["SITE"]) > ctype > int_ > int_ > orient >
+	          -(keyword["DO"] > int_ > keyword["BY"] > int_ > -(keyword["STEP"] > int_ > int_)) > ';' ;
+
       // This parser only handles components and a couple of misc. statements
       // here's a catchall parser to discard all other data
       // BOZO update this for all keywords we parse - make a symbol table out of them for ease of use and speed
       // note the "string" below is the qi string, a built-in parser whose attribute is a string, not std::string
       unparsed = ((keyword[string("VIAS")] | keyword[string("NETS")] |
 		   keyword[string("SPECIALNETS")] | keyword[string("PINS")])[_a = _1] > int_ > ';' >
-		  *('-' > *(char_ - ';') > ';') > keyword["END"] > keyword[_a] ) |
-	         (!(lit("DIEAREA") | "VERSION") >> +(char_ - ';') >> ';') ;
+		  *('-' > *(char_ - ';') > ';') > keyword["END"] > keyword[_a] ) | site_stmt ;
 
       def_file = keyword["DESIGN"] > dname[at_c<0>(_val) = _1] > ';' >
                  *(version_stmt[at_c<1>(_val) = _1] |
@@ -153,7 +156,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
   boost::spirit::qi::rule<Iterator, std::vector<defcomponent>(), boost::spirit::qi::locals<int>, boost::spirit::qi::space_type > comps_section;
 
   // a catchall rule for everything I don't (yet) parse.  No attribute synthesized.
-  boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string>, boost::spirit::qi::space_type > unparsed;
+  boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string>, boost::spirit::qi::space_type > unparsed, site_stmt;
 
   // The DEF file as a whole
   boost::spirit::qi::rule<Iterator, def(), boost::spirit::qi::space_type> def_file;

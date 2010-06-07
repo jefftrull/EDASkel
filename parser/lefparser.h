@@ -138,9 +138,6 @@ struct lefparser : boost::spirit::qi::grammar<Iterator,
 	 macrosize[at_c<4>(_val) = _1] ^
 	 macrosymmetry[at_c<5>(_val) = _1] ^
 	 (keyword["SITE"] > id[at_c<6>(_val) = _1] > ';')) >
-	//	       -classrule >
-	//	       -foreign > -origin > -macrosize > -macrosymmetry >
-        //       -(keyword["SITE"] > id > ';') >
 	// BOZO not stored for now:
 	*pin >
 	-obs >
