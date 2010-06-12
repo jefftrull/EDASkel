@@ -23,6 +23,7 @@
 #include <string>
 #include <iostream>
 
+using namespace LefParse;
 lefparser<std::string::const_iterator> lefp;
 lefskipper<std::string::const_iterator> skp;
 
@@ -78,7 +79,8 @@ BOOST_AUTO_TEST_CASE( site_basic_check ) {
   BOOST_CHECK_EQUAL( result.sites[0].name, "MYSITENAME" );
   BOOST_CHECK_EQUAL( result.sites[0].class_, SITECLASS_PAD );
   BOOST_REQUIRE( result.sites[0].symmetry );
-  BOOST_CHECK_EQUAL( result.sites[0].symmetry, SITESYM_R90 );
+  BOOST_REQUIRE( result.sites[0].symmetry->size() == 1 );
+  BOOST_CHECK_EQUAL( (*result.sites[0].symmetry)[0], SITESYM_R90 );
   BOOST_CHECK_CLOSE( result.sites[0].width, 11.01, 0.001f );
   BOOST_CHECK_CLOSE( result.sites[0].height, 22.0, 0.001f );
 

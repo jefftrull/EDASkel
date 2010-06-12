@@ -19,15 +19,20 @@
 #include <boost/test/included/unit_test.hpp>
 
 #include "../../db/simpledb.h"
+#include "../lefparser.h"
+#include "../lefsem.h"
 #include "../defparser.h"
 #include "../defsem.h"
 #include <string>
 #include <iostream>
 
+using namespace LefParse;
 using namespace DefParse;
 using namespace SimpleDB;
 
 defparser<std::string::const_iterator> defp;
+lefparser<std::string::const_iterator> lefp;
+lefskipper<std::string::const_iterator> skp;
 using boost::spirit::qi::space;
 
 BOOST_AUTO_TEST_CASE ( diearea_checks ) {
@@ -69,7 +74,7 @@ template<DefCheckError Err>
 class DieAreaAbortPolicy : public DefCheckPolicy<Err> {};
 
 template<>
-class DieAreaAbortPolicy<DEFERR_DIE_MALFORMED_RECT> {
+class DieAreaAbortPolicy<DEFERR_DIEAREA_MALFORMED> {
 public:
     static bool const silent = true;  // one less message during test runs
     static bool const skip = false;   // actually set the rect, BUT
@@ -89,4 +94,72 @@ BOOST_AUTO_TEST_CASE ( policy_checks ) {
   DefChecker<Database, Library, DieAreaAbortPolicy> chk;
   BOOST_CHECK( !chk.CheckAndInsert(result, lib, db) ); // check should abort
   BOOST_CHECK( db.hasExtent() );                   // but boundary should be present
+}
+
+BOOST_AUTO_TEST_CASE ( lefdef_combined_basic ) {
+  // LEF: one site and one macro
+  std::string testlef("SITE CORE0 CLASS CORE ; SYMMETRY Y ; SIZE 1.0 BY 2.0 ; END CORE0\nMACRO INX2\nCLASS CORE ;\nORIGIN 0.0 0.0 ;\nSIZE 2.0 BY 2.0 ;\nSYMMETRY X Y ;\nSITE CORE0 ;\nEND INX2");
+  std::string::const_iterator beg = testlef.begin();
+  std::string::const_iterator end = testlef.end();
+  lef lefresult;
+  BOOST_CHECK( phrase_parse(beg, end, lefp, skp, lefresult) );
+  BOOST_CHECK( beg == end );
+  Library lib;
+  LefChecker<Library> lchk;
+  BOOST_CHECK( lchk.CheckAndInsert(lefresult, lib) );
+  // specific library checks here
+  typedef Library::CellPtr CellPtr;
+  CellPtr cell = lib.findCell("INX2");
+  BOOST_REQUIRE( cell != CellPtr() );
+  BOOST_CHECK_CLOSE( cell->getWidth(), 2.0, 0.001f );
+  BOOST_CHECK_CLOSE( cell->getHeight(), 2.0, 0.001f );
+  BOOST_CHECK( cell->getSymmetry().size() == 2 );
+
+  typedef Library::SitePtr SitePtr;
+  SitePtr site = lib.findSite("CORE0");
+  BOOST_REQUIRE( site != SitePtr() );
+  BOOST_REQUIRE( site->getSymmetry().size() == 1 );
+  BOOST_CHECK( site->getSymmetry()[0] == SITESYM_Y );
+  BOOST_CHECK_CLOSE( site->getWidth(), 1.0, 0.001f );
+  BOOST_CHECK_CLOSE( site->getHeight(), 2.0, 0.001f );
+
+  // DEF: define a diearea with set of sites and put two macros there
+  std::string testdef("DESIGN test ;\nDIEAREA ( 0 0 ) ( 1000 1000 ) ;\nUNITS DISTANCE MICRONS 100 ;\nSITE CORE0 0 0 N DO 10 BY 1 STEP 100 200 ;\nSITE CORE0 0 200 FS DO 10 BY 1 STEP 100 200 ;\nSITE CORE0 0 400 N DO 10 BY 1 STEP 100 200 ;\nSITE CORE0 0 600 FS DO 10 BY 1 STEP 100 200 ;\nSITE CORE0 0 800 N DO 10 BY 1 STEP 100 200 ;\nCOMPONENTS 2 ;\n- inst1 INX2 + PLACED ( 300 600 ) FS ;\n- inst2 INX2 + PLACED ( 500 800 ) N ;\nEND COMPONENTS\nEND DESIGN");
+  def defresult;
+  beg = testdef.begin();
+  end = testdef.end();
+  BOOST_CHECK( phrase_parse(beg, end, defp, space, defresult) );
+  BOOST_CHECK( beg == end );
+
+  DefChecker<Database, Library, DieAreaAbortPolicy> chk;
+  Database db;
+  BOOST_CHECK( chk.CheckAndInsert(defresult, lib, db) );
+
+  // verify location, orientation, etc. of sites and placed instances
+  boost::optional<std::string> sitename = db.siteAt(0, 0);
+  BOOST_REQUIRE( sitename );
+  BOOST_CHECK( *sitename == "CORE0" );
+  sitename = db.siteAt(100, 200);
+  BOOST_REQUIRE( sitename );
+  BOOST_CHECK( *sitename == "CORE0" );
+
+  typedef Database::InstPtr InstPtr;
+  InstPtr inst = db.findInst("inst1");
+  BOOST_REQUIRE( inst != InstPtr() );
+  BOOST_CHECK( inst->getCellName() == "INX2" );
+  BOOST_REQUIRE( inst->hasPlacement() );
+  BOOST_CHECK( (inst->getOrigin().x() == 300) && (inst->getOrigin().y() == 600) );
+  BOOST_CHECK( inst->getOrient() == "FS" );
+  BOOST_CHECK( !inst->isFixed() );
+  db.siteAt(300, 600);
+  BOOST_REQUIRE( sitename );
+  BOOST_CHECK( *sitename == "CORE0" );
+
+  inst = db.findInst("inst2");
+  BOOST_REQUIRE( inst != InstPtr() );
+  BOOST_CHECK( inst->getCellName() == "INX2" );
+  BOOST_REQUIRE( inst->hasPlacement() );
+  BOOST_CHECK( (inst->getOrigin().x() == 500) && (inst->getOrigin().y() == 800) );
+  BOOST_CHECK( inst->getOrient() == "N" );
+  BOOST_CHECK( !inst->isFixed() );
 }

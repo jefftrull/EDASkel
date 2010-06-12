@@ -19,6 +19,7 @@
 
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix_core.hpp>
+#include <boost/spirit/include/phoenix_container.hpp>
 #include <boost/spirit/include/phoenix_operator.hpp>
 #include <boost/spirit/include/phoenix_fusion.hpp>
 #include <boost/spirit/include/phoenix_object.hpp>
@@ -42,6 +43,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       using namespace distinct;                 // for keywords.  We are a "phrase" (not character) parser
                                                 // so need to distinguish keywords from following alphanumerics
       using boost::spirit::_1;                  // access attributes for component count check
+      using boost::phoenix::push_back;          // to store results in containers
       using boost::phoenix::val;                // for error handling
       using boost::phoenix::construct;          // for error handling
       using boost::phoenix::at_c;               // to refer to pieces of wrapped structs
@@ -65,7 +67,9 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       // define some major elements
 
       // components (instances)
-      orient %= lexeme[- char_("F") >> char_("NSEW")] ;
+      orient = keyword[repeat(1)[char_("NSEW")] |         // a single cardinal direction, OR
+		       (char_('F') >> char_("NSEW"))] ;   // the same, but flipped
+
       // Using ">" here instead of ">>" implies a required sequence and allows the parser to check it
       // specifically (instead of simply failing on the whole input)
       plcinfo %= '+' >> (keyword[string("FIXED")] | keyword[string("PLACED")]) >
@@ -84,11 +88,13 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 	               repeat(_a)[component] >                        // expect that many copies of the supplied rule
 	               keyword["END"] > keyword["COMPONENTS"] ;       // END followed by the section name again
 
-      // We don't handle rows and sites yet but we do check the syntax
       // My copy of the LEF/DEF reference does not show this SITE command as valid for DEF yet my example data does...
       // The example data's syntax is very similar to that defined for ROW, so I'll combine them
-      site_stmt = ((keyword["ROW"] > ctype) | keyword["SITE"]) > ctype > int_ > int_ > orient >
-	          -(keyword["DO"] > int_ > keyword["BY"] > int_ > -(keyword["STEP"] > int_ > int_)) > ';' ;
+      siterpt_stmt = keyword["DO"] > int_ > keyword["BY"] > int_ > -(keyword["STEP"] > int_ > int_) ;
+      rowsite_stmt = ((keyword["ROW"] > ctype) | keyword["SITE"]) > ctype > int_ > int_ > orient >
+	             -siterpt_stmt > ';' ;
+
+      dbu = keyword["UNITS"] > keyword["DISTANCE"] > keyword["MICRONS"] > int_ > ';' ;
 
       // This parser only handles components and a couple of misc. statements
       // here's a catchall parser to discard all other data
@@ -101,7 +107,9 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       def_file = keyword["DESIGN"] > dname[at_c<0>(_val) = _1] > ';' >
                  *(version_stmt[at_c<1>(_val) = _1] |
 		   diearea_stmt[at_c<2>(_val) = _1] |
-      	           comps_section[at_c<3>(_val) = _1] |
+		   dbu[at_c<3>(_val) = _1] |
+      	           comps_section[at_c<4>(_val) = _1] |
+		   rowsite_stmt[push_back(at_c<5>(_val), _1)] |
 		   unparsed) >
       	         keyword["END"] > keyword["DESIGN"] ;
 
@@ -146,6 +154,10 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
   typedef boost::spirit::qi::rule<Iterator, boost::spirit::qi::space_type> NoAttrRule;
   NoAttrRule weight;
 
+  // Site (or named row) statement
+  boost::spirit::qi::rule<Iterator, siterepeat(), boost::spirit::qi::space_type > siterpt_stmt;
+  boost::spirit::qi::rule<Iterator, rowsite(), boost::spirit::qi::space_type > rowsite_stmt;
+
   // rules pertaining to COMPONENTS - see deftypes.h for data results
 
   // optional placement info (placed vs. fixed, location, orientation)
@@ -154,6 +166,8 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
   boost::spirit::qi::rule<Iterator, defcomponent(), boost::spirit::qi::space_type > component;
   // a rule representing the entire COMPONENTS section
   boost::spirit::qi::rule<Iterator, std::vector<defcomponent>(), boost::spirit::qi::locals<int>, boost::spirit::qi::space_type > comps_section;
+
+  boost::spirit::qi::rule<Iterator, int(), boost::spirit::qi::space_type> dbu;
 
   // a catchall rule for everything I don't (yet) parse.  No attribute synthesized.
   boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string>, boost::spirit::qi::space_type > unparsed, site_stmt;

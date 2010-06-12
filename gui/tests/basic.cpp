@@ -48,10 +48,10 @@ BOOST_AUTO_TEST_CASE( basic ) {
   tie(beg, end) = db.getInstances();
   BOOST_CHECK( beg == end );   // we haven't added any yet
   Database::InstPtr i1(new Instance("Inst1", "BIGCELL"));
-  i1->setOrigin(2000, 2000);
+  i1->setPlacement(Database::Point(2000, 2000), "N");
   db.addInst(i1);
   Database::InstPtr i2(new Instance("Inst2", "SMALLCELL"));
-  i2->setOrigin(2095, 2095);   // create a small overlap
+  i2->setPlacement(Database::Point(2095, 2095), "N");   // create a small overlap
   db.addInst(i2);
   tie(beg, end) = db.getInstances();
   BOOST_CHECK( distance(beg, end) == 2 );

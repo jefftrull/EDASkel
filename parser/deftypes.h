@@ -21,6 +21,7 @@
 
 
 #include <boost/fusion/include/adapt_struct.hpp>
+#include <boost/fusion/include/std_pair.hpp>
 #include <boost/optional.hpp>
 #include <string>
 
@@ -37,7 +38,7 @@ struct defrect {
 struct defplcinfo {
   std::string plcfix;       // BOZO make boolean "fixed" or something
   defpoint origin;
-  std::string orient;       // BOZO make this enum
+  std::string orient;       // BOZO make this enum?
 };
 
 struct defcomponent {
@@ -46,11 +47,30 @@ struct defcomponent {
   boost::optional<defplcinfo> placement;
 };
 
+// BOOST_FUSION_ADAPT_STRUCT is a macro and will be confused by this embedded comma unless:
+typedef std::pair<int, int> IntPair;
+struct siterepeat {
+  int xrepeat;
+  int yrepeat;
+  boost::optional<IntPair> step;
+};
+
+struct rowsite {
+  boost::optional<std::string> rowname;
+  std::string sitename;
+  int origx;
+  int origy;
+  std::string orient;
+  boost::optional<siterepeat> repeat;
+};
+
 struct def {
   std::string name;
   double version;
   defrect diearea;
+  int dbupermicron;
   std::vector<defcomponent> components;
+  std::vector<rowsite> rows;
 };
 
 }
@@ -82,11 +102,30 @@ BOOST_FUSION_ADAPT_STRUCT(
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
+  DefParse::siterepeat,
+  (int, xrepeat)
+  (int, yrepeat)
+  (boost::optional<DefParse::IntPair>, step)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+  DefParse::rowsite,
+  (boost::optional<std::string>, rowname)
+  (std::string, sitename)
+  (int, origx)
+  (int, origy)
+  (std::string, orient)
+  (boost::optional<DefParse::siterepeat>, repeat)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
   DefParse::def,
   (std::string, name)
   (double, version)
   (DefParse::defrect, diearea)
+  (int, dbupermicron)
   (std::vector<DefParse::defcomponent>, components)
+  (std::vector<DefParse::rowsite>, rows)
 )
 
 #endif

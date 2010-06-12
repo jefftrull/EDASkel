@@ -24,62 +24,34 @@
 #include <boost/optional.hpp>
 #include <string>
 
+#include "../db/globals.h"
 #include "deftypes.h"
 
-// these ought to move into some LEF/DEF common file
-enum SiteSymmetry { SITESYM_X, SITESYM_Y, SITESYM_R90 };
-enum SiteClass { SITECLASS_COVER, SITECLASS_RING, SITECLASS_BLOCK,
-		 SITECLASS_PAD, SITECLASS_PAD_INPUT, SITECLASS_PAD_OUTPUT, SITECLASS_PAD_INOUT,
-		 SITECLASS_PAD_POWER, SITECLASS_PAD_SPACER,
-		 SITECLASS_CORE, SITECLASS_CORE_FEEDTHRU, SITECLASS_CORE_TIEHIGH, SITECLASS_CORE_TIELOW,
-		 SITECLASS_ENDCAP_PRE, SITECLASS_ENDCAP_POST, SITECLASS_ENDCAP_TOPLEFT,
-		 SITECLASS_ENDCAP_TOPRIGHT, SITECLASS_ENDCAP_BOTTOMLEFT, SITECLASS_ENDCAP_BOTTOMRIGHT };
+using namespace EDASkel;
+
+namespace LefParse {
+
+// I'm naming this differently from the other types in here. Is that good?
+// should this be global?
 struct Site {
   std::string name;
   SiteClass class_;
-  boost::optional<SiteSymmetry> symmetry;
+  boost::optional<std::vector<SiteSymmetry> > symmetry;
   float width, height;
 };
-
-BOOST_FUSION_ADAPT_STRUCT(
-  Site,
-  (std::string, name)
-  (SiteClass, class_)
-  (boost::optional<SiteSymmetry>, symmetry)
-  (float, width)
-  (float, height)
-)
 
 struct lefpoint {
   float x, y;
 };
 
-BOOST_FUSION_ADAPT_STRUCT(
-  lefpoint,
-  (float, x)
-  (float, y)
-)
-
 struct lefextent {
   float width, height;
 };
-
-BOOST_FUSION_ADAPT_STRUCT(
-  lefextent,
-  (float, width)
-  (float, height)
-)
 
 struct lefforeign {
   std::string name;
   lefpoint pt;
 };
-
-BOOST_FUSION_ADAPT_STRUCT(
-  lefforeign,
-  (std::string, name)
-  (lefpoint, pt)
-)
 
 struct lefmacro {
   std::string name;
@@ -91,26 +63,57 @@ struct lefmacro {
   boost::optional<std::string> site;
 };  
 
-BOOST_FUSION_ADAPT_STRUCT(
-  lefmacro,
-  (std::string, name)
-  (boost::optional<SiteClass>, class_)
-  (boost::optional<lefforeign>, foreign)
-  (boost::optional<lefpoint>, origin)
-  (boost::optional<lefextent>, size)
-  (boost::optional<std::vector<SiteSymmetry> >, symmetry)
-  (boost::optional<std::string>, site)
-)
-
 struct lef {
   std::vector<Site> sites;
   std::vector<lefmacro> macros;
 };
 
+}
+
+// BOOST_FUSION_ADAPT_STRUCT needs to be outside the namespace for some reason
+
 BOOST_FUSION_ADAPT_STRUCT(
-  lef,
-  (std::vector<Site>, sites)
-  (std::vector<lefmacro>, macros)
+  LefParse::Site,
+  (std::string, name)
+  (SiteClass, class_)
+  (boost::optional<std::vector<SiteSymmetry> >, symmetry)
+  (float, width)
+  (float, height)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+  LefParse::lefpoint,
+  (float, x)
+  (float, y)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+  LefParse::lefextent,
+  (float, width)
+  (float, height)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+  LefParse::lefforeign,
+  (std::string, name)
+  (LefParse::lefpoint, pt)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+  LefParse::lefmacro,
+  (std::string, name)
+  (boost::optional<SiteClass>, class_)
+  (boost::optional<LefParse::lefforeign>, foreign)
+  (boost::optional<LefParse::lefpoint>, origin)
+  (boost::optional<LefParse::lefextent>, size)
+  (boost::optional<std::vector<SiteSymmetry> >, symmetry)
+  (boost::optional<std::string>, site)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+  LefParse::lef,
+  (std::vector<LefParse::Site>, sites)
+  (std::vector<LefParse::lefmacro>, macros)
 )
 
 #endif

@@ -15,6 +15,9 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+#if !defined(EDASKEL_LEF_PARSER)
+#define EDASKEL_LEF_PARSER
+
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix_core.hpp>
 
@@ -28,6 +31,8 @@
 
 #include <vector>
 #include <iostream>
+
+namespace LefParse {
 
 // A skip parser for LEF comments and spaces
 // adapted from a presentation at Boostcon 2010 by Michael Caisse
@@ -108,7 +113,7 @@ struct lefparser : boost::spirit::qi::grammar<Iterator,
       // BOZO need a better way to handle case-insensitive keywords
       siterule %= (keyword["SITE"] | keyword["site"] ) > id[_a = _1] >
 	classrule >
-	-(keyword["SYMMETRY"] > no_case[keyword[sitesym]] > ';' ) >
+	-(keyword["SYMMETRY"] > +no_case[keyword[sitesym]] > ';' ) >
 	// BOZO use lefextent here
 	no_case[keyword["size"]] > float_ > no_case[keyword["by"]] > float_ > ';' >
 	// BOZO optional ROWPATTERN goes here
@@ -226,3 +231,6 @@ struct lefparser : boost::spirit::qi::grammar<Iterator,
 
 };
 
+}
+
+#endif

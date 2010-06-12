@@ -8,6 +8,9 @@
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying 
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
+#ifndef EDASKEL_PARSER_KEYWORD
+#define EDASKEL_PARSER_KEYWORD
+
 #include <boost/spirit/include/qi_char.hpp>
 #include <boost/spirit/include/qi_string.hpp>
 #include <boost/spirit/include/qi_nonterminal.hpp>
@@ -72,3 +75,5 @@ namespace distinct
     keyword_tag_type const keyword = distinct_spec(char_spec(keyword_spec)); 
     //]
 }
+
+#endif

@@ -119,6 +119,27 @@ BOOST_AUTO_TEST_CASE ( components_parse_wrongcount ) {
   BOOST_CHECK( !phrase_parse(beg, end, defp, space) );
 }
   
+BOOST_AUTO_TEST_CASE ( site_basic ) {
+  std::string testdef("DESIGN test ;\nVERSION 1.211 ;\nDIEAREA ( 0 0 ) ( 100000 200000 ) ;\nSITE CORE1 10 20 N DO 200 BY 1 STEP 100 500 ;\nEND DESIGN\n");
+  std::string::const_iterator beg = testdef.begin();
+  std::string::const_iterator end = testdef.end();
+  def result;
+  BOOST_CHECK( phrase_parse(beg, end, defp, space, result) );
+  BOOST_CHECK( (beg == end) );
+  BOOST_REQUIRE( result.rows.size() == 1 );
+  BOOST_CHECK( !result.rows[0].rowname );
+  BOOST_CHECK( result.rows[0].sitename == "CORE1" );
+  BOOST_CHECK( result.rows[0].origx == 10 );
+  BOOST_CHECK( result.rows[0].origy == 20 );
+  BOOST_CHECK( (result.rows[0].orient == "N") );
+  BOOST_REQUIRE( result.rows[0].repeat );
+  BOOST_CHECK( result.rows[0].repeat->xrepeat == 200 );
+  BOOST_CHECK( result.rows[0].repeat->yrepeat == 1 );
+  BOOST_REQUIRE( result.rows[0].repeat->step );
+  BOOST_CHECK( result.rows[0].repeat->step->first == 100 );
+  BOOST_CHECK( result.rows[0].repeat->step->second == 500 );
+}
+
 // BOZO when we eventually parse everything this won't be a very interesting test and probably should be removed,
 // or have previously ignored stuff checked
 BOOST_AUTO_TEST_CASE ( parse_ignored_stuff ) {
