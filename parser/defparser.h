@@ -81,8 +81,10 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 
       weight %= '+' >> keyword["WEIGHT"] > int_ ;
 
+      source = '+' >> keyword["SOURCE"] > (keyword["DIST"] | keyword["NETLIST"] | keyword["USER"] | keyword["TIMING"]) ;
+
       // components required instance name and celltype; optional any (or none) of placement and weight, in any order:
-      component %= '-' > iname > ctype > (plcinfo ^ omit[weight] ^ eps > ';') ;
+      component %= '-' > iname > ctype > (plcinfo ^ omit[weight] ^ source ^ eps ) > ';' ;
 
       // define repeat rules for each element section
       // I tried to make this generic but failed.  You can pass in the rule as an inherited attribute,
@@ -103,10 +105,13 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       // This parser only handles components and a couple of misc. statements
       // here's a catchall parser to discard all other data
       // BOZO update this for all keywords we parse - make a symbol table out of them for ease of use and speed
-      // note the "string" below is the qi string, a built-in parser whose attribute is a string, not std::string
+      tracks_stmt = keyword["TRACKS"] > *(char_ - ';') > ';' ;
+      gcellgrid_stmt = keyword["GCELLGRID"] > *(char_ - ';') > ';' ;
+      history_stmt = keyword["HISTORY"] > *(char_ - ';') > ';' ;
+
       unparsed = ((keyword[string("VIAS")] | keyword[string("NETS")] |
 		   keyword[string("SPECIALNETS")] | keyword[string("PINS")])[_a = _1] > int_ > ';' >
-		  *('-' > *(char_ - ';') > ';') > keyword["END"] > keyword[_a] ) | site_stmt ;
+		  *('-' > *(char_ - ';') > ';') > keyword["END"] > keyword[_a] ) | tracks_stmt | gcellgrid_stmt | history_stmt ;
 
       def_file = keyword["DESIGN"] > dname[at_c<0>(_val) = _1] > ';' >
                  *(version_stmt[at_c<1>(_val) = _1] |
@@ -174,7 +179,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
   boost::spirit::qi::rule<Iterator, int(), lefdefskipper<Iterator> > dbu;
 
   // a catchall rule for everything I don't (yet) parse.  No attribute synthesized.
-  boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string>, lefdefskipper<Iterator> > unparsed, site_stmt;
+  boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string>, lefdefskipper<Iterator> > unparsed, tracks_stmt, gcellgrid_stmt, history_stmt, source;
 
   // The DEF file as a whole
   boost::spirit::qi::rule<Iterator, def(), lefdefskipper<Iterator> > def_file;
