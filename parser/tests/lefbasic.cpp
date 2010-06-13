@@ -25,8 +25,8 @@
 
 using namespace LefParse;
 namespace EDASkel {
-  extern lefparser<std::string::const_iterator> lefParser;
-  extern lefdefskipper<std::string::const_iterator> lefdefSkipper;
+  extern lefparser<std::string::const_iterator> lefStringParser;
+  extern lefdefskipper<std::string::const_iterator> lefdefStringSkipper;
 }
 using namespace boost::spirit::qi;
 using boost::spirit::qi::space;
@@ -37,7 +37,7 @@ BOOST_AUTO_TEST_CASE( case_check ) {
   std::string::const_iterator beg = testlef.begin();
   std::string::const_iterator end = testlef.end();
   lef result;
-  BOOST_CHECK( phrase_parse(beg, end, lefParser, lefdefSkipper, result) );  // we should match
+  BOOST_CHECK( phrase_parse(beg, end, lefStringParser, lefdefStringSkipper, result) );  // we should match
   BOOST_CHECK( (beg == end) );                         // we should consume all input
   // did not use BOOST_CHECK_EQUAL b/c it wants to output these on failure, and there is no operator<< defined
   BOOST_CHECK( result.macros.empty() );
@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE( macro_basic_check ) {
   std::string::const_iterator beg = testlef.begin();
   std::string::const_iterator end = testlef.end();
   lef result;
-  BOOST_CHECK( phrase_parse(beg, end, lefParser, lefdefSkipper, result) );  // we should match
+  BOOST_CHECK( phrase_parse(beg, end, lefStringParser, lefdefStringSkipper, result) );  // we should match
   BOOST_CHECK( (beg == end) );                         // we should consume all input
   BOOST_REQUIRE_EQUAL( result.macros.size(), 1 );
   BOOST_CHECK_EQUAL( result.macros[0].name, "INX2" );
@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE( site_basic_check ) {
   std::string::const_iterator beg = testlef.begin();
   std::string::const_iterator end = testlef.end();
   lef result;
-  BOOST_CHECK( phrase_parse(beg, end, lefParser, lefdefSkipper, result) );
+  BOOST_CHECK( phrase_parse(beg, end, lefStringParser, lefdefStringSkipper, result) );
   BOOST_CHECK( (beg == end) );
   BOOST_REQUIRE_EQUAL( result.sites.size(), 1 );
   BOOST_CHECK_EQUAL( result.sites[0].name, "MYSITENAME" );

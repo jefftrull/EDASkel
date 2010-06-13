@@ -20,6 +20,8 @@
 // them, so this is a separate "compilation unit" that uses the parsers.
 // I will make other files depend on this one at link time.
 
+#include <boost/spirit/include/support_multi_pass.hpp>
+
 #include "lefparser.h"
 #include "defparser.h"
 using namespace LefParse;
@@ -27,8 +29,16 @@ using namespace DefParse;
 using namespace EDASkel;
 
 namespace EDASkel {
-  defparser<std::string::const_iterator> defParser;
-  lefparser<std::string::const_iterator> lefParser;
-  lefdefskipper<std::string::const_iterator> lefdefSkipper;
+  typedef std::string::const_iterator LefDefStringIter;
+  defparser<LefDefStringIter> defStringParser;
+  lefparser<LefDefStringIter> lefStringParser;
+  lefdefskipper<LefDefStringIter> lefdefStringSkipper;
+
+  // use a special adapter for files (stream iterators are "Input", not "Forward"
+  // iterators, and so need some extra help to handle lookahead)
+  typedef boost::spirit::multi_pass<std::istreambuf_iterator<char> > LefDefFileIter;
+  defparser<LefDefFileIter> defFileParser;
+  lefparser<LefDefFileIter> lefFileParser;
+  lefdefskipper<LefDefFileIter> lefdefFileSkipper;
 }
 
