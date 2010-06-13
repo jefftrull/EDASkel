@@ -30,9 +30,12 @@ using namespace LefParse;
 using namespace DefParse;
 using namespace SimpleDB;
 
-defparser<std::string::const_iterator> defp;
-lefparser<std::string::const_iterator> lefp;
-lefskipper<std::string::const_iterator> skp;
+namespace EDASkel {
+  extern defparser<std::string::const_iterator> defParser;
+  extern lefparser<std::string::const_iterator> lefParser;
+  extern lefskipper<std::string::const_iterator> lefSkipper;
+}
+using namespace boost::spirit::qi;
 using boost::spirit::qi::space;
 
 BOOST_AUTO_TEST_CASE ( diearea_checks ) {
@@ -41,7 +44,7 @@ BOOST_AUTO_TEST_CASE ( diearea_checks ) {
   std::string::const_iterator beg = testdef.begin();
   std::string::const_iterator end = testdef.end();
   def result;
-  BOOST_CHECK( phrase_parse(beg, end, defp, space, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, space, result) );
 
   // turn syntax result into database contents (while checking)
   Library lib;
@@ -60,7 +63,7 @@ BOOST_AUTO_TEST_CASE ( diearea_checks ) {
   testdef = std::string("DESIGN test ;\nDIEAREA ( 10 10 ) ( 0 0 ) ;\nEND DESIGN");
   beg = testdef.begin(); end = testdef.end();
   def result_badboundary;
-  BOOST_CHECK( phrase_parse(beg, end, defp, space, result_badboundary) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, space, result_badboundary) );
 
   Database db_badboundary;
   // our default policy says we don't abort but we do skip errors
@@ -86,7 +89,7 @@ BOOST_AUTO_TEST_CASE ( policy_checks ) {
   std::string::const_iterator beg = testdef.begin();
   std::string::const_iterator end = testdef.end();
   def result;
-  BOOST_CHECK( phrase_parse(beg, end, defp, space, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, space, result) );
 
   // turn syntax result into database contents (while checking)
   Library lib;
@@ -102,7 +105,7 @@ BOOST_AUTO_TEST_CASE ( lefdef_combined_basic ) {
   std::string::const_iterator beg = testlef.begin();
   std::string::const_iterator end = testlef.end();
   lef lefresult;
-  BOOST_CHECK( phrase_parse(beg, end, lefp, skp, lefresult) );
+  BOOST_CHECK( phrase_parse(beg, end, lefParser, lefSkipper, lefresult) );
   BOOST_CHECK( beg == end );
   Library lib;
   LefChecker<Library> lchk;
@@ -128,7 +131,7 @@ BOOST_AUTO_TEST_CASE ( lefdef_combined_basic ) {
   def defresult;
   beg = testdef.begin();
   end = testdef.end();
-  BOOST_CHECK( phrase_parse(beg, end, defp, space, defresult) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, space, defresult) );
   BOOST_CHECK( beg == end );
 
   DefChecker<Database, Library, DieAreaAbortPolicy> chk;
