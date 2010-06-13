@@ -15,20 +15,32 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-// Compiling the LEF and DEF parsers together is very slow on my system
-// (large memory requirement), and many files (esp. unit tests) depend on
-// them, so this is a separate "compilation unit" that uses the parsers.
-// I will make other files depend on this one at link time.
+// This file contains common definitions for the LEF and DEF parsers
 
-#include "lefparser.h"
-#include "defparser.h"
-using namespace LefParse;
-using namespace DefParse;
-using namespace EDASkel;
+#if !defined(EDASKEL_LEFDEF)
+#define EDASKEL_LEFDEF
+
+#include <boost/spirit/include/qi.hpp>
 
 namespace EDASkel {
-  defparser<std::string::const_iterator> defParser;
-  lefparser<std::string::const_iterator> lefParser;
-  lefdefskipper<std::string::const_iterator> lefdefSkipper;
+
+// A skip parser for LEF/DEF comments and spaces
+// adapted from a presentation at Boostcon 2010 by Michael Caisse
+template <typename Iterator>
+struct lefdefskipper : boost::spirit::qi::grammar< Iterator >
+{
+ lefdefskipper() : lefdefskipper::base_type(skip_it)
+    {
+      using namespace boost::spirit::qi;
+
+      comment = '#' >> *( char_ - eol ) >> eol ;
+      skip_it = comment | space ;
+    }
+  boost::spirit::qi::rule<Iterator> skip_it;
+  boost::spirit::qi::rule<Iterator> comment;
+};
+
+
 }
 
+#endif

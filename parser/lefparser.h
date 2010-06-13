@@ -18,6 +18,9 @@
 #if !defined(EDASKEL_LEF_PARSER)
 #define EDASKEL_LEF_PARSER
 
+#include <vector>
+#include <iostream>
+
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix_core.hpp>
 
@@ -28,34 +31,17 @@
 
 #include "keyword.h"
 #include "leftypes.h"
+#include "lefdef.h"
 
-#include <vector>
-#include <iostream>
+using namespace EDASkel;
 
 namespace LefParse {
-
-// A skip parser for LEF comments and spaces
-// adapted from a presentation at Boostcon 2010 by Michael Caisse
-template <typename Iterator>
-struct lefskipper : boost::spirit::qi::grammar< Iterator >
-{
- lefskipper() : lefskipper::base_type(skip_it)
-    {
-      using namespace boost::spirit::qi;
-
-      comment = '#' >> *( char_ - eol ) >> eol ;
-      skip_it = comment | space ;
-    }
-  boost::spirit::qi::rule<Iterator> skip_it;
-  boost::spirit::qi::rule<Iterator> comment;
-};
-
 
 // just enough LEF to get library cells and their outlines
 template <typename Iterator>
 struct lefparser : boost::spirit::qi::grammar<Iterator,
                                               lef(),
-                                              lefskipper<Iterator> >
+                                              lefdefskipper<Iterator> >
 {
 
   lefparser() : lefparser::base_type(lef_file)
@@ -190,43 +176,43 @@ struct lefparser : boost::spirit::qi::grammar<Iterator,
   bool case_on;   // case sensitivity ON/OFF -> true/false
 
   // rules neither inheriting nor synthesizing an attribute
-  typedef boost::spirit::qi::rule<Iterator, lefskipper<Iterator> > NoAttrRule;
+  typedef boost::spirit::qi::rule<Iterator, lefdefskipper<Iterator> > NoAttrRule;
   NoAttrRule spacing, units, casesens, obs;
 
   // rules synthesizing a string
-  typedef boost::spirit::qi::rule<Iterator, std::string(), lefskipper<Iterator> > StringRule;
+  typedef boost::spirit::qi::rule<Iterator, std::string(), lefdefskipper<Iterator> > StringRule;
   StringRule ctype, id;
 
   // for now macro synthesizes a string AND has a local variable (for checking END statement)
-  boost::spirit::qi::rule<Iterator, lefmacro(), boost::spirit::qi::locals<std::string>, lefskipper<Iterator> > macro;
+  boost::spirit::qi::rule<Iterator, lefmacro(), boost::spirit::qi::locals<std::string>, lefdefskipper<Iterator> > macro;
 
   // Some keywords turn directly into enums in the database
   boost::spirit::qi::symbols<char, SiteClass> siteclass, padclass, coreclass, endcapclass;
   boost::spirit::qi::symbols<char, SiteSymmetry> sitesym;
-  boost::spirit::qi::rule<Iterator, SiteClass(), lefskipper<Iterator> > classrule;
+  boost::spirit::qi::rule<Iterator, SiteClass(), lefdefskipper<Iterator> > classrule;
   // site rule uses local var (to check END statement) and synthesizes a Site
-  boost::spirit::qi::rule<Iterator, Site(), boost::spirit::qi::locals<std::string>, lefskipper<Iterator>  > siterule;
+  boost::spirit::qi::rule<Iterator, Site(), boost::spirit::qi::locals<std::string>, lefdefskipper<Iterator>  > siterule;
   // macros can list their site symmetry options
-  boost::spirit::qi::rule<Iterator, std::vector<SiteSymmetry>(), lefskipper<Iterator> > macrosymmetry;
+  boost::spirit::qi::rule<Iterator, std::vector<SiteSymmetry>(), lefdefskipper<Iterator> > macrosymmetry;
   // macros give "origin" as a real numbered point
-  boost::spirit::qi::rule<Iterator, lefpoint(), lefskipper<Iterator> > point, origin;
+  boost::spirit::qi::rule<Iterator, lefpoint(), lefdefskipper<Iterator> > point, origin;
   // size (width/height) is identical in terms of data stored but has a different interpretation
-  boost::spirit::qi::rule<Iterator, lefextent(), lefskipper<Iterator> > macrosize;
+  boost::spirit::qi::rule<Iterator, lefextent(), lefdefskipper<Iterator> > macrosize;
   // macro FOREIGN statement gives a name and a point.  BOZO is it legal to name something other than your own macro?
-  boost::spirit::qi::rule<Iterator, lefforeign(), lefskipper<Iterator> > foreign;
+  boost::spirit::qi::rule<Iterator, lefforeign(), lefdefskipper<Iterator> > foreign;
 
   // PIN and OBS are not currently handled.  OBS will be necessary for polygonal block outlines. PIN needed when we do nets
 
   // a catchall rule for everything I don't (yet) parse.  No attribute synthesized, but it has a local string var
   // (for checking END statements)
-  typedef boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string>, lefskipper<Iterator>  > Unparsed;
+  typedef boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string>, lefdefskipper<Iterator>  > Unparsed;
   Unparsed layer, via, viarule, pin;
 
   // stuff inside macros I don't handle
-  boost::spirit::qi::rule<Iterator, lefskipper<Iterator>  > unparsed_macro_stuff;
+  boost::spirit::qi::rule<Iterator, lefdefskipper<Iterator>  > unparsed_macro_stuff;
 
   // The LEF file as a whole
-  boost::spirit::qi::rule<Iterator, lef(), lefskipper<Iterator> > lef_file;
+  boost::spirit::qi::rule<Iterator, lef(), lefdefskipper<Iterator> > lef_file;
 
 
 };

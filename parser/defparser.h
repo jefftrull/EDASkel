@@ -17,16 +17,20 @@
 #if !defined(EDASKEL_DEF_PARSER)
 #define EDASKEL_DEF_PARSER
 
+#include <vector>
+
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix_core.hpp>
 #include <boost/spirit/include/phoenix_container.hpp>
 #include <boost/spirit/include/phoenix_operator.hpp>
 #include <boost/spirit/include/phoenix_fusion.hpp>
 #include <boost/spirit/include/phoenix_object.hpp>
+
 #include "keyword.h"
 #include "deftypes.h"
+#include "lefdef.h"
 
-#include <vector>
+using namespace EDASkel;
 
 namespace DefParse {
 
@@ -34,7 +38,7 @@ namespace DefParse {
 template <typename Iterator>
 struct defparser : boost::spirit::qi::grammar<Iterator,
                                               def(),
-                                              boost::spirit::qi::space_type>
+                                              lefdefskipper<Iterator> >
 {
 
   defparser() : defparser::base_type(def_file)
@@ -140,40 +144,40 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
     }
 
   // VERSION takes no parameters (a.k.a. "inherited attributes") and synthesizes a double for its attribute
-  boost::spirit::qi::rule<Iterator, double(), boost::spirit::qi::space_type> version_stmt;
+  boost::spirit::qi::rule<Iterator, double(), lefdefskipper<Iterator> > version_stmt;
 
   // points "( x y )" produces defpoint structs (see deftypes.h)
-  boost::spirit::qi::rule<Iterator, defpoint(), boost::spirit::qi::space_type> point;
+  boost::spirit::qi::rule<Iterator, defpoint(), lefdefskipper<Iterator> > point;
   // rects "( llx lly ) ( urx ury )" synthesize defrect structs containing two points
-  boost::spirit::qi::rule<Iterator, defrect(), boost::spirit::qi::space_type> rect, diearea_stmt;
+  boost::spirit::qi::rule<Iterator, defrect(), lefdefskipper<Iterator> > rect, diearea_stmt;
 
-  typedef boost::spirit::qi::rule<Iterator, std::string(), boost::spirit::qi::space_type> StringRule;
+  typedef boost::spirit::qi::rule<Iterator, std::string(), lefdefskipper<Iterator> > StringRule;
   StringRule orient, dname, iname, ctype;
 
   // rules neither inheriting nor synthesizing an attribute
-  typedef boost::spirit::qi::rule<Iterator, boost::spirit::qi::space_type> NoAttrRule;
+  typedef boost::spirit::qi::rule<Iterator, lefdefskipper<Iterator> > NoAttrRule;
   NoAttrRule weight;
 
   // Site (or named row) statement
-  boost::spirit::qi::rule<Iterator, siterepeat(), boost::spirit::qi::space_type > siterpt_stmt;
-  boost::spirit::qi::rule<Iterator, rowsite(), boost::spirit::qi::space_type > rowsite_stmt;
+  boost::spirit::qi::rule<Iterator, siterepeat(), lefdefskipper<Iterator> > siterpt_stmt;
+  boost::spirit::qi::rule<Iterator, rowsite(), lefdefskipper<Iterator> > rowsite_stmt;
 
   // rules pertaining to COMPONENTS - see deftypes.h for data results
 
   // optional placement info (placed vs. fixed, location, orientation)
-  boost::spirit::qi::rule<Iterator, defplcinfo(), boost::spirit::qi::space_type > plcinfo;
+  boost::spirit::qi::rule<Iterator, defplcinfo(), lefdefskipper<Iterator> > plcinfo;
   // a single instance within the COMPONENTS section (name, celltype, placement)
-  boost::spirit::qi::rule<Iterator, defcomponent(), boost::spirit::qi::space_type > component;
+  boost::spirit::qi::rule<Iterator, defcomponent(), lefdefskipper<Iterator> > component;
   // a rule representing the entire COMPONENTS section
-  boost::spirit::qi::rule<Iterator, std::vector<defcomponent>(), boost::spirit::qi::locals<int>, boost::spirit::qi::space_type > comps_section;
+  boost::spirit::qi::rule<Iterator, std::vector<defcomponent>(), boost::spirit::qi::locals<int>, lefdefskipper<Iterator> > comps_section;
 
-  boost::spirit::qi::rule<Iterator, int(), boost::spirit::qi::space_type> dbu;
+  boost::spirit::qi::rule<Iterator, int(), lefdefskipper<Iterator> > dbu;
 
   // a catchall rule for everything I don't (yet) parse.  No attribute synthesized.
-  boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string>, boost::spirit::qi::space_type > unparsed, site_stmt;
+  boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string>, lefdefskipper<Iterator> > unparsed, site_stmt;
 
   // The DEF file as a whole
-  boost::spirit::qi::rule<Iterator, def(), boost::spirit::qi::space_type> def_file;
+  boost::spirit::qi::rule<Iterator, def(), lefdefskipper<Iterator> > def_file;
 
 };
 

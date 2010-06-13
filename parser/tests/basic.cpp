@@ -26,6 +26,7 @@
 using namespace DefParse;
 namespace EDASkel {
   extern defparser<std::string::const_iterator> defParser;
+  extern lefdefskipper<std::string::const_iterator> lefdefSkipper;
 }
 using namespace boost::spirit::qi;
 using boost::spirit::qi::space;
@@ -36,7 +37,7 @@ BOOST_AUTO_TEST_CASE( version_parse_simple ) {
   std::string testdef("DESIGN test ;\nVERSION 1.211 ;\nEND DESIGN\n");
   std::string::const_iterator beg = testdef.begin();
   std::string::const_iterator end = testdef.end();
-  BOOST_CHECK( phrase_parse(beg, end, defParser, space) );  // we should match
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper) );  // we should match
   BOOST_CHECK( (beg == end) );                         // we should consume all input
   // did not use BOOST_CHECK_EQUAL b/c it wants to output these on failure, and there is no operator<< defined
 
@@ -47,7 +48,7 @@ BOOST_AUTO_TEST_CASE ( version_parse_nospace ) {
   std::string testdef("DESIGN test ;\nVERSION1.211 ;\nEND DESIGN\n");
   std::string::const_iterator beg = testdef.begin();
   std::string::const_iterator end = testdef.end();
-  BOOST_CHECK( !phrase_parse(beg, end, defParser, space) );
+  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper) );
 
 }
 
@@ -56,7 +57,7 @@ BOOST_AUTO_TEST_CASE ( version_parse_nonnum ) {
   std::string testdef("DESIGN test ;\nVERSION 1.21a ;\nEND DESIGN\n");
   std::string::const_iterator beg = testdef.begin();
   std::string::const_iterator end = testdef.end();
-  BOOST_CHECK( !phrase_parse(beg, end, defParser, space) );
+  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper) );
 
 }
 
@@ -65,7 +66,7 @@ BOOST_AUTO_TEST_CASE ( version_parse_spaced_keywd ) {
   std::string testdef("DESIGN test ;\nVER SION 1.211 ;\nEND DESIGN\n");
   std::string::const_iterator beg = testdef.begin();
   std::string::const_iterator end = testdef.end();
-  BOOST_CHECK( !phrase_parse(beg, end, defParser, space) );
+  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper) );
 
 }
 
@@ -74,7 +75,7 @@ BOOST_AUTO_TEST_CASE ( components_parse_empty ) {
   std::string::const_iterator beg = testdef.begin();
   std::string::const_iterator end = testdef.end();
   def result;
-  BOOST_CHECK( phrase_parse(beg, end, defParser, space, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
   BOOST_CHECK( (beg == end) );                         // we should consume all input
 
   BOOST_CHECK( result.components.empty() );
@@ -85,7 +86,7 @@ BOOST_AUTO_TEST_CASE ( components_parse_simple ) {
   std::string::const_iterator beg = testdef.begin();
   std::string::const_iterator end = testdef.end();
   def result;
-  BOOST_CHECK( phrase_parse(beg, end, defParser, space, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
   BOOST_CHECK( (beg == end) );                         // we should consume all input
   BOOST_CHECK_EQUAL( result.name, "test-hyphenated" );
   BOOST_CHECK_EQUAL( result.diearea.ll.x, 0 );
@@ -107,7 +108,7 @@ BOOST_AUTO_TEST_CASE ( components_noplace ) {
   std::string::const_iterator beg = testdef.begin();
   std::string::const_iterator end = testdef.end();
   def result;
-  BOOST_CHECK( phrase_parse(beg, end, defParser, space, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
   BOOST_CHECK( (beg == end) );                         // we should consume all input
   BOOST_CHECK_EQUAL( result.name, "test" );
   BOOST_REQUIRE_EQUAL( result.components.size(), 1 );    // exactly one component read
@@ -120,7 +121,7 @@ BOOST_AUTO_TEST_CASE ( components_parse_wrongcount ) {
   std::string testdef("DESIGN test ;\nCOMPONENTS 2 ;\n - I111 INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nEND DESIGN\n");
   std::string::const_iterator beg = testdef.begin();
   std::string::const_iterator end = testdef.end();
-  BOOST_CHECK( !phrase_parse(beg, end, defParser, space) );
+  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper) );
 }
   
 BOOST_AUTO_TEST_CASE ( site_basic ) {
@@ -128,7 +129,7 @@ BOOST_AUTO_TEST_CASE ( site_basic ) {
   std::string::const_iterator beg = testdef.begin();
   std::string::const_iterator end = testdef.end();
   def result;
-  BOOST_CHECK( phrase_parse(beg, end, defParser, space, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
   BOOST_CHECK( (beg == end) );
   BOOST_REQUIRE( result.rows.size() == 1 );
   BOOST_CHECK( !result.rows[0].rowname );
@@ -151,7 +152,7 @@ BOOST_AUTO_TEST_CASE ( parse_ignored_stuff ) {
   std::string::const_iterator beg = testdef.begin();
   std::string::const_iterator end = testdef.end();
   def result;
-  BOOST_CHECK( phrase_parse(beg, end, defParser, space, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
   BOOST_CHECK( (beg == end) );                         // we should consume all input
   BOOST_CHECK_EQUAL( result.name, "test" );
   BOOST_CHECK_EQUAL( result.diearea.ll.x, 0 );
