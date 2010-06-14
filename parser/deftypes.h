@@ -1,5 +1,5 @@
 // A Boost Spirit-based DEF parser, part of EDASkel, a sample EDA app
-// Copyright (C) 2010 Jeffrey Elliot Trull <linmodemstudent@gmail.com>
+// Copyright (C) 2010 Jeffrey Elliot Trull <edaskel@att.net>
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
