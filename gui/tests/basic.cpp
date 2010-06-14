@@ -43,6 +43,7 @@ BOOST_AUTO_TEST_CASE( basic ) {
 
   // instantiate the library cells
   Database db;
+  db.setDbuPerMicron(1);
   db.setExtent(Database::Rect(Database::Point(0, 0), Database::Point(10000, 10000)));
   Database::InstIter beg, end;
   tie(beg, end) = db.getInstances();

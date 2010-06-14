@@ -29,12 +29,16 @@
 // visible to the compiler.
 
 /* -*-C++-*- */
-#ifndef DESIGNSCENE_H
-#define DESIGNSCENE_H
+#ifndef EDASKEL_DESIGNSCENE_H
+#define EDASKEL_DESIGNSCENE_H
+
 
 #include <QGraphicsScene>
+#include <QGraphicsRectItem>
 // Boost has this, but I'm using TR1 versions of things where possible
 #include <tr1/tuple>
+
+namespace EDASkel {
 
 // Templated classes can't be turned directly into QObjects by "moc" so I have to
 // separate DB/Lib access stuff into a child class and leave Signal/Slot stuff
@@ -52,12 +56,21 @@ class DesignScene : public DesignSceneBase {
   explicit DesignScene(const DB& db,
 		       const Lib& lib,
 		       QObject* parent = 0) : DesignSceneBase(parent) {
+    // basic setup
+    setBackgroundBrush(Qt::black);
+    int dbu = db.getDbuPerMicron();
+    // assume for now that LEF is in microns
+
     // get design extent from DB and set scene accordingly
     typename DB::Rect design_extent = db.getExtent();
     // Qt uses "topleft/bottomright" which conveniently is exactly what I consider bottomleft/topright
     setSceneRect(QRectF(QPointF(design_extent.ll().x(), design_extent.ll().y()),
 			QPointF(design_extent.ur().x(), design_extent.ur().y())));
     // get instances and add their boundaries
+    // ultimately you want to subclass one of the GraphicsItem classes instead
+    // so you can store a pointer to the instance and maybe further customize
+    // the appearance (e.g., by marking the UR corner to make orientation more obvious)
+    QPen instPen(Qt::red);
     typename DB::InstIter iit, end;
     for (std::tr1::tie(iit, end) = db.getInstances(); iit != end; ++iit) {
       const typename Lib::CellPtr cell = lib.findCell((*iit)->getCellName());
@@ -67,15 +80,34 @@ class DesignScene : public DesignSceneBase {
       // look up cell dimensions
       // TODO: handle rectilinear polygon boundaries
       // TODO: handle other coordinate sizes (e.g., long, float)
-      int width = cell->getWidth();
-      int height = cell->getHeight();
+      int width = cell->getWidth() * dbu;
+      int height = cell->getHeight() * dbu;
 
       typename DB::Point orig = (*iit)->getOrigin();
-      // TODO: use a special "Item" for each instance that can keep a pointer to the instance
-      // TODO: handle orientation
-      addRect(QRectF(orig.x(), orig.y(), width, height));
+      // handle orientation
+      // From what I can tell the DEF coordinate is the location of the LL corner *after*
+      // orientation is taken into account
+      // For instance outlines all we care about is the location of the UR corner
+      // It seems like this can be handled by conditionally exchanging width and height
+      if (((*iit)->getOrient() == "E") || ((*iit)->getOrient() == "FE") ||
+	  ((*iit)->getOrient() == "W") || ((*iit)->getOrient() == "FW"))
+	std::swap(width, height);
+      // when we display the geometries within the cell we'll have to revisit this with
+      // a more sophisticated technique involving transforms
+
+      QGraphicsRectItem* instrect = addRect(QRectF(orig.x(), orig.y(), width, height));
+      instrect->setPen(instPen);
+      // create a formatted "Tool Tip" (hover text) to identify this inst
+      instrect->setToolTip(QString("%1 (%2) (%3, %4) %5").
+			   arg((*iit)->getName().c_str()).
+			   arg((*iit)->getCellName().c_str()).
+			   arg(orig.x()).
+			   arg(orig.y()).
+			   arg((*iit)->getOrient().c_str()));
     }
   }
 };
+
+}
 
 #endif

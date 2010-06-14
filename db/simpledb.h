@@ -295,7 +295,7 @@ namespace SimpleDB {
     }
 
     void setDbuPerMicron(int dbu) { m_dbupermicron = dbu; }
-    int getDbuPerMicron() { return m_dbupermicron; }
+    int getDbuPerMicron() const { return m_dbupermicron; }
 
   private:
     std::vector<InstPtr> m_instances;
