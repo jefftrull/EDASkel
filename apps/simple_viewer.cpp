@@ -38,9 +38,9 @@ typedef std::istreambuf_iterator<char> iterator_base;
 typedef boost::spirit::multi_pass<iterator_base> mp_stream_iterator;
 
 namespace EDASkel {
-  extern DefParse::defparser<mp_stream_iterator> defFileParser;
-  extern LefParse::lefparser<mp_stream_iterator> lefFileParser;
-  extern lefdefskipper<mp_stream_iterator> lefdefFileSkipper;
+  DefParse::defparser<mp_stream_iterator> defFileParser;
+  LefParse::lefparser<mp_stream_iterator> lefFileParser;
+  lefdefskipper<mp_stream_iterator> lefdefFileSkipper;
 }
 
 int main(int argc, char **argv) {

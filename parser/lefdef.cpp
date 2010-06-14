@@ -34,11 +34,5 @@ namespace EDASkel {
   lefparser<LefDefStringIter> lefStringParser;
   lefdefskipper<LefDefStringIter> lefdefStringSkipper;
 
-  // use a special adapter for files (stream iterators are "Input", not "Forward"
-  // iterators, and so need some extra help to handle lookahead)
-  typedef boost::spirit::multi_pass<std::istreambuf_iterator<char> > LefDefFileIter;
-  defparser<LefDefFileIter> defFileParser;
-  lefparser<LefDefFileIter> lefFileParser;
-  lefdefskipper<LefDefFileIter> lefdefFileSkipper;
 }
 
