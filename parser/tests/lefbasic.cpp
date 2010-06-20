@@ -25,19 +25,19 @@
 
 using namespace LefParse;
 namespace EDASkel {
-  extern lefparser<std::string::const_iterator> lefStringParser;
-  extern lefdefskipper<std::string::const_iterator> lefdefStringSkipper;
+  extern lefparser<LefDefIter> lefParser;
+  extern lefdefskipper<LefDefIter> lefdefSkipper;
 }
 using namespace boost::spirit::qi;
 using boost::spirit::qi::space;
 
 BOOST_AUTO_TEST_CASE( case_check ) {
 
-  std::string testlef("NAMESCASESENSITIVE ON ;");
-  std::string::const_iterator beg = testlef.begin();
-  std::string::const_iterator end = testlef.end();
+  std::stringstream testlef("NAMESCASESENSITIVE ON ;");
+  testlef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testlef), end;
   lef result;
-  BOOST_CHECK( phrase_parse(beg, end, lefStringParser, lefdefStringSkipper, result) );  // we should match
+  BOOST_CHECK( phrase_parse(beg, end, lefParser, lefdefSkipper, result) );  // we should match
   BOOST_CHECK( (beg == end) );                         // we should consume all input
   // did not use BOOST_CHECK_EQUAL b/c it wants to output these on failure, and there is no operator<< defined
   BOOST_CHECK( result.macros.empty() );
@@ -46,11 +46,11 @@ BOOST_AUTO_TEST_CASE( case_check ) {
 
 BOOST_AUTO_TEST_CASE( macro_basic_check ) {
 
-  std::string testlef("MACRO INX2\nCLASS CORE ;\n FOREIGN INX2 0.0 -1.0 ;\nORIGIN 0.0 1.0 ;\nSIZE 1.0 BY 10.0 ;\nSYMMETRY X Y ;\nEND INX2");
-  std::string::const_iterator beg = testlef.begin();
-  std::string::const_iterator end = testlef.end();
+  std::stringstream testlef("MACRO INX2\nCLASS CORE ;\n FOREIGN INX2 0.0 -1.0 ;\nORIGIN 0.0 1.0 ;\nSIZE 1.0 BY 10.0 ;\nSYMMETRY X Y ;\nEND INX2");
+  testlef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testlef), end;
   lef result;
-  BOOST_CHECK( phrase_parse(beg, end, lefStringParser, lefdefStringSkipper, result) );  // we should match
+  BOOST_CHECK( phrase_parse(beg, end, lefParser, lefdefSkipper, result) );  // we should match
   BOOST_CHECK( (beg == end) );                         // we should consume all input
   BOOST_REQUIRE_EQUAL( result.macros.size(), 1 );
   BOOST_CHECK_EQUAL( result.macros[0].name, "INX2" );
@@ -73,11 +73,11 @@ BOOST_AUTO_TEST_CASE( macro_basic_check ) {
 
 BOOST_AUTO_TEST_CASE( site_basic_check ) {
 
-  std::string testlef("SITE MYSITENAME CLASS PAD ; SYMMETRY R90 ; SIZE 11.01 BY 22 ; END MYSITENAME");
-  std::string::const_iterator beg = testlef.begin();
-  std::string::const_iterator end = testlef.end();
+  std::stringstream testlef("SITE MYSITENAME CLASS PAD ; SYMMETRY R90 ; SIZE 11.01 BY 22 ; END MYSITENAME");
+  testlef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testlef), end;
   lef result;
-  BOOST_CHECK( phrase_parse(beg, end, lefStringParser, lefdefStringSkipper, result) );
+  BOOST_CHECK( phrase_parse(beg, end, lefParser, lefdefSkipper, result) );
   BOOST_CHECK( (beg == end) );
   BOOST_REQUIRE_EQUAL( result.sites.size(), 1 );
   BOOST_CHECK_EQUAL( result.sites[0].name, "MYSITENAME" );

@@ -19,14 +19,16 @@
 #define BOOST_TEST_MODULE basic test
 #include <boost/test/included/unit_test.hpp>
 
+#include "../lefdef.h"
 #include "../defparser.h"
 #include <string>
 #include <iostream>
+#include <sstream>
 
 using namespace DefParse;
 namespace EDASkel {
-  extern DefParse::defparser<std::string::const_iterator> defStringParser;
-  extern lefdefskipper<std::string::const_iterator> lefdefStringSkipper;
+  extern DefParse::defparser<LefDefIter> defParser;
+  extern lefdefskipper<LefDefIter> lefdefSkipper;
 }
 using namespace boost::spirit::qi;
 using boost::spirit::qi::space;
@@ -34,59 +36,59 @@ using namespace EDASkel;
 
 BOOST_AUTO_TEST_CASE( version_parse_simple ) {
 
-  std::string testdef("DESIGN test ;\nVERSION 1.211 ;\nEND DESIGN\n");
-  std::string::const_iterator beg = testdef.begin();
-  std::string::const_iterator end = testdef.end();
-  BOOST_CHECK( phrase_parse(beg, end, defStringParser, lefdefStringSkipper) );  // we should match
+  std::stringstream testdef("DESIGN test ;\nVERSION 1.211 ;\nEND DESIGN\n");
+  testdef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testdef), end;
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper) );  // we should match
   BOOST_CHECK( (beg == end) );                         // we should consume all input
 
 }
 
 BOOST_AUTO_TEST_CASE ( version_parse_nospace ) {
 
-  std::string testdef("DESIGN test ;\nVERSION1.211 ;\nEND DESIGN\n");
-  std::string::const_iterator beg = testdef.begin();
-  std::string::const_iterator end = testdef.end();
+  std::stringstream testdef("DESIGN test ;\nVERSION1.211 ;\nEND DESIGN\n");
+  testdef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testdef), end;
   // should fail ("distinct" issue)
-  BOOST_CHECK( !phrase_parse(beg, end, defStringParser, lefdefStringSkipper) );
+  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper) );
 
 }
 
 BOOST_AUTO_TEST_CASE ( version_parse_nonnum ) {
 
-  std::string testdef("DESIGN test ;\nVERSION 1.21a ;\nEND DESIGN\n");
-  std::string::const_iterator beg = testdef.begin();
-  std::string::const_iterator end = testdef.end();
-  BOOST_CHECK( !phrase_parse(beg, end, defStringParser, lefdefStringSkipper) );
+  std::stringstream testdef("DESIGN test ;\nVERSION 1.21a ;\nEND DESIGN\n");
+  testdef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testdef), end;
+  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper) );
 
 }
 
 BOOST_AUTO_TEST_CASE ( version_parse_spaced_keywd ) {
 
-  std::string testdef("DESIGN test ;\nVER SION 1.211 ;\nEND DESIGN\n");
-  std::string::const_iterator beg = testdef.begin();
-  std::string::const_iterator end = testdef.end();
-  BOOST_CHECK( !phrase_parse(beg, end, defStringParser, lefdefStringSkipper) );
+  std::stringstream testdef("DESIGN test ;\nVER SION 1.211 ;\nEND DESIGN\n");
+  testdef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testdef), end;
+  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper) );
 
 }
 
 BOOST_AUTO_TEST_CASE ( components_parse_empty ) {
-  std::string testdef("DESIGN test ;\nCOMPONENTS 0 ;\nEND COMPONENTS\nEND DESIGN\n");
-  std::string::const_iterator beg = testdef.begin();
-  std::string::const_iterator end = testdef.end();
+  std::stringstream testdef("DESIGN test ;\nCOMPONENTS 0 ;\nEND COMPONENTS\nEND DESIGN\n");
+  testdef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  BOOST_CHECK( phrase_parse(beg, end, defStringParser, lefdefStringSkipper, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
   BOOST_CHECK( (beg == end) );                         // we should consume all input
 
   BOOST_CHECK( result.components.empty() );
 }
   
 BOOST_AUTO_TEST_CASE ( components_parse_simple ) {
-  std::string testdef("DESIGN test-hyphenated ;\nVERSION 1.211 ;\nDIEAREA ( 0 0 ) ( 100000 200000 ) ;\nCOMPONENTS 1 ;\n - I111_uscore/hiername INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nSITE CORE1 0 0 N DO 200 BY 1 STEP 100 500 ;\nEND DESIGN\n");
-  std::string::const_iterator beg = testdef.begin();
-  std::string::const_iterator end = testdef.end();
+  std::stringstream testdef("DESIGN test-hyphenated ;\nVERSION 1.211 ;\nDIEAREA ( 0 0 ) ( 100000 200000 ) ;\nCOMPONENTS 1 ;\n - I111_uscore/hiername INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nSITE CORE1 0 0 N DO 200 BY 1 STEP 100 500 ;\nEND DESIGN\n");
+  testdef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  BOOST_CHECK( phrase_parse(beg, end, defStringParser, lefdefStringSkipper, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
   BOOST_CHECK( (beg == end) );                         // we should consume all input
   BOOST_CHECK_EQUAL( result.name, "test-hyphenated" );
   BOOST_CHECK_EQUAL( result.diearea.ll.x, 0 );
@@ -104,11 +106,11 @@ BOOST_AUTO_TEST_CASE ( components_parse_simple ) {
 }
   
 BOOST_AUTO_TEST_CASE ( components_noplace ) {
-  std::string testdef("DESIGN test ;\nCOMPONENTS 1 ;\n - I111 INVX2 ;\nEND COMPONENTS\nEND DESIGN\n");
-  std::string::const_iterator beg = testdef.begin();
-  std::string::const_iterator end = testdef.end();
+  std::stringstream testdef("DESIGN test ;\nCOMPONENTS 1 ;\n - I111 INVX2 ;\nEND COMPONENTS\nEND DESIGN\n");
+  testdef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  BOOST_CHECK( phrase_parse(beg, end, defStringParser, lefdefStringSkipper, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
   BOOST_CHECK( (beg == end) );                         // we should consume all input
   BOOST_CHECK_EQUAL( result.name, "test" );
   BOOST_REQUIRE_EQUAL( result.components.size(), 1 );    // exactly one component read
@@ -118,18 +120,18 @@ BOOST_AUTO_TEST_CASE ( components_noplace ) {
 }  
 
 BOOST_AUTO_TEST_CASE ( components_parse_wrongcount ) {
-  std::string testdef("DESIGN test ;\nCOMPONENTS 2 ;\n - I111 INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nEND DESIGN\n");
-  std::string::const_iterator beg = testdef.begin();
-  std::string::const_iterator end = testdef.end();
-  BOOST_CHECK( !phrase_parse(beg, end, defStringParser, lefdefStringSkipper) );
+  std::stringstream testdef("DESIGN test ;\nCOMPONENTS 2 ;\n - I111 INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nEND DESIGN\n");
+  testdef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testdef), end;
+  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper) );
 }
   
 BOOST_AUTO_TEST_CASE ( site_basic ) {
-  std::string testdef("DESIGN test ;\nVERSION 1.211 ;\nDIEAREA ( 0 0 ) ( 100000 200000 ) ;\nSITE CORE1 10 20 N DO 200 BY 1 STEP 100 500 ;\nEND DESIGN\n");
-  std::string::const_iterator beg = testdef.begin();
-  std::string::const_iterator end = testdef.end();
+  std::stringstream testdef("DESIGN test ;\nVERSION 1.211 ;\nDIEAREA ( 0 0 ) ( 100000 200000 ) ;\nSITE CORE1 10 20 N DO 200 BY 1 STEP 100 500 ;\nEND DESIGN\n");
+  testdef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  BOOST_CHECK( phrase_parse(beg, end, defStringParser, lefdefStringSkipper, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
   BOOST_CHECK( (beg == end) );
   BOOST_REQUIRE( result.rows.size() == 1 );
   BOOST_CHECK( !result.rows[0].rowname );
@@ -148,11 +150,11 @@ BOOST_AUTO_TEST_CASE ( site_basic ) {
 // BOZO when we eventually parse everything this won't be a very interesting test and probably should be removed,
 // or have previously ignored stuff checked
 BOOST_AUTO_TEST_CASE ( parse_ignored_stuff ) {
-  std::string testdef("DESIGN test ;\nVERSION 1.211 ;\nDIEAREA ( 0 0 ) ( 100000 200000 ) ;\nCOMPONENTS 1 ;\n - I111 INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nSITE CORE1 0 0 N DO 200 BY 1 STEP 100 500 ;\nSPECIALNETS 1 ;\n - GND ;\nEND SPECIALNETS\nEND DESIGN\n");
-  std::string::const_iterator beg = testdef.begin();
-  std::string::const_iterator end = testdef.end();
+  std::stringstream testdef("DESIGN test ;\nVERSION 1.211 ;\nDIEAREA ( 0 0 ) ( 100000 200000 ) ;\nCOMPONENTS 1 ;\n - I111 INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nSITE CORE1 0 0 N DO 200 BY 1 STEP 100 500 ;\nSPECIALNETS 1 ;\n - GND ;\nEND SPECIALNETS\nEND DESIGN\n");
+  testdef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  BOOST_CHECK( phrase_parse(beg, end, defStringParser, lefdefStringSkipper, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
   BOOST_CHECK( (beg == end) );                         // we should consume all input
   BOOST_CHECK_EQUAL( result.name, "test" );
   BOOST_CHECK_EQUAL( result.diearea.ll.x, 0 );

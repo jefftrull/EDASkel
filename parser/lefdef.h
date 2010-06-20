@@ -21,6 +21,7 @@
 #define EDASKEL_LEFDEF
 
 #include <boost/spirit/include/qi.hpp>
+#include <boost/spirit/include/support_istream_iterator.hpp>
 
 namespace EDASkel {
 
@@ -40,6 +41,8 @@ struct lefdefskipper : boost::spirit::qi::grammar< Iterator >
   boost::spirit::qi::rule<Iterator> comment;
 };
 
+  // typedefs for stream iterators we will use
+  typedef boost::spirit::istream_iterator LefDefIter;
 
 }
 

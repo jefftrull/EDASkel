@@ -15,8 +15,6 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-#include <boost/spirit/include/support_multi_pass.hpp>
-
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -34,13 +32,10 @@
 #include "../gui/designscene.h"
 #include "../gui/designview.h"
 
-typedef std::istreambuf_iterator<char> iterator_base;
-typedef boost::spirit::multi_pass<iterator_base> mp_stream_iterator;
-
 namespace EDASkel {
-  DefParse::defparser<mp_stream_iterator> defFileParser;
-  LefParse::lefparser<mp_stream_iterator> lefFileParser;
-  lefdefskipper<mp_stream_iterator> lefdefFileSkipper;
+  extern DefParse::defparser<LefDefIter> defParser;
+  extern LefParse::lefparser<LefDefIter> lefParser;
+  extern lefdefskipper<LefDefIter> lefdefSkipper;
 }
 
 int main(int argc, char **argv) {
@@ -82,9 +77,11 @@ int main(int argc, char **argv) {
     std::cerr << "Failed to open input LEF file " << *lef_fn << std::endl;
     return 1;
   }
-  mp_stream_iterator beg = boost::spirit::make_default_multi_pass(iterator_base(lefin)), end;
+  // do not skip whitespace
+  lefin.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(lefin), end;
   lef lef_ast;
-  if (!phrase_parse(beg, end, lefFileParser, lefdefFileSkipper, lef_ast) ||
+  if (!phrase_parse(beg, end, lefParser, lefdefSkipper, lef_ast) ||
       (beg != end)) {
     std::cerr << "LEF parse failed\n";
     if (beg != end)
@@ -103,9 +100,10 @@ int main(int argc, char **argv) {
     std::cerr << "Failed to open input DEF file " << *def_fn << std::endl;
     return 1;
   }
-  beg = mp_stream_iterator(defin);
+  defin.unsetf(std::ios::skipws);
+  beg = LefDefIter(defin);
   def def_ast;
-  if (!phrase_parse(beg, end, defFileParser, lefdefFileSkipper, def_ast) ||
+  if (!phrase_parse(beg, end, defParser, lefdefSkipper, def_ast) ||
       (beg != end)) {
     std::cerr << "DEF parse failed\n";
     if (beg != end)

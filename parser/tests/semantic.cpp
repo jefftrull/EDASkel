@@ -31,20 +31,20 @@ using namespace DefParse;
 using namespace SimpleDB;
 
 namespace EDASkel {
-  extern defparser<std::string::const_iterator> defStringParser;
-  extern lefparser<std::string::const_iterator> lefStringParser;
-  extern lefdefskipper<std::string::const_iterator> lefdefStringSkipper;
+  extern defparser<LefDefIter> defParser;
+  extern lefparser<LefDefIter> lefParser;
+  extern lefdefskipper<LefDefIter> lefdefSkipper;
 }
 using namespace boost::spirit::qi;
 using boost::spirit::qi::space;
 
 BOOST_AUTO_TEST_CASE ( diearea_checks ) {
   // parse syntax into "def" parse syntax structure
-  std::string testdef("DESIGN test ;\nDIEAREA ( -2000 -2000 ) ( 100000 200000 ) ;\nEND DESIGN");
-  std::string::const_iterator beg = testdef.begin();
-  std::string::const_iterator end = testdef.end();
+  std::stringstream testdef("DESIGN test ;\nDIEAREA ( -2000 -2000 ) ( 100000 200000 ) ;\nEND DESIGN");
+  testdef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  BOOST_CHECK( phrase_parse(beg, end, defStringParser, lefdefStringSkipper, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
 
   // turn syntax result into database contents (while checking)
   Library lib;
@@ -60,10 +60,11 @@ BOOST_AUTO_TEST_CASE ( diearea_checks ) {
   // BOZO add instance and site checks
 
   // now try a bad diearea and verify the check fails
-  testdef = std::string("DESIGN test ;\nDIEAREA ( 10 10 ) ( 0 0 ) ;\nEND DESIGN");
-  beg = testdef.begin(); end = testdef.end();
+  std::stringstream testdefbad("DESIGN test ;\nDIEAREA ( 10 10 ) ( 0 0 ) ;\nEND DESIGN");
+  testdefbad.unsetf(std::ios::skipws);
+  beg = LefDefIter(testdefbad);
   def result_badboundary;
-  BOOST_CHECK( phrase_parse(beg, end, defStringParser, lefdefStringSkipper, result_badboundary) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result_badboundary) );
 
   Database db_badboundary;
   // our default policy says we don't abort but we do skip errors
@@ -85,11 +86,11 @@ public:
 };
 
 BOOST_AUTO_TEST_CASE ( policy_checks ) {
-  std::string testdef("DESIGN test ;\nDIEAREA ( 10 10 ) ( 0 0 ) ;\nEND DESIGN");
-  std::string::const_iterator beg = testdef.begin();
-  std::string::const_iterator end = testdef.end();
+  std::stringstream testdef("DESIGN test ;\nDIEAREA ( 10 10 ) ( 0 0 ) ;\nEND DESIGN");
+  testdef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  BOOST_CHECK( phrase_parse(beg, end, defStringParser, lefdefStringSkipper, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
 
   // turn syntax result into database contents (while checking)
   Library lib;
@@ -101,11 +102,11 @@ BOOST_AUTO_TEST_CASE ( policy_checks ) {
 
 BOOST_AUTO_TEST_CASE ( lefdef_combined_basic ) {
   // LEF: one site and one macro
-  std::string testlef("SITE CORE0 CLASS CORE ; SYMMETRY Y ; SIZE 1.0 BY 2.0 ; END CORE0\nMACRO INX2\nCLASS CORE ;\nORIGIN 0.0 0.0 ;\nSIZE 2.0 BY 2.0 ;\nSYMMETRY X Y ;\nSITE CORE0 ;\nEND INX2");
-  std::string::const_iterator beg = testlef.begin();
-  std::string::const_iterator end = testlef.end();
+  std::stringstream testlef("SITE CORE0 CLASS CORE ; SYMMETRY Y ; SIZE 1.0 BY 2.0 ; END CORE0\nMACRO INX2\nCLASS CORE ;\nORIGIN 0.0 0.0 ;\nSIZE 2.0 BY 2.0 ;\nSYMMETRY X Y ;\nSITE CORE0 ;\nEND INX2");
+  testlef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testlef), end;
   lef lefresult;
-  BOOST_CHECK( phrase_parse(beg, end, lefStringParser, lefdefStringSkipper, lefresult) );
+  BOOST_CHECK( phrase_parse(beg, end, lefParser, lefdefSkipper, lefresult) );
   BOOST_CHECK( beg == end );
   Library lib;
   LefChecker<Library> lchk;
@@ -127,11 +128,11 @@ BOOST_AUTO_TEST_CASE ( lefdef_combined_basic ) {
   BOOST_CHECK_CLOSE( site->getHeight(), 2.0, 0.001f );
 
   // DEF: define a diearea with set of sites and put two macros there
-  std::string testdef("DESIGN test ;\nDIEAREA ( 0 0 ) ( 1000 1000 ) ;\nUNITS DISTANCE MICRONS 100 ;\nSITE CORE0 0 0 N DO 10 BY 1 STEP 100 200 ;\nSITE CORE0 0 200 FS DO 10 BY 1 STEP 100 200 ;\nSITE CORE0 0 400 N DO 10 BY 1 STEP 100 200 ;\nSITE CORE0 0 600 FS DO 10 BY 1 STEP 100 200 ;\nSITE CORE0 0 800 N DO 10 BY 1 STEP 100 200 ;\nCOMPONENTS 2 ;\n- inst1 INX2 + PLACED ( 300 600 ) FS ;\n- inst2 INX2 + PLACED ( 500 800 ) N ;\nEND COMPONENTS\nEND DESIGN");
+  std::stringstream testdef("DESIGN test ;\nDIEAREA ( 0 0 ) ( 1000 1000 ) ;\nUNITS DISTANCE MICRONS 100 ;\nSITE CORE0 0 0 N DO 10 BY 1 STEP 100 200 ;\nSITE CORE0 0 200 FS DO 10 BY 1 STEP 100 200 ;\nSITE CORE0 0 400 N DO 10 BY 1 STEP 100 200 ;\nSITE CORE0 0 600 FS DO 10 BY 1 STEP 100 200 ;\nSITE CORE0 0 800 N DO 10 BY 1 STEP 100 200 ;\nCOMPONENTS 2 ;\n- inst1 INX2 + PLACED ( 300 600 ) FS ;\n- inst2 INX2 + PLACED ( 500 800 ) N ;\nEND COMPONENTS\nEND DESIGN");
+  testdef.unsetf(std::ios::skipws);
   def defresult;
-  beg = testdef.begin();
-  end = testdef.end();
-  BOOST_CHECK( phrase_parse(beg, end, defStringParser, lefdefStringSkipper, defresult) );
+  beg = LefDefIter(testdef);
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, defresult) );
   BOOST_CHECK( beg == end );
 
   DefChecker<Database, Library, DieAreaAbortPolicy> chk;
