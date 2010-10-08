@@ -21,7 +21,6 @@
 #include <QSocketNotifier>
 #include <QTimer>
 #include <map>
-#include <tr1/memory>
 #include <tcl.h>
 
 namespace QtTclNotify {

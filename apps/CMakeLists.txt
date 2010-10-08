@@ -1,6 +1,5 @@
 find_package(Qt4 4.6.2 REQUIRED)
 include(${QT_USE_FILE})
-include_directories( ${Boost_INCLUDE_DIRS} )
 # here's where we handle the Qt "moc" process
 # have to make it a bit more explicit than in a qmake-based flow
 QT4_WRAP_CPP(DS_MOC_SRC ../gui/designscene.h)
