@@ -26,6 +26,9 @@
 #include <boost/spirit/include/phoenix_fusion.hpp>
 #include <boost/spirit/include/phoenix_object.hpp>
 
+#include <boost/spirit/repository/include/qi_kwd.hpp>
+#include <boost/spirit/repository/include/qi_keywords.hpp>
+
 #include "keyword.h"
 #include "deftypes.h"
 #include "lefdef.h"
@@ -51,6 +54,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       using boost::phoenix::val;                // for error handling
       using boost::phoenix::construct;          // for error handling
       using boost::phoenix::at_c;               // to refer to pieces of wrapped structs
+      using boost::spirit::repository::kwd;
 
       // top-level elements in a DEF file
       version_stmt = keyword["VERSION"] > double_ > ';' ;
@@ -76,8 +80,8 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 
       // Using ">" here instead of ">>" implies a required sequence and allows the parser to check it
       // specifically (instead of simply failing on the whole input)
-      plcinfo %= '+' >> (keyword[string("FIXED")] | keyword[string("PLACED")]) >
-		     point > orient ;    // location and orientation
+      plcinfo %= '+' >> (kwd("FIXED", 1)[attr("FIXED") > point > orient] |
+			 kwd("PLACED", 1)[attr("PLACED") > point > orient]) ;    // location and orientation
 
       weight %= '+' >> keyword["WEIGHT"] > int_ ;
 
