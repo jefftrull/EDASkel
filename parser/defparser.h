@@ -26,6 +26,8 @@
 #include <boost/spirit/include/phoenix_fusion.hpp>
 #include <boost/spirit/include/phoenix_object.hpp>
 
+#include <boost/spirit/include/lex_lexertl.hpp>
+
 #include <boost/spirit/repository/include/qi_kwd.hpp>
 #include <boost/spirit/repository/include/qi_keywords.hpp>
 
@@ -37,8 +39,74 @@ using namespace EDASkel;
 
 namespace DefParse {
 
+// DEF tokens
+template <typename Lexer>
+struct def_tokens : boost::spirit::lex::lexer<Lexer>
+{
+  def_tokens()
+  {
+
+    fixed = "FIXED";
+    placed = "PLACED";
+    version = "VERSION";
+    diearea = "DIEAREA";
+    weight = "WEIGHT";
+    source = "SOURCE";
+    dist = "DIST";
+    netlist = "NETLIST";
+    user = "USER";
+    timing = "TIMING";
+    components = "COMPONENTS";
+    end = "END";
+    do_ = "DO";
+    by = "BY";
+    step = "STEP";
+    row = "ROW";
+    site = "SITE";
+    units = "UNITS";
+    distance = "DISTANCE";
+    microns = "MICRONS";
+    tracks = "TRACKS";
+    gcellgrid = "GCELLGRID";
+    history = "HISTORY";
+    design = "DESIGN";
+
+    // identifiers
+    // design name: letter followed by letters, numbers, underscore, or hyphen
+    dname = "[a-zA-Z][a-zA-Z0-9-_]+";
+    // instance names: letter followed by letters, numbers, underscore, hyphen, square brackets, slashes (hierarchy)
+    // with potentially embedded, quoted bracketed numbers, and optionally a final unquoted bracketed number
+    iname = "[a-zA-Z]([a-zA-Z0-9-_/]|(\\\\\\[[0-9+]\\\\\\]))+(\\[[0-9]+\\])?";
+    // celltypes: assuming only underscore might be used out of the non-alphanumeric chars
+    ctype = "[a-zA-Z][a-zA-Z0-9_]+";
+    
+    // numbers
+    double_ = "-?[0-9]+\\.[0-9]+";
+    int_ = "-?[0-9]+";
+
+    this->self = fixed | placed | version | diearea | weight | source | dist | netlist | user | timing |
+      components | end | do_ | by | step | row | site | units | distance | microns | tracks | gcellgrid | history | design |
+      dname | iname | ctype |
+      double_ | int_ |
+      '+' | '-' | '(' | ')' | ';' ;
+
+    // whitespace
+    this->self("WS") = boost::spirit::lex::token_def<>("[ \\t\\n]+");
+  }
+
+  // attribute-less tokens
+  boost::spirit::lex::token_def<> fixed, placed, version, diearea, weight, source, dist, netlist, user, timing,
+    components, end, do_, by, step, row, site, units, distance, microns, tracks, gcellgrid, history, design;
+  // string tokens (different kinds of identifiers)
+  boost::spirit::lex::token_def<std::string> dname, iname, ctype;
+  // numbers
+  boost::spirit::lex::token_def<double> double_;
+  boost::spirit::lex::token_def<int> int_;
+
+};
+
 // a starter DEF grammar
-template <typename Iterator>
+template <typename Iterator, typename Lexer = void>
 struct defparser : boost::spirit::qi::grammar<Iterator,
                                               def(),
                                               lefdefskipper<Iterator> >
