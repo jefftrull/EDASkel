@@ -18,7 +18,7 @@
 // Compiling the LEF and DEF parsers together is very slow on my system
 // (large memory requirement), and many files (esp. unit tests) depend on
 // them, so this is a separate "compilation unit" that uses the parsers.
-// I will make other files depend on this one at link time.
+// The other units will link to this one.
 
 #include "lefparser.h"
 #include "defparser.h"
@@ -27,7 +27,8 @@ using namespace DefParse;
 using namespace EDASkel;
 
 namespace EDASkel {
-  defparser<LefDefIter> defParser;
+  DefTokens<LefDefLexer> defTokens;
+  defparser<DefTokens<LefDefLexer>::iterator_type, DefTokens<LefDefLexer>::lexer_def > defParser(defTokens);
   lefparser<LefDefIter> lefParser;
   lefdefskipper<LefDefIter> lefdefSkipper;
 

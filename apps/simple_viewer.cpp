@@ -33,7 +33,9 @@
 #include "../gui/designview.h"
 
 namespace EDASkel {
-  extern DefParse::defparser<LefDefIter> defParser;
+  extern DefParse::DefTokens<LefDefLexer> defTokens;
+  extern DefParse::defparser<DefParse::DefTokens<LefDefLexer>::iterator_type,
+			     DefParse::DefTokens<LefDefLexer>::lexer_def > defParser;
   extern LefParse::lefparser<LefDefIter> lefParser;
   extern lefdefskipper<LefDefIter> lefdefSkipper;
 }
@@ -102,8 +104,10 @@ int main(int argc, char **argv) {
   }
   defin.unsetf(std::ios::skipws);
   beg = LefDefIter(defin);
+  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
+  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
   def def_ast;
-  if (!phrase_parse(beg, end, defParser, lefdefSkipper, def_ast) ||
+  if (!parse(it, lex_end, defParser, def_ast) ||
       (beg != end)) {
     std::cerr << "DEF parse failed\n";
     if (beg != end)
