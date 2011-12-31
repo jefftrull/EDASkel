@@ -21,6 +21,7 @@
 #define EDASKEL_LEFDEF
 
 #include <boost/spirit/include/lex_lexertl.hpp>
+#include <boost/spirit/include/lex_lexertl_position_token.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/support_istream_iterator.hpp>
 
@@ -45,7 +46,7 @@ struct lefdefskipper : boost::spirit::qi::grammar< Iterator >
   // typedef for stream iterator we will use
   typedef boost::spirit::istream_iterator LefDefIter;
   // lexer needs the iterator type and a list of token attribute types
-  typedef boost::spirit::lex::lexertl::token<LefDefIter,
+  typedef boost::spirit::lex::lexertl::position_token<LefDefIter,
     boost::mpl::vector<int, double, std::string> > LefDefToken;
   typedef boost::spirit::lex::lexertl::actor_lexer<LefDefToken> LefDefLexer;
 

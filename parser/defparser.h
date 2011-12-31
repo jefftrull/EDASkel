@@ -20,6 +20,7 @@
 #include <vector>
 
 #include <boost/spirit/include/phoenix.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include "deftypes.h"
 #include "lefdef.h"
@@ -117,6 +118,26 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
 };
 
 // a starter DEF grammar
+struct error_info_impl
+{
+  // required by phoenix::function; gives signature
+  template <typename, typename>
+  struct result
+  {
+    typedef std::string type;
+  };
+
+  template<typename Iterator, typename What>
+  std::string operator()(Iterator const& actual_token_iter,
+			 What const& what) const
+  {
+    return "Error! Expecting: " + boost::lexical_cast<std::string>(what) +
+      " but saw: " + std::string(actual_token_iter->matched().begin(),
+				 actual_token_iter->matched().end());
+  }
+};
+
+
 template <typename Iterator, typename Lexer>
 struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 {
@@ -214,13 +235,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       on_error<fail>
         (
 	 def_file
-	 , std::cerr
-	 << val("Error! Expecting ")
-	 << boost::spirit::_4                               // what failed?
-	 << val(" here: \"")
-	 << construct<std::string>(boost::spirit::_3, boost::spirit::_2)   // iterators to error-pos, end
-	 << val("\"")
-	 << std::endl
+	 , std::cerr << error_info(boost::spirit::_3, boost::spirit::_4) << std::endl
 	 );
     }
 
@@ -263,6 +278,8 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
   // The DEF file as a whole
   boost::spirit::qi::rule<Iterator, def()> def_file;
 
+  // error handler
+  boost::phoenix::function<error_info_impl> error_info;
 };
 
 }
