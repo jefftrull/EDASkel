@@ -22,12 +22,7 @@
 #include <iostream>
 
 #include <boost/spirit/include/qi.hpp>
-#include <boost/spirit/include/phoenix_core.hpp>
-
-#include <boost/spirit/include/phoenix_operator.hpp>
-#include <boost/spirit/include/phoenix_fusion.hpp>
-#include <boost/spirit/include/phoenix_object.hpp>
-#include <boost/spirit/home/phoenix/statement/sequence.hpp>
+#include <boost/spirit/include/phoenix.hpp>
 
 #include "keyword.h"
 #include "leftypes.h"
