@@ -36,8 +36,9 @@ namespace EDASkel {
   extern DefParse::DefTokens<LefDefLexer> defTokens;
   extern DefParse::defparser<DefParse::DefTokens<LefDefLexer>::iterator_type,
 			     DefParse::DefTokens<LefDefLexer>::lexer_def > defParser;
-  extern LefParse::lefparser<LefDefIter> lefParser;
-  extern lefdefskipper<LefDefIter> lefdefSkipper;
+  extern LefParse::LefTokens<LefDefLexer> lefTokens;
+  extern LefParse::lefparser<LefParse::LefTokens<LefDefLexer>::iterator_type,
+			     LefParse::LefTokens<LefDefLexer>::lexer_def > lefParser;
 }
 
 int main(int argc, char **argv) {
@@ -82,8 +83,10 @@ int main(int argc, char **argv) {
   // do not skip whitespace
   lefin.unsetf(std::ios::skipws);
   LefDefIter beg = LefDefIter(lefin), end;
+  LefTokens<LefDefLexer>::iterator_type lef_it = lefTokens.begin(beg, LefDefIter());
+  LefTokens<LefDefLexer>::iterator_type lef_end = lefTokens.end();
   lef lef_ast;
-  if (!phrase_parse(beg, end, lefParser, lefdefSkipper, lef_ast) ||
+  if (!parse(lef_it, lef_end, lefParser, lef_ast) ||
       (beg != end)) {
     std::cerr << "LEF parse failed\n";
     if (beg != end)

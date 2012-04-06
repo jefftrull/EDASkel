@@ -29,8 +29,7 @@ using namespace EDASkel;
 namespace EDASkel {
   DefTokens<LefDefLexer> defTokens;
   defparser<DefTokens<LefDefLexer>::iterator_type, DefTokens<LefDefLexer>::lexer_def > defParser(defTokens);
-  lefparser<LefDefIter> lefParser;
-  lefdefskipper<LefDefIter> lefdefSkipper;
-
+  LefTokens<LefDefLexer> lefTokens;
+  lefparser<LefTokens<LefDefLexer>::iterator_type, LefTokens<LefDefLexer>::lexer_def > lefParser(lefTokens);
 }
 

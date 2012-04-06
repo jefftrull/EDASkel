@@ -22,26 +22,9 @@
 
 #include <boost/spirit/include/lex_lexertl.hpp>
 #include <boost/spirit/include/lex_lexertl_position_token.hpp>
-#include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/support_istream_iterator.hpp>
 
 namespace EDASkel {
-
-// A skip parser for LEF/DEF comments and spaces
-// adapted from a presentation at Boostcon 2010 by Michael Caisse
-template <typename Iterator>
-struct lefdefskipper : boost::spirit::qi::grammar< Iterator >
-{
- lefdefskipper() : lefdefskipper::base_type(skip_it)
-    {
-      using namespace boost::spirit::qi;
-
-      comment = '#' >> *( char_ - eol ) >> eol ;
-      skip_it = comment | space ;
-    }
-  boost::spirit::qi::rule<Iterator> skip_it;
-  boost::spirit::qi::rule<Iterator> comment;
-};
 
   // typedef for stream iterator we will use
   typedef boost::spirit::istream_iterator LefDefIter;

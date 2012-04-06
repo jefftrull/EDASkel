@@ -33,8 +33,8 @@ using namespace SimpleDB;
 namespace EDASkel {
   extern DefTokens<LefDefLexer> defTokens;
   extern defparser<DefTokens<LefDefLexer>::iterator_type, DefTokens<LefDefLexer>::lexer_def > defParser;
-  extern lefparser<LefDefIter> lefParser;
-  extern lefdefskipper<LefDefIter> lefdefSkipper;
+  extern LefTokens<LefDefLexer> lefTokens;
+  extern lefparser<LefTokens<LefDefLexer>::iterator_type, LefTokens<LefDefLexer>::lexer_def > lefParser;
 }
 using namespace boost::spirit::qi;
 using boost::spirit::qi::space;
@@ -111,9 +111,11 @@ BOOST_AUTO_TEST_CASE ( lefdef_combined_basic ) {
   // LEF: one site and one macro
   std::stringstream testlef("SITE CORE0 CLASS CORE ; SYMMETRY Y ; SIZE 1.0 BY 2.0 ; END CORE0\nMACRO INX2\nCLASS CORE ;\nORIGIN 0.0 0.0 ;\nSIZE 2.0 BY 2.0 ;\nSYMMETRY X Y ;\nSITE CORE0 ;\nEND INX2");
   testlef.unsetf(std::ios::skipws);
-  LefDefIter beg = LefDefIter(testlef), end;
+  LefDefIter beg(testlef), end;
   lef lefresult;
-  BOOST_CHECK( phrase_parse(beg, end, lefParser, lefdefSkipper, lefresult) );
+  LefTokens<LefDefLexer>::iterator_type lef_it = lefTokens.begin(beg, LefDefIter());
+  LefTokens<LefDefLexer>::iterator_type lef_end = lefTokens.end();
+  BOOST_CHECK( parse(lef_it, lef_end, lefParser, lefresult) );
   BOOST_CHECK( beg == end );
   Library lib;
   LefChecker<Library> lchk;
