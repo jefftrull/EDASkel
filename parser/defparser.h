@@ -36,7 +36,7 @@ enum TokenIds {
   T_DIEAREA, T_WEIGHT, T_SOURCE, T_DIST, T_NETLIST,
   T_USER, T_TIMING, T_COMPONENTS, T_END, T_DO, T_BY,
   T_STEP, T_ROW, T_SITE, T_UNITS, T_DISTANCE, T_MICRONS,
-  T_TRACKS, T_GCELLGRID, T_HISTORY, T_DESIGN, T_PINS, T_NETS,
+  T_TRACKS, T_GCELLGRID, T_DESIGN, T_PINS, T_NETS,
   T_SPECIALNETS, T_VIAS, T_PLACED, T_FIXED, T_ANY
 };
 
@@ -59,9 +59,15 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
     // some identifiers (esp instance names) may be as complex as:
     // letter followed by letters, numbers, underscore, hyphen, square brackets, slashes (hierarchy)
     // with potentially embedded, quoted bracketed numbers, and optionally a final unquoted bracketed number
-    ident = "[a-zA-Z]([a-zA-Z0-9_/]|-|(\\\\\\[[0-9+]\\\\\\]))+(\\[[0-9]+\\])?";
+    ident = "[a-zA-Z]([a-zA-Z0-9_/]|-|(\\\\\\[[0-9+]\\\\\\]))*(\\[[0-9]+\\])?";
     
-    this->self =
+    // strip out HISTORY entries, which contain unusual characters and stuff that resembles real tokens
+    this->self += lex::string("^HISTORY[^;]*;")
+        [
+            lex::_pass = lex::pass_flags::pass_ignore
+        ];
+
+    this->self +=
         lex::string("VERSION", T_VERSION)
       | lex::string("DIEAREA", T_DIEAREA)
       | lex::string("WEIGHT", T_WEIGHT)
@@ -82,7 +88,6 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
       | lex::string("MICRONS", T_MICRONS)
       | lex::string("TRACKS", T_TRACKS)
       | lex::string("GCELLGRID", T_GCELLGRID)
-      | lex::string("HISTORY", T_HISTORY)
       | lex::string("DESIGN", T_DESIGN)
       | lex::string("PINS", T_PINS)
       | lex::string("NETS", T_NETS)
@@ -97,8 +102,8 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
       | '+' | '-' | '(' | ')' | ';'
       ;
 
-    // whitespace
-    this->self += lex::string("[ \\t\\n]+")
+    // whitespace and comments... and HISTORY statements
+    this->self += lex::string("([ \\t\\n]+)|(#[^\\n]*\\n)")
         [
             lex::_pass = lex::pass_flags::pass_ignore
         ];
@@ -195,10 +200,8 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 
       // This parser only handles components and a couple of misc. statements
       // here's a catchall parser to discard all other data
-      // BOZO update this for all keywords we parse - make a symbol table out of them for ease of use and speed
-      tracks_stmt = qi::raw_token(T_TRACKS) > *(!lit(';')) > ';' ;
-      gcellgrid_stmt = qi::raw_token(T_GCELLGRID) > *(!lit(';')) > ';' ;
-      history_stmt = qi::raw_token(T_HISTORY) > *(!lit(';')) > ';' ;
+      tracks_stmt = qi::raw_token(T_TRACKS) >> *(tok.ident | qi::raw_token(T_DO) | qi::raw_token(T_STEP) | tok.int_) > ';' ;
+      gcellgrid_stmt = qi::raw_token(T_GCELLGRID) > *(tok.ident | qi::raw_token(T_DO) | qi::raw_token(T_STEP) | tok.int_) > ';' ;
 
       // counted, but currently unparsed, stuff:
       vias_section %= qi::raw_token(T_VIAS) > omit[tok.int_[_a = _1]] > ';' > 
@@ -227,11 +230,12 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 
       // Debugging assistance
 
-      version_stmt.name("VERSION");
-      diearea_stmt.name("DIEAREA");
-      comps_section.name("COMPONENTS Section");
-      component.name("Component");
-      plcinfo.name("Optional Placement Info");
+      BOOST_SPIRIT_DEBUG_NODE(version_stmt);
+      BOOST_SPIRIT_DEBUG_NODE(diearea_stmt);
+      BOOST_SPIRIT_DEBUG_NODE(comps_section);
+      BOOST_SPIRIT_DEBUG_NODE(component);
+      BOOST_SPIRIT_DEBUG_NODE(plcinfo);
+      BOOST_SPIRIT_DEBUG_NODE(tracks_stmt);
 
       on_error<fail>
         (
