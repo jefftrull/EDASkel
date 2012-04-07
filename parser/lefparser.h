@@ -41,7 +41,7 @@ enum TokenIds {
   T_NAMESCASESENSITIVE = 1000, T_ON, T_OFF,
   T_LAYER, T_END, T_VIA, T_VIARULE, T_CLASS, T_PAD, T_CORE, T_ENDCAP,
   T_SITE, T_SYMMETRY, T_BY, T_SPACING, T_UNITS, T_FOREIGN, T_ORIGIN,
-  T_SIZE, T_PIN, T_OBS, T_MACRO, T_LIBRARY,
+  T_SIZE, T_PIN, T_OBS, T_MACRO, T_LIBRARY, T_PORT,
   T_COVER, T_RING, T_BLOCK,
   T_INPUT, T_OUTPUT, T_SPACER, T_INOUT, T_POWER,
   T_FEEDTHRU, T_TIEHIGH, T_TIELOW,
@@ -54,58 +54,59 @@ template <typename Lexer>
 struct LefTokens : boost::spirit::lex::lexer<Lexer>
 {
   LefTokens()
-    : double_("-?[0-9]+(\\.[0-9]+)?")
+    : double_("-?([0-9]+(\\.[0-9]+)?)|(\\.[0-9]+)")
   {
     namespace lex = boost::spirit::lex;
     using boost::phoenix::ref;
 
     // Expecting simpler identifiers than in the DEF case
-    ident = "[a-zA-Z][a-zA-Z0-9_]+";
+    ident = "[a-zA-Z][a-zA-Z0-9_]*";
 
     this->self =
       lex::string("NAMESCASESENSITIVE", T_NAMESCASESENSITIVE)
-      | lex::string("ON", T_ON)
-      | lex::string("OFF", T_OFF)
-      | lex::string("LAYER", T_LAYER)
-      | lex::string("END", T_END)
-      | lex::string("VIA", T_VIA)
-      | lex::string("VIARULE", T_VIARULE)
-      | lex::string("CLASS", T_CLASS)
-      | lex::string("PAD", T_PAD)
-      | lex::string("CORE", T_CORE)
-      | lex::string("ENDCAP", T_ENDCAP)
-      | lex::string("SITE", T_SITE)
-      | lex::string("SYMMETRY", T_SYMMETRY)
-      | lex::string("BY", T_BY)
-      | lex::string("SPACING", T_SPACING)
-      | lex::string("UNITS", T_UNITS)
-      | lex::string("FOREIGN", T_FOREIGN)
-      | lex::string("ORIGIN", T_ORIGIN)
-      | lex::string("SIZE", T_SIZE)
-      | lex::string("PIN", T_PIN)
-      | lex::string("OBS", T_OBS)
-      | lex::string("MACRO", T_MACRO)
-      | lex::string("LIBRARY", T_LIBRARY)
-      | lex::string("COVER", T_COVER)
-      | lex::string("RING", T_RING)
-      | lex::string("BLOCK", T_BLOCK)
-      | lex::string("INPUT", T_INPUT)
-      | lex::string("OUTPUT", T_OUTPUT)
-      | lex::string("SPACER", T_SPACER)
-      | lex::string("INOUT", T_INOUT)
-      | lex::string("POWER", T_POWER)
-      | lex::string("FEEDTHRU", T_FEEDTHRU)
-      | lex::string("TIEHIGH", T_TIEHIGH)
-      | lex::string("TIELOW", T_TIELOW)
-      | lex::string("PRE", T_PRE)
-      | lex::string("POST", T_POST)
-      | lex::string("TOPLEFT", T_TOPLEFT)
-      | lex::string("TOPRIGHT", T_TOPRIGHT)
-      | lex::string("BOTTOMLEFT", T_BOTTOMLEFT)
-      | lex::string("BOTTOMRIGHT", T_BOTTOMRIGHT)
-      | lex::string("X", T_X)
-      | lex::string("Y", T_Y)
-      | lex::string("R90", T_R90)
+      | lex::string("(?i:on)", T_ON)
+      | lex::string("(?i:off)", T_OFF)
+      | lex::string("(?i:layer)", T_LAYER)
+      | lex::string("(?i:end)", T_END)
+      | lex::string("(?i:via)", T_VIA)
+      | lex::string("(?i:viarule)", T_VIARULE)
+      | lex::string("(?i:class)", T_CLASS)
+      | lex::string("(?i:pad)", T_PAD)
+      | lex::string("(?i:core)", T_CORE)
+      | lex::string("(?i:endcap)", T_ENDCAP)
+      | lex::string("(?i:site)", T_SITE)
+      | lex::string("(?i:symmetry)", T_SYMMETRY)
+      | lex::string("(?i:by)", T_BY)
+      | lex::string("(?i:spacing)", T_SPACING)
+      | lex::string("(?i:units)", T_UNITS)
+      | lex::string("(?i:foreign)", T_FOREIGN)
+      | lex::string("(?i:origin)", T_ORIGIN)
+      | lex::string("(?i:size)", T_SIZE)
+      | lex::string("(?i:pin)", T_PIN)
+      | lex::string("(?i:obs)", T_OBS)
+      | lex::string("(?i:macro)", T_MACRO)
+      | lex::string("(?i:library)", T_LIBRARY)
+      | lex::string("(?i:port)", T_PORT)
+      | lex::string("(?i:cover)", T_COVER)
+      | lex::string("(?i:ring)", T_RING)
+      | lex::string("(?i:block)", T_BLOCK)
+      | lex::string("(?i:input)", T_INPUT)
+      | lex::string("(?i:output)", T_OUTPUT)
+      | lex::string("(?i:spacer)", T_SPACER)
+      | lex::string("(?i:inout)", T_INOUT)
+      | lex::string("(?i:power)", T_POWER)
+      | lex::string("(?i:feedthru)", T_FEEDTHRU)
+      | lex::string("(?i:tiehigh)", T_TIEHIGH)
+      | lex::string("(?i:tielow)", T_TIELOW)
+      | lex::string("(?i:pre)", T_PRE)
+      | lex::string("(?i:post)", T_POST)
+      | lex::string("(?i:topleft)", T_TOPLEFT)
+      | lex::string("(?i:topright)", T_TOPRIGHT)
+      | lex::string("(?i:bottomleft)", T_BOTTOMLEFT)
+      | lex::string("(?i:bottomright)", T_BOTTOMRIGHT)
+      | lex::string("(?i:x)", T_X)
+      | lex::string("(?i:y)", T_Y)
+      | lex::string("(?i:r90)", T_R90)
       | ident
       | double_
       | '+' | '-' | '(' | ')' | ';'
@@ -175,11 +176,18 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
       // identifiers for e.g. nets and cells, we need to do check here somehow...
       // for now will just use the "ident" token
 
-      layer = qi::raw_token(T_LAYER) > tok.ident[_a = _1] >> *!qi::raw_token(T_END) > qi::raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
+      // can't seem to successfully say "any token other than END" so I've got to do this:
+      catchall = ';' | tok.ident | tok.double_ | qi::raw_token(T_SPACING);
 
-      via = qi::raw_token(T_VIA) > tok.ident[_a = _1] >> *!qi::raw_token(T_END) >> qi::raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
+      layer = qi::raw_token(T_LAYER) > tok.ident[_a = _1] >> *catchall > qi::raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
 
-      viarule = qi::raw_token(T_VIARULE) > tok.ident[_a = _1] >> *!qi::raw_token(T_END) >> qi::raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
+      via = qi::raw_token(T_VIA) > tok.ident[_a = _1] >>
+	*(catchall | qi::raw_token(T_LAYER) | qi::raw_token(T_FOREIGN)) >>
+	qi::raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
+
+      viarule = qi::raw_token(T_VIARULE) > tok.ident[_a = _1] >>
+	*(catchall | qi::raw_token(T_LAYER) | qi::raw_token(T_BY) | qi::raw_token(T_VIA)) >>
+	qi::raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
 
       // BOZO review case sensitivity of these keywords and correct if necessary
       // BOZO this can appear in DEF as well; move to common LEF/DEF header
@@ -227,8 +235,8 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
 	// BOZO optional ROWPATTERN goes here
 	qi::raw_token(T_END) > omit[tok.ident[_b = _1]] > eps[_a == _b];
 
-      spacing = qi::raw_token(T_SPACING) > *!qi::raw_token(T_END) >> qi::raw_token(T_END) > qi::raw_token(T_SPACING) ;
-      units = qi::raw_token(T_UNITS) > *!qi::raw_token(T_END) > qi::raw_token(T_END) >> qi::raw_token(T_UNITS) ;
+      spacing = qi::raw_token(T_SPACING) >> *catchall >> qi::raw_token(T_END) > qi::raw_token(T_SPACING) ;
+      units = qi::raw_token(T_UNITS) >> *catchall >> qi::raw_token(T_END) >> qi::raw_token(T_UNITS) ;
 
       // macro properties
       point = tok.double_ >> tok.double_ ;
@@ -238,8 +246,11 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
       macrosize = qi::raw_token(T_SIZE) > tok.double_ > no_case[qi::raw_token(T_BY)] > tok.double_ > ';' ;
 
       // macro elements
-      pin = qi::raw_token(T_PIN) > tok.ident[_a = _1] > *!qi::raw_token(T_END) > qi::raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
-      obs = qi::raw_token(T_OBS) > *!qi::raw_token(T_END) > qi::raw_token(T_END) ;
+      pin_geom = qi::raw_token(T_PORT) >> *(qi::raw_token(T_LAYER) > tok.ident > ';' > +(tok.ident | tok.double_ | ';')) > qi::raw_token(T_END) ;
+      pin = qi::raw_token(T_PIN) > tok.ident[_a = _1] >>
+	*(catchall | padclass | pin_geom) >>
+	qi::raw_token(T_END) >> tok.ident[_b = _1] > eps(_a == _b) ;
+      obs = qi::raw_token(T_OBS) > *(catchall | qi::raw_token(T_LAYER)) > qi::raw_token(T_END) ;
 
       macro = qi::raw_token(T_MACRO) > tok.ident[_a = _1, at_c<0>(_val) = _1] >
 	// these can be in any order, but the caret checks that at least one is present
@@ -328,7 +339,7 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
   // (for checking END statements)
   typedef boost::spirit::qi::rule<Iterator,
 				  boost::spirit::qi::locals<std::string, std::string> > Unparsed;
-  Unparsed layer, via, viarule, pin;
+  Unparsed layer, via, viarule, pin, pin_geom, catchall;
 
   // stuff inside macros I don't handle
   boost::spirit::qi::rule<Iterator > unparsed_macro_stuff;
