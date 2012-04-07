@@ -143,18 +143,18 @@ namespace DefParse {
 	  else
 	    std::cerr << "DEF Checker: sites from (" << rit->origx << ", " << rit->origy << ") to (" << farx << ", " << fary << ") extend beyond DIEAREA boundary\n";
 	  
-	if (site_not_found && CheckPolicy<DEFERR_SITE_UNKNOWN_NAME>::skip ||
-	    out_of_diearea && CheckPolicy<DEFERR_SITE_OUTSIDE_DIEAREA>::skip ||
-	    site_malformed && CheckPolicy<DEFERR_SITE_MALFORMED>::skip)
+	if ((site_not_found && CheckPolicy<DEFERR_SITE_UNKNOWN_NAME>::skip) ||
+	    (out_of_diearea && CheckPolicy<DEFERR_SITE_OUTSIDE_DIEAREA>::skip) ||
+	    (site_malformed && CheckPolicy<DEFERR_SITE_MALFORMED>::skip))
 	  continue;
 	// add sites to database
 	if (rit->rowname)
 	  db.addRow(*(rit->rowname), rit->sitename, xcount, ycount, Point(rit->origx, rit->origy), xstep, ystep);
 	else
 	  db.addRow("<UNNAMED>", rit->sitename, xcount, ycount, Point(rit->origx, rit->origy), xstep, ystep);
-	if (site_not_found && CheckPolicy<DEFERR_SITE_UNKNOWN_NAME>::abort ||
-	    out_of_diearea && CheckPolicy<DEFERR_SITE_OUTSIDE_DIEAREA>::abort ||
-	    site_malformed && CheckPolicy<DEFERR_SITE_MALFORMED>::abort)
+	if ((site_not_found && CheckPolicy<DEFERR_SITE_UNKNOWN_NAME>::abort) ||
+	    (out_of_diearea && CheckPolicy<DEFERR_SITE_OUTSIDE_DIEAREA>::abort) ||
+	    (site_malformed && CheckPolicy<DEFERR_SITE_MALFORMED>::abort))
 	  return false;
 
       }
@@ -186,8 +186,8 @@ namespace DefParse {
 			       iit->placement->orient, (iit->placement->plcfix == "FIXED"));
 	  db.addInst(inst);
 	}
-	if (cell_not_found && CheckPolicy<DEFERR_INST_UNKNOWN_CELL>::abort ||
-	    inst_redefined && CheckPolicy<DEFERR_INST_REDEFINED>::abort)
+	if ((cell_not_found && CheckPolicy<DEFERR_INST_UNKNOWN_CELL>::abort) ||
+	    (inst_redefined && CheckPolicy<DEFERR_INST_REDEFINED>::abort))
 	  return false;
       }
     

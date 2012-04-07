@@ -132,7 +132,7 @@ namespace SimpleDB {
       return findNamed(name, m_cells);
     }
 
-    CellPtr removeCell(CellPtr cell) {
+    void removeCell(CellPtr cell) {
       // erase-remove idiom
       m_cells.erase(std::remove(m_cells.begin(), m_cells.end(), cell), m_cells.end());
     }
@@ -145,7 +145,7 @@ namespace SimpleDB {
       return findNamed(name, m_sites);
     }
 
-    SitePtr removeSite(SitePtr site) {
+    void removeSite(SitePtr site) {
       m_sites.erase(std::remove(m_sites.begin(), m_sites.end(), site), m_sites.end());
     }
 
