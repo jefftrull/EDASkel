@@ -45,9 +45,10 @@ template <typename Lexer>
 struct DefTokens : boost::spirit::lex::lexer<Lexer>
 {
   DefTokens()
-    : int_("-?[0-9]+"),
+    : orient_("F?[NSEW]"),
       double_("-?[0-9]+\\.[0-9]+"),
-      orient("F?[NSEW]")
+      int_("-?[0-9]+")
+
   {
     namespace lex = boost::spirit::lex;
 
@@ -59,7 +60,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
     // some identifiers (esp instance names) may be as complex as:
     // letter followed by letters, numbers, underscore, hyphen, square brackets, slashes (hierarchy)
     // with potentially embedded, quoted bracketed numbers, and optionally a final unquoted bracketed number
-    ident = "[a-zA-Z]([a-zA-Z0-9_/]|-|(\\\\\\[[0-9+]\\\\\\]))*(\\[[0-9]+\\])?";
+    ident_ = "[a-zA-Z]([a-zA-Z0-9_/]|-|(\\\\\\[[0-9+]\\\\\\]))*(\\[[0-9]+\\])?";
     
     // strip out HISTORY entries, which contain unusual characters and stuff that resembles real tokens
     this->self += lex::string("^HISTORY[^;]*;")
@@ -96,8 +97,8 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
       | lex::string("PLACED", T_PLACED)
       | lex::string("FIXED", T_FIXED)
       // BOZO orient looks like an identifier.
-      | orient
-      | ident
+      | orient_
+      | ident_
       | double_ | int_
       | '+' | '-' | '(' | ')' | ';'
       ;
@@ -116,7 +117,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
   // attribute-less tokens are all done above by tokenid per hkaiser recommendation
 
   // string attribute tokens (different kinds of identifiers, mostly)
-  boost::spirit::lex::token_def<std::string> ident, orient;
+  boost::spirit::lex::token_def<std::string> ident_, orient_;
   // numbers
   boost::spirit::lex::token_def<double> double_;
   boost::spirit::lex::token_def<int> int_;
@@ -172,15 +173,15 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 
       // Using ">" here instead of ">>" implies a required sequence and allows the parser to check it
       // specifically (instead of simply failing on the whole input)
-      plcinfo %= '+' >> ((qi::token(T_FIXED) > point > tok.orient) |
-			 (qi::token(T_PLACED) > point > tok.orient)) ;    // location and orientation
+      plcinfo %= '+' >> ((qi::token(T_FIXED) > point > tok.orient_) |
+			 (qi::token(T_PLACED) > point > tok.orient_)) ;    // location and orientation
 
       weight %= '+' >> qi::raw_token(T_WEIGHT) > tok.int_ ;
 
       source = '+' >> qi::raw_token(T_SOURCE) > (qi::raw_token(T_DIST) | qi::raw_token(T_NETLIST) | qi::raw_token(T_USER) | qi::raw_token(T_TIMING)) ;
 
       // components required instance name and celltype; optional any (or none) of placement and weight, in any order:
-      component %= '-' > tok.ident > tok.ident > (plcinfo ^ omit[weight] ^ source ^ eps ) > ';' ;
+      component %= '-' > tok.ident_ > tok.ident_ > (plcinfo ^ omit[weight] ^ source ^ eps ) > ';' ;
 
       // define repeat rules for each element section
       // I tried to make this generic but failed.  You can pass in the rule as an inherited attribute,
@@ -193,15 +194,15 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       // My copy of the LEF/DEF reference does not show this SITE command as valid for DEF yet my example data does...
       // The example data's syntax is very similar to that defined for ROW, so I'll combine them
       siterpt_stmt = qi::raw_token(T_DO) > tok.int_ > qi::raw_token(T_BY) > tok.int_ > -(qi::raw_token(T_STEP) > tok.int_ > tok.int_) ;
-      rowsite_stmt = ((qi::raw_token(T_ROW) > tok.ident) | qi::raw_token(T_SITE)) > tok.ident > tok.int_ > tok.int_ > tok.orient >
+      rowsite_stmt = ((qi::raw_token(T_ROW) > tok.ident_) | qi::raw_token(T_SITE)) > tok.ident_ > tok.int_ > tok.int_ > tok.orient_ >
 	             -siterpt_stmt > ';' ;
 
       dbu = qi::raw_token(T_UNITS) > qi::raw_token(T_DISTANCE) > qi::raw_token(T_MICRONS) > tok.int_ > ';' ;
 
       // This parser only handles components and a couple of misc. statements
       // here's a catchall parser to discard all other data
-      tracks_stmt = qi::raw_token(T_TRACKS) >> *(tok.ident | qi::raw_token(T_DO) | qi::raw_token(T_STEP) | tok.int_) > ';' ;
-      gcellgrid_stmt = qi::raw_token(T_GCELLGRID) > *(tok.ident | qi::raw_token(T_DO) | qi::raw_token(T_STEP) | tok.int_) > ';' ;
+      tracks_stmt = qi::raw_token(T_TRACKS) >> *(tok.ident_ | qi::raw_token(T_DO) | qi::raw_token(T_STEP) | tok.int_) > ';' ;
+      gcellgrid_stmt = qi::raw_token(T_GCELLGRID) > *(tok.ident_ | qi::raw_token(T_DO) | qi::raw_token(T_STEP) | tok.int_) > ';' ;
 
       // counted, but currently unparsed, stuff:
       vias_section %= qi::raw_token(T_VIAS) > omit[tok.int_[_a = _1]] > ';' > 
@@ -219,7 +220,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 
       unparsed = vias_section | nets_section | specialnets_section | pins_section | tracks_stmt | gcellgrid_stmt | history_stmt ;
 
-      def_file = qi::raw_token(T_DESIGN) > tok.ident[at_c<0>(_val) = _1] > ';' >
+      def_file = qi::raw_token(T_DESIGN) > tok.ident_[at_c<0>(_val) = _1] > ';' >
                  *(version_stmt[at_c<1>(_val) = _1] |
 		   diearea_stmt[at_c<2>(_val) = _1] |
 		   dbu[at_c<3>(_val) = _1] |

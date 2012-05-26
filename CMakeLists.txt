@@ -2,7 +2,12 @@ cmake_minimum_required( VERSION 2.8 )
 PROJECT( new_app )
 ENABLE_TESTING()
 find_package( Boost 1.48 REQUIRED )
-include_directories(${Boost_INCLUDE_DIRS})
+include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
+
+# global flags
+if (CMAKE_COMPILER_IS_GNUCC)
+  add_definitions(-Wall)          # be conservative about checks
+endif()
 
 add_subdirectory( parser )
 add_subdirectory( gui )

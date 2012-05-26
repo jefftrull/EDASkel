@@ -80,9 +80,9 @@ namespace QtTclNotify {
     QtTclFileHandler(Tcl_FileProc* proc, ClientData clientData, int mask) : m_proc(proc), m_clientData(clientData), m_mask(mask) {}
     void perform_callback(int type, int fd);
   private:
-    int m_mask;                // types of activity supported
     Tcl_FileProc* m_proc;      // function to call
     ClientData m_clientData;   // extra data to supply
+    int m_mask;                // types of activity supported
   };
 
 }

@@ -119,11 +119,12 @@ namespace DefParse {
 	  }
 	}
 	bool site_malformed = (ycount != 1) && (xcount != 1);
-	if (site_malformed && !CheckPolicy<DEFERR_SITE_MALFORMED>::silent)
+	if (site_malformed && !CheckPolicy<DEFERR_SITE_MALFORMED>::silent) {
 	  if (rit->rowname)
 	    std::cerr << "DEF Checker: row " << rit->rowname << " must have either X or Y count == 1\n";
 	  else
 	    std::cerr << "DEF Checker: site row definition must have either X or Y count == 1\n";
+	}
 
 	// check limits
 	int farx = rit->origx + (xcount - 1) * xstep;
@@ -137,11 +138,12 @@ namespace DefParse {
 			       (rit->origy < defin.diearea.ll.y) || (fary < defin.diearea.ll.y) ||
 			       (rit->origx > defin.diearea.ur.x) || (farx > defin.diearea.ur.x) ||
 			       (rit->origy > defin.diearea.ur.y) || (fary > defin.diearea.ur.y));
-	if (out_of_diearea && !CheckPolicy<DEFERR_SITE_OUTSIDE_DIEAREA>::silent)
+	if (out_of_diearea && !CheckPolicy<DEFERR_SITE_OUTSIDE_DIEAREA>::silent) {
 	  if (rit->rowname)
 	    std::cerr << "DEF Checker: row " << rit->rowname << " from (" << rit->origx << ", " << rit->origy << ") to (" << farx << ", " << fary << ") extends beyond DIEAREA boundary\n";
 	  else
 	    std::cerr << "DEF Checker: sites from (" << rit->origx << ", " << rit->origy << ") to (" << farx << ", " << fary << ") extend beyond DIEAREA boundary\n";
+	}
 	  
 	if ((site_not_found && CheckPolicy<DEFERR_SITE_UNKNOWN_NAME>::skip) ||
 	    (out_of_diearea && CheckPolicy<DEFERR_SITE_OUTSIDE_DIEAREA>::skip) ||

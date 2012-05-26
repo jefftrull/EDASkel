@@ -156,11 +156,11 @@ QtTclNotifier::~QtTclNotifier() {}
 // we don't use the client data information for this notifier
 // This could be helpful for multi-thread support, though. TBD
 void* QtTclNotifier::InitNotifier() { return 0; }
-void QtTclNotifier::FinalizeNotifier(ClientData clientData) {}
-void QtTclNotifier::AlertNotifier(ClientData clientData) {}
+void QtTclNotifier::FinalizeNotifier(ClientData) {}
+void QtTclNotifier::AlertNotifier(ClientData) {}
 
 // Can't find any examples of how this should work.  Unix implementation is empty
-void QtTclNotifier::ServiceModeHook(int mode) {}
+void QtTclNotifier::ServiceModeHook(int) {}
 
 
 
