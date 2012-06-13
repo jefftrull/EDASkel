@@ -19,7 +19,6 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include <tr1/tuple>
 
 #include <QApplication>
 #include <QGraphicsView>
@@ -32,10 +31,11 @@
 #include "../gui/designscene.h"
 #include "../gui/designview.h"
 
+using namespace DefParse;
 namespace EDASkel {
-  extern DefParse::DefTokens<LefDefLexer> defTokens;
-  extern DefParse::defparser<DefParse::DefTokens<LefDefLexer>::iterator_type,
-			     DefParse::DefTokens<LefDefLexer>::lexer_def > defParser;
+  extern defparser<LefDefIter> defParser;
+  extern lefdefskipper<LefDefIter> lefdefSkipper;
+
   extern LefParse::LefTokens<LefDefLexer> lefTokens;
   extern LefParse::lefparser<LefParse::LefTokens<LefDefLexer>::iterator_type,
 			     LefParse::LefTokens<LefDefLexer>::lexer_def > lefParser;
@@ -107,10 +107,9 @@ int main(int argc, char **argv) {
   }
   defin.unsetf(std::ios::skipws);
   beg = LefDefIter(defin);
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
+
   def def_ast;
-  if (!parse(it, lex_end, defParser, def_ast) ||
+  if (!phrase_parse(beg, end, defParser, lefdefSkipper, def_ast) ||
       (beg != end)) {
     std::cerr << "DEF parse failed\n";
     if (beg != end)

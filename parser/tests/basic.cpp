@@ -27,8 +27,9 @@
 
 using namespace DefParse;
 namespace EDASkel {
-  extern DefTokens<LefDefLexer> defTokens;
-  extern defparser<DefTokens<LefDefLexer>::iterator_type, DefTokens<LefDefLexer>::lexer_def > defParser;
+  extern defparser<LefDefIter> defParser;
+  extern lefdefskipper<LefDefIter> lefdefSkipper;
+
 }
 using namespace EDASkel;
 
@@ -36,12 +37,10 @@ BOOST_AUTO_TEST_CASE( version_parse_simple ) {
 
   std::stringstream testdef("DESIGN test ;\nVERSION 1.211 ;\nEND DESIGN\n");
   testdef.unsetf(std::ios::skipws);
-  LefDefIter beg(testdef);
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, LefDefIter());
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
+  LefDefIter beg(testdef), end;
   def result;
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );  // we should match
-  BOOST_CHECK( (it == lex_end) );                        // we should consume all input
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );  // we should match
+  BOOST_CHECK( (beg == end) );                        // we should consume all input
   BOOST_CHECK_EQUAL( result.name, "test" );
   BOOST_CHECK_EQUAL( result.version, 1.211 );
 }
@@ -52,9 +51,7 @@ BOOST_AUTO_TEST_CASE ( version_parse_nospace ) {
   testdef.unsetf(std::ios::skipws);
   LefDefIter beg = LefDefIter(testdef), end;
   // should fail ("distinct" issue)
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( !parse(it, lex_end, defParser) );
+  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper) );
 
 }
 
@@ -63,9 +60,7 @@ BOOST_AUTO_TEST_CASE ( version_parse_nonnum ) {
   std::stringstream testdef("DESIGN test ;\nVERSION 1.21a ;\nEND DESIGN\n");
   testdef.unsetf(std::ios::skipws);
   LefDefIter beg = LefDefIter(testdef), end;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( !parse(it, lex_end, defParser) );
+  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper) );
 
 }
 
@@ -74,9 +69,7 @@ BOOST_AUTO_TEST_CASE ( version_parse_spaced_keywd ) {
   std::stringstream testdef("DESIGN test ;\nVER SION 1.211 ;\nEND DESIGN\n");
   testdef.unsetf(std::ios::skipws);
   LefDefIter beg = LefDefIter(testdef), end;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( !parse(it, lex_end, defParser) );
+  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper) );
 
 }
 
@@ -85,9 +78,7 @@ BOOST_AUTO_TEST_CASE ( components_parse_empty ) {
   testdef.unsetf(std::ios::skipws);
   LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
   BOOST_CHECK( beg == end );
   BOOST_CHECK( result.components.empty() );
 }
@@ -96,10 +87,8 @@ BOOST_AUTO_TEST_CASE ( components_parse_simple ) {
   std::stringstream testdef("DESIGN test-hyphenated ;\nVERSION 1.211 ;\nDIEAREA ( 0 0 ) ( 100000 200000 ) ;\nCOMPONENTS 1 ;\n - I111_uscore/hiername INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nSITE CORE1 0 0 N DO 200 BY 1 STEP 100 500 ;\nEND DESIGN\n");
   testdef.unsetf(std::ios::skipws);
   LefDefIter beg = LefDefIter(testdef), end;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
   def result;
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
   BOOST_CHECK( beg == end );
   BOOST_CHECK_EQUAL( result.name, "test-hyphenated" );
   BOOST_CHECK_EQUAL( result.diearea.ll.x, 0 );
@@ -120,10 +109,8 @@ BOOST_AUTO_TEST_CASE ( components_noplace ) {
   std::stringstream testdef("DESIGN test ;\nCOMPONENTS 1 ;\n - I111 INVX2 ;\nEND COMPONENTS\nEND DESIGN\n");
   testdef.unsetf(std::ios::skipws);
   LefDefIter beg = LefDefIter(testdef), end;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
   def result;
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
   BOOST_CHECK( (beg == end) );                         // we should consume all input
   BOOST_CHECK_EQUAL( result.name, "test" );
   BOOST_REQUIRE_EQUAL( result.components.size(), 1 );    // exactly one component read
@@ -136,9 +123,7 @@ BOOST_AUTO_TEST_CASE ( components_parse_wrongcount ) {
   std::stringstream testdef("DESIGN test ;\nCOMPONENTS 2 ;\n - I111 INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nEND DESIGN\n");
   testdef.unsetf(std::ios::skipws);
   LefDefIter beg = LefDefIter(testdef), end;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( !parse(it, lex_end, defParser) );
+  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper) );
 }
   
 BOOST_AUTO_TEST_CASE ( site_basic ) {
@@ -146,9 +131,7 @@ BOOST_AUTO_TEST_CASE ( site_basic ) {
   testdef.unsetf(std::ios::skipws);
   LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
   BOOST_CHECK( (beg == end) );
   BOOST_CHECK_EQUAL( result.diearea.ll.x, 0 );
   BOOST_CHECK_EQUAL( result.diearea.ll.y, 0 );
@@ -175,9 +158,7 @@ BOOST_AUTO_TEST_CASE ( parse_ignored_stuff ) {
   testdef.unsetf(std::ios::skipws);
   LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
   BOOST_CHECK( (beg == end) );                         // we should consume all input
   BOOST_CHECK_EQUAL( result.name, "test" );
   BOOST_CHECK_EQUAL( result.diearea.ll.x, 0 );

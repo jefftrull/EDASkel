@@ -31,8 +31,9 @@ using namespace DefParse;
 using namespace SimpleDB;
 
 namespace EDASkel {
-  extern DefTokens<LefDefLexer> defTokens;
-  extern defparser<DefTokens<LefDefLexer>::iterator_type, DefTokens<LefDefLexer>::lexer_def > defParser;
+  extern defparser<LefDefIter> defParser;
+  extern lefdefskipper<LefDefIter> lefdefSkipper;
+
   extern LefTokens<LefDefLexer> lefTokens;
   extern lefparser<LefTokens<LefDefLexer>::iterator_type, LefTokens<LefDefLexer>::lexer_def > lefParser;
 }
@@ -45,9 +46,7 @@ BOOST_AUTO_TEST_CASE ( diearea_checks ) {
   testdef.unsetf(std::ios::skipws);
   LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
 
   // turn syntax result into database contents (while checking)
   Library lib;
@@ -67,9 +66,7 @@ BOOST_AUTO_TEST_CASE ( diearea_checks ) {
   testdefbad.unsetf(std::ios::skipws);
   beg = LefDefIter(testdefbad);
   def result_badboundary;
-  it = defTokens.begin(beg, end);
-  lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, result_badboundary) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result_badboundary) );
 
   Database db_badboundary;
   // our default policy says we don't abort but we do skip errors
@@ -95,9 +92,7 @@ BOOST_AUTO_TEST_CASE ( policy_checks ) {
   testdef.unsetf(std::ios::skipws);
   LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
 
   // turn syntax result into database contents (while checking)
   Library lib;
@@ -141,9 +136,7 @@ BOOST_AUTO_TEST_CASE ( lefdef_combined_basic ) {
   testdef.unsetf(std::ios::skipws);
   def defresult;
   beg = LefDefIter(testdef);
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, defresult) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, defresult) );
   BOOST_CHECK( beg == end );
 
   DefChecker<Database, Library, DieAreaAbortPolicy> chk;
