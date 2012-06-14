@@ -32,6 +32,7 @@ namespace EDASkel {
 
 }
 using namespace EDASkel;
+using boost::spirit::qi::phrase_parse;
 
 BOOST_AUTO_TEST_CASE( version_parse_simple ) {
 
