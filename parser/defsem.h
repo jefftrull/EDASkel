@@ -98,10 +98,10 @@ namespace DefParse {
 	// verify the Site referenced by this DEF line is defined in the library
 	// (or tech LEF, tbd)
 	typedef typename Lib::SitePtr LibSitePtr;
-	LibSitePtr sptr = lib.findSite(rit->sitename);
+	LibSitePtr sptr = lib.findSite(rit->body.sitename);
 	bool site_not_found = (sptr == LibSitePtr());
 	if (site_not_found && !CheckPolicy<DEFERR_SITE_UNKNOWN_NAME>::silent)
-	  std::cerr << "DEF Checker: unknown site name " << rit->sitename << std::endl;
+	  std::cerr << "DEF Checker: unknown site name " << rit->body.sitename << std::endl;
 
 	// set up some defaults for count and stepping
 	int xcount = 1; int ycount = 1;
@@ -110,12 +110,12 @@ namespace DefParse {
 	  xstep = defin.dbupermicron * sptr->getWidth();
 	  ystep = defin.dbupermicron * sptr->getHeight();
 	}
-	if (rit->repeat) {
-	  xcount = rit->repeat->xrepeat;
-	  ycount = rit->repeat->yrepeat;
-	  if (rit->repeat->step) {
-	    xstep = rit->repeat->step->first;
-	    ystep = rit->repeat->step->second;
+	if (rit->body.repeat) {
+	  xcount = rit->body.repeat->xrepeat;
+	  ycount = rit->body.repeat->yrepeat;
+	  if (rit->body.repeat->step) {
+	    xstep = rit->body.repeat->step->first;
+	    ystep = rit->body.repeat->step->second;
 	  }
 	}
 	bool site_malformed = (ycount != 1) && (xcount != 1);
@@ -127,22 +127,22 @@ namespace DefParse {
 	}
 
 	// check limits
-	int farx = rit->origx + (xcount - 1) * xstep;
-	int fary = rit->origy + (ycount - 1) * ystep;
+	int farx = rit->body.origx + (xcount - 1) * xstep;
+	int fary = rit->body.origy + (ycount - 1) * ystep;
 	if (!site_not_found) {
 	  // also add in site width/height
 	  farx += defin.dbupermicron * sptr->getWidth();
 	  fary += defin.dbupermicron * sptr->getHeight();
 	}
-	bool out_of_diearea = ((rit->origx < defin.diearea.ll.x) || (farx < defin.diearea.ll.x) ||
-			       (rit->origy < defin.diearea.ll.y) || (fary < defin.diearea.ll.y) ||
-			       (rit->origx > defin.diearea.ur.x) || (farx > defin.diearea.ur.x) ||
-			       (rit->origy > defin.diearea.ur.y) || (fary > defin.diearea.ur.y));
+	bool out_of_diearea = ((rit->body.origx < defin.diearea.ll.x) || (farx < defin.diearea.ll.x) ||
+			       (rit->body.origy < defin.diearea.ll.y) || (fary < defin.diearea.ll.y) ||
+			       (rit->body.origx > defin.diearea.ur.x) || (farx > defin.diearea.ur.x) ||
+			       (rit->body.origy > defin.diearea.ur.y) || (fary > defin.diearea.ur.y));
 	if (out_of_diearea && !CheckPolicy<DEFERR_SITE_OUTSIDE_DIEAREA>::silent) {
 	  if (rit->rowname)
-	    std::cerr << "DEF Checker: row " << rit->rowname << " from (" << rit->origx << ", " << rit->origy << ") to (" << farx << ", " << fary << ") extends beyond DIEAREA boundary\n";
+	    std::cerr << "DEF Checker: row " << rit->rowname << " from (" << rit->body.origx << ", " << rit->body.origy << ") to (" << farx << ", " << fary << ") extends beyond DIEAREA boundary\n";
 	  else
-	    std::cerr << "DEF Checker: sites from (" << rit->origx << ", " << rit->origy << ") to (" << farx << ", " << fary << ") extend beyond DIEAREA boundary\n";
+	    std::cerr << "DEF Checker: sites from (" << rit->body.origx << ", " << rit->body.origy << ") to (" << farx << ", " << fary << ") extend beyond DIEAREA boundary\n";
 	}
 	  
 	if ((site_not_found && CheckPolicy<DEFERR_SITE_UNKNOWN_NAME>::skip) ||
@@ -151,9 +151,9 @@ namespace DefParse {
 	  continue;
 	// add sites to database
 	if (rit->rowname)
-	  db.addRow(*(rit->rowname), rit->sitename, xcount, ycount, Point(rit->origx, rit->origy), xstep, ystep);
+	  db.addRow(*(rit->rowname), rit->body.sitename, xcount, ycount, Point(rit->body.origx, rit->body.origy), xstep, ystep);
 	else
-	  db.addRow("<UNNAMED>", rit->sitename, xcount, ycount, Point(rit->origx, rit->origy), xstep, ystep);
+	  db.addRow("<UNNAMED>", rit->body.sitename, xcount, ycount, Point(rit->body.origx, rit->body.origy), xstep, ystep);
 	if ((site_not_found && CheckPolicy<DEFERR_SITE_UNKNOWN_NAME>::abort) ||
 	    (out_of_diearea && CheckPolicy<DEFERR_SITE_OUTSIDE_DIEAREA>::abort) ||
 	    (site_malformed && CheckPolicy<DEFERR_SITE_MALFORMED>::abort))

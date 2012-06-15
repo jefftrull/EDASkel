@@ -36,6 +36,7 @@ namespace DefParse {
 // a starter DEF grammar
 template <typename Iterator>
 struct defparser : boost::spirit::qi::grammar<Iterator,
+                                              boost::spirit::qi::locals<int, std::string>,
                                               def(),
                                               lefdefskipper<Iterator> >
 {
@@ -89,49 +90,34 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       // components required instance name and celltype; optional any (or none) of placement and weight, in any order:
       component %= '-' > iname > ctype > (plcinfo ^ omit[weight] ^ source ^ eps ) > ';' ;
 
-      // define repeat rules for each element section
-      // I tried to make this generic but failed.  You can pass in the rule as an inherited attribute,
-      // but the type of the parent rule needs to be different for each since the synthesized attribute is
-      // different (i.e., std::vector<attribute_of_child_rule>)
-      comps_section %= dkwd("COMPONENTS", 1)[omit[int_[_a = _1]]] > ';' >  // remember count in a local variable
-	               repeat(_a)[component] >                        // expect that many copies of the supplied rule
-	dkwd("END", 1) [dkwd("COMPONENTS", 1)[eps]] ;       // END followed by the section name again
-
       // My copy of the LEF/DEF reference does not show this SITE command as valid for DEF yet my example data does...
       // The example data's syntax is very similar to that defined for ROW, so I'll combine them
       siterpt_stmt = dkwd("DO")[int_] > dkwd("BY")[int_] > -(dkwd("STEP")[int_ > int_]) ;
-      rowsite_stmt = ((dkwd("ROW", 1)[ctype]) | dkwd("SITE", 1)[eps]) > ctype > int_ > int_ > orient >
-	             -siterpt_stmt > ';' ;
+      rowsite_body = ctype > int_ > int_ > orient > -siterpt_stmt > ';' ;
+      row = ctype > rowsite_body ;
+      site = rowsite_body[at_c<1>(_val) = _1] ;
 
       dbu = dkwd("UNITS", 1)[dkwd("DISTANCE", 1)[dkwd("MICRONS", 1)[int_]]] > ';' ;
 
-      // This parser only handles components and a couple of misc. statements
-      // here's a catchall parser to discard all other data
-      // BOZO update this for all keywords we parse - make a symbol table out of them for ease of use and speed
-      tracks_stmt = dkwd("TRACKS", 1)[*(char_ - ';') > ';'] ;
-      gcellgrid_stmt = dkwd("GCELLGRID", 1)[*(char_ - ';') > ';'] ;
-      history_stmt = dkwd("HISTORY", 1)[*(char_ - ';') > ';'] ;
-
-      // the "/" operator for keywords is not the one we want here, because that will require *at least*
-      // one of each of these keywords.  Instead, we will ask for *exactly* one of any of them to match "unparsed".
-      // TODO: write this as dkwd("XXX", 0, 1)[] / dkwd("YYY", 0, 1)[] so we get no more than one of each.
-      // will have to do this in the def_file rule
-
-      unparsed = ((dkwd("VIAS", 1)[eps[_a = val("VIAS")]] |
-		   dkwd("NETS", 1)[eps[_a = val("NETS")]] |
-		   dkwd("SPECIALNETS", 1)[eps[_a = val("SPECIALNETS")]] |
-		   dkwd("PINS", 1)[eps[_a = val("PINS")]]) > int_ > ';' >
-		  *('-' > *(char_ - ';') > ';') > dkwd("END", 1)[lit(_a)]) |
-                 tracks_stmt | gcellgrid_stmt | history_stmt ;
-
-      def_file = dkwd("DESIGN", 1)[dname[at_c<0>(_val) = _1]] > ';' >>
-                 *(version_stmt[at_c<1>(_val) = _1] |
-		   diearea_stmt[at_c<2>(_val) = _1] |
-		   dbu[at_c<3>(_val) = _1] |
-      	           comps_section[at_c<4>(_val) = _1] |
-		   rowsite_stmt[push_back(at_c<5>(_val), _1)] |
-		   unparsed) >>
-	dkwd("END", 1)[kwd("DESIGN", 1)[eps]] ;  // "kwd" here because dkwd requires skipper success
+      def_file = dkwd("DESIGN")[dname[at_c<0>(_val) = _1]] > ';' >
+	           // one giant case statement, of sorts, made possible by "dkwd"
+	           (dkwd("VERSION", 0, 1)[(double_ > ';')[at_c<1>(_val) = _1]] /
+		    dkwd("DIEAREA", 0, 1)[(rect[at_c<2>(_val) = _1] > ';')] /
+		    dkwd("UNITS", 0, 1)[dkwd("DISTANCE")[dkwd("MICRONS")[(int_[at_c<3>(_val) = _1] > ';')]]] /
+		    // a semi-manual approach to repeated components.  May need to make my own directive
+		    // for cleanest approach.  You can pass in the rule as an inherited attribute,
+		    // but the type of the parent rule needs to be different for each since the synthesized
+		    // attribute is different (i.e., std::vector<attribute_of_child_rule>)
+		    dkwd("COMPONENTS", 0, 1)[omit[int_[_a = _1]] > ';' >
+					     repeat(_a)[component[push_back(at_c<4>(_val), _1)]] >
+					     dkwd("END")[dkwd("COMPONENTS")[eps]]] /
+		    dkwd("ROW")[row[push_back(at_c<5>(_val), _1)]] /
+		    dkwd("SITE")[site[push_back(at_c<5>(_val), _1)]] /
+		    // catchall parsers for stuff we don't handle yet
+		    dkwd((string("VIAS")|string("NETS")|string("SPECIALNETS")|string("PINS"))[_b=_1]
+			 )[int_ > ';' > *('-' > *(char_ - ';') > ';') > dkwd("END", 1)[lit(_b)]] /
+		    dkwd(string("TRACKS")|string("GCELLGRID")|string("HISTORY"))[*(char_ - ';') > ';']) >
+	dkwd("END", 1)[kwd("DESIGN", 1)[eps]] ;
 
       // Debugging assistance
 
@@ -144,7 +130,6 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       component.name("Component");
       orient.name("Orientation");
       plcinfo.name("Optional Placement Info");
-
 
       on_error<fail>
         (
@@ -176,7 +161,8 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 
   // Site (or named row) statement
   boost::spirit::qi::rule<Iterator, siterepeat(), lefdefskipper<Iterator> > siterpt_stmt;
-  boost::spirit::qi::rule<Iterator, rowsite(), lefdefskipper<Iterator> > rowsite_stmt;
+  boost::spirit::qi::rule<Iterator, rowsite(), lefdefskipper<Iterator> > row, site;
+  boost::spirit::qi::rule<Iterator, rowsite_b(), lefdefskipper<Iterator> > rowsite_body;
 
   // rules pertaining to COMPONENTS - see deftypes.h for data results
 
@@ -193,7 +179,8 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
   boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string>, lefdefskipper<Iterator> > unparsed, tracks_stmt, gcellgrid_stmt, history_stmt, source;
 
   // The DEF file as a whole
-  boost::spirit::qi::rule<Iterator, def(), lefdefskipper<Iterator> > def_file;
+  boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<int, std::string>,
+    def(), lefdefskipper<Iterator> > def_file;
 
 };
 
