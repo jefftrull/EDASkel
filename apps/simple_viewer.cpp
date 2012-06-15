@@ -130,7 +130,6 @@ int main(int argc, char **argv) {
 
   // create a "scene" (model) for display from the filled-out library and database
   DesignScene<Database, Library> myScene(db, lib);
-  QRectF sr = myScene.sceneRect();
 
   // Our special view adds some keyboard shortcuts and shows the design
   // "right side up"
