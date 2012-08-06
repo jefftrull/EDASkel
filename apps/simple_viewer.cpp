@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
 
   typedef Database::InstIter InstIter;
   InstIter iit, instend;
-  std::tr1::tie(iit, instend) = db.getInstances();
+  std::tie(iit, instend) = db.getInstances();
   std::cerr << "DEF contains " << distance(iit, instend) << " instances\n";
 
   // create a "scene" (model) for display from the filled-out library and database

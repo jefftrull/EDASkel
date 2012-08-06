@@ -28,9 +28,7 @@
 #include <algorithm>
 #include <boost/assert.hpp>
 #include <boost/optional.hpp>
-// using the TR1, not Boost, versions of things wherever possible
-// (I like Boost, but standards are even better)
-#include <tr1/memory>
+#include <memory>
 
 #include "globals.h"
 using namespace EDASkel;
@@ -39,9 +37,9 @@ namespace SimpleDB {
 
   // helper functions
   template<class Obj>
-    typename std::tr1::shared_ptr<Obj> findNamed(const std::string& name,
-						 const std::vector<std::tr1::shared_ptr<Obj> >& vec) {
-    typedef std::tr1::shared_ptr<Obj> Ptr;
+    typename std::shared_ptr<Obj> findNamed(const std::string& name,
+					    const std::vector<std::shared_ptr<Obj> >& vec) {
+    typedef std::shared_ptr<Obj> Ptr;
     // linear search for a matching name
     // could make this Phoenix or Lambda or a complex bind expression.  But should I?
     for (typename std::vector<Ptr>::const_iterator oit = vec.begin();
@@ -118,10 +116,10 @@ namespace SimpleDB {
   class Library {
   public:
     typedef LibCell Cell;
-    typedef std::tr1::shared_ptr<Cell> CellPtr;
+    typedef std::shared_ptr<Cell> CellPtr;
     // should Sites be here or in some sort of "tech" database?
     typedef LibSite Site;
-    typedef std::tr1::shared_ptr<Site> SitePtr;
+    typedef std::shared_ptr<Site> SitePtr;
     Library() {}
 
     void addCell(CellPtr cell) {
@@ -238,7 +236,7 @@ namespace SimpleDB {
     typedef DesPoint Point;
     typedef DesRect Rect;
     typedef Instance Inst;
-    typedef std::tr1::shared_ptr<Instance> InstPtr;
+    typedef std::shared_ptr<Instance> InstPtr;
     typedef std::vector<InstPtr>::const_iterator InstIter;  // users cannot change stored pointers
 
     Database() {};
