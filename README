@@ -2,11 +2,8 @@ This is EDASkel, a collection of code intended to represent the "skeleton" of an
 
 1) A Tcl shell (with your custom commands installed)
 2) A GUI to display design data
-3) Infrastructure like a build system, parsers for various file formats, interfaces to databases,
-   unit tests, user-controllable logging etc.
-4) Implementations of various well-known algorithms built on top of quality open-source libraries
-   (e.g., Boost Graph Library for graphs, Boost.Polygon or CGAL for computational geometry,
-   possibly some numerics or matrix libraries)
+3) Infrastructure like a build system, parsers for various file formats, interfaces to databases, unit tests, user-controllable logging etc.
+4) Implementations of various well-known algorithms built on top of quality open-source libraries (e.g., Boost Graph Library for graphs, Boost.Polygon or CGAL for computational geometry, possibly some numerics or matrix libraries)
 
 It's still a work in progress but I hope that by sharing what I've learned with others, and learning from them, we can have better software, faster.  Please share your feedback with me so I can improve this code.
 
@@ -17,9 +14,7 @@ edaskel@att.net
 
 Building EDASkel
 ----------------
-You need a recent copy of Boost (at least 1.43 - download from www.boost.org) and of Qt (4.6.2).
-Presently the use of Boost is only from the header-only portion, so compiling it is not necessary.
-The steps are as follows:
+You need a recent copy of Boost (at least 1.43 - download from www.boost.org) and of Qt (4.6.2). Presently the use of Boost is only from the header-only portion, so compiling it is not necessary. The steps are as follows:
 
 (cd to this directory)
 mkdir build
