@@ -7,6 +7,7 @@ include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 # global flags
 if (CMAKE_COMPILER_IS_GNUCC)
   add_definitions(-Wall)          # be conservative about checks
+  add_definitions(-std=c++0x)     # enable C++11
 endif()
 
 add_subdirectory( parser )
