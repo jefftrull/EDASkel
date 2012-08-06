@@ -1,6 +1,4 @@
-This is EDASkel, a collection of code intended to represent the "skeleton" of an EDA application.
-This consists of basic example implementations of a number of things you normally need in such
-an app, such as:
+This is EDASkel, a collection of code intended to represent the "skeleton" of an EDA application. This consists of basic example implementations of a number of things you normally need in such an app, such as:
 
 1) A Tcl shell (with your custom commands installed)
 2) A GUI to display design data
@@ -10,9 +8,7 @@ an app, such as:
    (e.g., Boost Graph Library for graphs, Boost.Polygon or CGAL for computational geometry,
    possibly some numerics or matrix libraries)
 
-It's still a work in progress but I hope that by sharing what I've learned with others, and learning
-from them, we can have better software, faster.  Please share your feedback with me so I can improve
-this code.
+It's still a work in progress but I hope that by sharing what I've learned with others, and learning from them, we can have better software, faster.  Please share your feedback with me so I can improve this code.
 
 Thanks and Regards,
 Jeff Trull
@@ -39,7 +35,4 @@ to run all the unit tests, or try one of the sample apps, for example the design
 
 apps/sv --lef /path/to/file.lef --def /path/to/file.def
 
-You may find that compiling the LEF/DEF parsers is very slow.  It seems to be limited by physical
-memory size - I recommend at least 4GB, unless you can run the build overnight.  They are in a
-separate module, so once built, they won't change as you experiment with the code, and incremental
-compiles will be much faster.
+You may find that compiling the LEF/DEF parsers is very slow.  It seems to be limited by physical memory size - I recommend at least 4GB, unless you can run the build overnight.  They are in a separate module, so once built, they won't change as you experiment with the code, and incremental compiles will be much faster.
