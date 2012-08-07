@@ -39,14 +39,12 @@ namespace SimpleDB {
   template<class Obj>
     typename std::shared_ptr<Obj> findNamed(const std::string& name,
 					    const std::vector<std::shared_ptr<Obj> >& vec) {
-    typedef std::shared_ptr<Obj> Ptr;
-    // linear search for a matching name
-    // could make this Phoenix or Lambda or a complex bind expression.  But should I?
-    for (typename std::vector<Ptr>::const_iterator oit = vec.begin();
-	 oit != vec.end(); ++oit) {
-      if ((*oit)->getName() == name)
-	return *oit;
-    }
+    typedef typename std::shared_ptr<Obj> Ptr;
+    auto locit = std::find_if(vec.begin(), vec.end(),
+			      [name](Ptr curobj){ return (curobj->getName() == name); });
+    if (locit != vec.end())
+      return *locit;
+
     return Ptr(); // the shared_ptr equivalent of NULL
   }
       
