@@ -27,6 +27,8 @@
 #include <QApplication>
 #include <QGraphicsItem>
 
+#include <tuple>
+
 BOOST_AUTO_TEST_CASE( basic ) {
   int argc = 0;
   QApplication app(argc, 0);
