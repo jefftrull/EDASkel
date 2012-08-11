@@ -35,8 +35,6 @@
 
 #include <QGraphicsScene>
 #include <QGraphicsRectItem>
-// Boost has this, but I'm using TR1 versions of things where possible
-#include <tr1/tuple>
 
 namespace EDASkel {
 
@@ -72,7 +70,7 @@ class DesignScene : public DesignSceneBase {
     // the appearance (e.g., by marking the UR corner to make orientation more obvious)
     QPen instPen(Qt::red);
     typename DB::InstIter iit, end;
-    for (std::tr1::tie(iit, end) = db.getInstances(); iit != end; ++iit) {
+    for (std::tie(iit, end) = db.getInstances(); iit != end; ++iit) {
       const typename Lib::CellPtr cell = lib.findCell((*iit)->getCellName());
       if (!cell)
 	continue;   // or produce an error somehow?
