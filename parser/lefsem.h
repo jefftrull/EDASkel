@@ -103,7 +103,7 @@ namespace LefParse {
 	if (mit->origin)
 	  cptr->setOrigin(std::make_pair(mit->origin->x, mit->origin->y));
 	else
-	  cptr->setOrigin(std::make_pair(0.0, 0.0));  // default
+	  cptr->setOrigin(std::make_pair(0.0f, 0.0f));  // default
 	if (mit->size)
 	  cptr->setDimensions(mit->size->width, mit->size->height);
 	if (mit->symmetry)

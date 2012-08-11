@@ -107,8 +107,9 @@ namespace DefParse {
 	int xcount = 1; int ycount = 1;
 	int xstep = 0; int ystep = 0;
 	if (!site_not_found) {
-	  xstep = defin.dbupermicron * sptr->getWidth();
-	  ystep = defin.dbupermicron * sptr->getHeight();
+	  // "dbupermicron" is expected to be large enough so these calculations produce an integer result:
+	  xstep = (int)(defin.dbupermicron * sptr->getWidth());
+	  ystep = (int)(defin.dbupermicron * sptr->getHeight());
 	}
 	if (rit->repeat) {
 	  xcount = rit->repeat->xrepeat;
@@ -131,8 +132,8 @@ namespace DefParse {
 	int fary = rit->origy + (ycount - 1) * ystep;
 	if (!site_not_found) {
 	  // also add in site width/height
-	  farx += defin.dbupermicron * sptr->getWidth();
-	  fary += defin.dbupermicron * sptr->getHeight();
+	  farx += (int)(defin.dbupermicron * sptr->getWidth());
+	  fary += (int)(defin.dbupermicron * sptr->getHeight());
 	}
 	bool out_of_diearea = ((rit->origx < defin.diearea.ll.x) || (farx < defin.diearea.ll.x) ||
 			       (rit->origy < defin.diearea.ll.y) || (fary < defin.diearea.ll.y) ||
