@@ -262,9 +262,9 @@ namespace SimpleDB {
       // translate information supplied into more compressed version with RowDir etc.
       BOOST_ASSERT( (xcount == 1) || (ycount == 1) );
       if (xcount == 1)
-	m_rows.push_back(RowSiteInst(name, sitename, ROWDIR_VERT, ycount, start, ystep));
+	m_rows.emplace_back(name, sitename, ROWDIR_VERT, ycount, start, ystep);
       else
-	m_rows.push_back(RowSiteInst(name, sitename, ROWDIR_HORZ, xcount, start, xstep));
+	m_rows.emplace_back(name, sitename, ROWDIR_HORZ, xcount, start, xstep);
     }
 
     boost::optional<std::string> siteAt(int x, int y) {
