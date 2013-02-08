@@ -24,6 +24,8 @@
 #include <QApplication>
 #include <QGraphicsView>
 
+#include <boost/program_options.hpp>
+
 #include "../parser/lefparser.h"
 #include "../parser/lefsem.h"
 #include "../parser/defparser.h"
@@ -52,33 +54,37 @@ int main(int argc, char **argv) {
   using boost::spirit::qi::space;
 
   // parse command line options
-  // I want to do this cleanly, but can't decide between getopt (kind of ugly,
-  // not cross-platform) and Boost program_options (non header-only).
-  // doing it the ugly manual way...
 
   QApplication app(argc, argv);       // let Qt take any args it recognizes
-  QStringList args = app.arguments();
-  boost::optional<std::string> lef_fn, def_fn;
-  for (int i = 0; i < (args.size() - 1); ++i) {
-    std::string arg(args.at(i).toLocal8Bit().constData());
-    if (arg == "--lef")
-      lef_fn = args.at(++i).toLocal8Bit().constData();
-    else if (arg == "--def")
-      def_fn = args.at(++i).toLocal8Bit().constData();
-  }
-  if (!lef_fn) {
-    std::cerr << "Please specify a LEF file with the --lef option\n";
-    return 1;
-  }
-  if (!def_fn) {
-    std::cerr << "Please specify a DEF file with the --def option\n";
-    return 1;
+
+  std::string lef_fn, def_fn;         // input filenames
+
+  namespace po = boost::program_options;
+  try {
+     po::options_description desc("Simple DEF Viewer options");
+     desc.add_options()
+        ( "help,h",                                              "this help message" )
+        ( "lef",    po::value<std::string>(&lef_fn)->required(), "LEF file to use" )
+        ( "def",    po::value<std::string>(&def_fn)->required(), "DEF to read and display" ) ;
+
+     po::variables_map vm;
+     po::store(po::command_line_parser(argc, argv).options(desc).run(), vm);
+
+     if (vm.count("help")) {
+        std::cout << "usage: " << argv[0] << " --lef filename.lef --def filename.def" << std::endl;
+        return 0;
+     }
+
+     po::notify(vm);
+  } catch (std::exception const& e) {
+     std::cerr << "Argument Error: " << e.what() << std::endl;
+     return 1;
   }
 
   // read LEF/DEF files into library and database
-  std::ifstream lefin(lef_fn->c_str());
+  std::ifstream lefin(lef_fn.c_str());
   if (!lefin.is_open()) {
-    std::cerr << "Failed to open input LEF file " << *lef_fn << std::endl;
+    std::cerr << "Failed to open input LEF file " << lef_fn << std::endl;
     return 1;
   }
   // do not skip whitespace
@@ -101,9 +107,9 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::ifstream defin(def_fn->c_str());
+  std::ifstream defin(def_fn.c_str());
   if (!defin.is_open()) {
-    std::cerr << "Failed to open input DEF file " << *def_fn << std::endl;
+    std::cerr << "Failed to open input DEF file " << def_fn << std::endl;
     return 1;
   }
   defin.unsetf(std::ios::skipws);

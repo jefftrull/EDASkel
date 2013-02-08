@@ -1,7 +1,7 @@
 cmake_minimum_required( VERSION 2.8 )
 PROJECT( new_app )
 ENABLE_TESTING()
-find_package( Boost 1.48 REQUIRED )
+find_package( Boost 1.52 REQUIRED COMPONENTS program_options )
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
 # global flags
