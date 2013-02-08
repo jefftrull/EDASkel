@@ -87,10 +87,16 @@ int main(int argc, char **argv) {
   LefTokens<LefDefLexer>::iterator_type lef_end = lefTokens.end();
   lef lef_ast;
   if (!parse(lef_it, lef_end, lefParser, lef_ast) ||
-      (beg != end)) {
+      (lef_it != lef_end)) {
     std::cerr << "LEF parse failed\n";
-    if (beg != end)
-      std::cerr << "did not consume all input; remaining is:\n" << std::string(beg, end) << std::endl;
+    if (lef_it != lef_end) {
+       std::cerr << "did not consume all input; ";
+       std::cerr << std::distance(lef_it, lef_end) << " tokens remain:" << std::endl;
+       for (auto tok_it = lef_it; tok_it != lef_end; ++tok_it) {
+          std::cerr << "|" << boost::get<boost::iterator_range<LefDefIter> >(tok_it->value());
+          std::cerr << "|" << std::endl;
+       }
+    }
     return 1;
   }
   LefChecker<Library> lefchk;
@@ -113,8 +119,14 @@ int main(int argc, char **argv) {
   if (!parse(it, lex_end, defParser, def_ast) ||
       (beg != end)) {
     std::cerr << "DEF parse failed\n";
-    if (beg != end)
-      std::cerr << "remaining input is as follows:\n" << std::string(beg, end) << std::endl;
+    if (it != lex_end) {
+       std::cerr << "did not consume all input; ";
+       std::cerr << std::distance(it, lex_end) << " tokens remain:" << std::endl;
+       for (auto tok_it = it; tok_it != lex_end; ++tok_it) {
+          std::cerr << "|" << boost::get<boost::iterator_range<LefDefIter> >(tok_it->value());
+          std::cerr << "|" << std::endl;
+       }
+    }
     return 1;
   }
   DefChecker<Database, Library> defchk;
