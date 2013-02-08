@@ -5,5 +5,5 @@ include(${QT_USE_FILE})
 QT4_WRAP_CPP(DS_MOC_SRC ../gui/designscene.h)
 QT4_WRAP_CPP(DV_MOC_SRC ../gui/designview.h)
 add_executable( sv simple_viewer.cpp ${DS_MOC_SRC} ${DV_MOC_SRC})
-target_link_libraries( sv lefdef ${QT_LIBRARIES})
+target_link_libraries( sv lefdef ${QT_LIBRARIES} ${Boost_LIBRARIES} )
 
