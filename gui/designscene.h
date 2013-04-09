@@ -68,7 +68,7 @@ class DesignScene : public DesignSceneBase {
     // ultimately you want to subclass one of the GraphicsItem classes instead
     // so you can store a pointer to the instance and maybe further customize
     // the appearance (e.g., by marking the UR corner to make orientation more obvious)
-    QPen instPen(Qt::red);
+    QPen instPen(Qt::red, 0);
     typename DB::InstIter iit, end;
     for (std::tie(iit, end) = db.getInstances(); iit != end; ++iit) {
       const typename Lib::CellPtr cell = lib.findCell((*iit)->getCellName());
