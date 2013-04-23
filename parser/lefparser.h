@@ -163,12 +163,13 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
       using boost::phoenix::at_c;               // to refer to pieces of wrapped structs
       using boost::phoenix::push_back;          // to store results in containers
       using boost::phoenix::ref;                // for storing parsing info into parser var (instead of attributes)
+      using qi::raw_token;                      // to turn token IDs into qi parsers
 
       // top-level elements in a LEF file
 
-      casesens = qi::raw_token(T_NAMESCASESENSITIVE) >
-	(qi::raw_token(T_ON)[ref(case_on) = true] |
-	 qi::raw_token(T_OFF)[ref(case_on) = false]) > ';' ; 
+      casesens = raw_token(T_NAMESCASESENSITIVE) >
+	(raw_token(T_ON)[ref(case_on) = true] |
+	 raw_token(T_OFF)[ref(case_on) = false]) > ';' ; 
 
       // general identifiers
       // celltypes: assuming only underscore might be used out of the non-alphanumeric chars
@@ -177,82 +178,82 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
       // for now will just use the "ident" token
 
       // can't seem to successfully say "any token other than END" so I've got to do this:
-      catchall = ';' | tok.ident | tok.double_ | qi::raw_token(T_SPACING);
+      catchall = ';' | tok.ident | tok.double_ | raw_token(T_SPACING);
 
-      layer = qi::raw_token(T_LAYER) > tok.ident[_a = _1] >> *catchall > qi::raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
+      layer = raw_token(T_LAYER) > tok.ident[_a = _1] >> *catchall > raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
 
-      via = qi::raw_token(T_VIA) > tok.ident[_a = _1] >>
-	*(catchall | qi::raw_token(T_LAYER) | qi::raw_token(T_FOREIGN)) >>
-	qi::raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
+      via = raw_token(T_VIA) > tok.ident[_a = _1] >>
+	*(catchall | raw_token(T_LAYER) | raw_token(T_FOREIGN)) >>
+	raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
 
-      viarule = qi::raw_token(T_VIARULE) > tok.ident[_a = _1] >>
-	*(catchall | qi::raw_token(T_LAYER) | qi::raw_token(T_BY) | qi::raw_token(T_VIA)) >>
-	qi::raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
+      viarule = raw_token(T_VIARULE) > tok.ident[_a = _1] >>
+	*(catchall | raw_token(T_LAYER) | raw_token(T_BY) | raw_token(T_VIA)) >>
+	raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
 
       // BOZO review case sensitivity of these keywords and correct if necessary
       // BOZO this can appear in DEF as well; move to common LEF/DEF header
       // but how? this is internal to class.  Oh hey, inheritance...?
 
       // one-symbol site classes
-      siteclass = (qi::raw_token(T_COVER) >> attr(SITECLASS_COVER)) |
-	          (qi::raw_token(T_RING) >> attr(SITECLASS_RING)) |
-	          (qi::raw_token(T_PAD) >> attr(SITECLASS_PAD)) |
-	          (qi::raw_token(T_BLOCK) >> attr(SITECLASS_BLOCK)) |
-	          (qi::raw_token(T_CORE) >> attr(SITECLASS_CORE));
+      siteclass = (raw_token(T_COVER) >> attr(SITECLASS_COVER)) |
+	          (raw_token(T_RING) >> attr(SITECLASS_RING)) |
+	          (raw_token(T_PAD) >> attr(SITECLASS_PAD)) |
+	          (raw_token(T_BLOCK) >> attr(SITECLASS_BLOCK)) |
+	          (raw_token(T_CORE) >> attr(SITECLASS_CORE));
       // classes distinguished by second symbol (all ENDCAP and some PAD, CORE)
-      padclass =  (qi::raw_token(T_INPUT) >> attr(SITECLASS_PAD_INPUT)) |
-	          (qi::raw_token(T_OUTPUT) >> attr(SITECLASS_PAD_OUTPUT)) |
-	          (qi::raw_token(T_SPACER) >> attr(SITECLASS_PAD_SPACER)) |
-	          (qi::raw_token(T_INOUT) >> attr(SITECLASS_PAD_INOUT)) |
-	          (qi::raw_token(T_POWER) >> attr(SITECLASS_PAD_POWER));
-      coreclass = (qi::raw_token(T_FEEDTHRU) >> attr(SITECLASS_CORE_FEEDTHRU)) |
-	          (qi::raw_token(T_TIEHIGH) >> attr(SITECLASS_CORE_TIEHIGH)) |
-	          (qi::raw_token(T_TIELOW) >> attr(SITECLASS_CORE_TIELOW));
-      endcapclass = (qi::raw_token(T_PRE) >> attr(SITECLASS_ENDCAP_PRE)) ||
-	          (qi::raw_token(T_POST) >> attr(SITECLASS_ENDCAP_POST)) ||
-	          (qi::raw_token(T_TOPLEFT) >> attr(SITECLASS_ENDCAP_TOPLEFT)) ||
-	          (qi::raw_token(T_TOPRIGHT) >> attr(SITECLASS_ENDCAP_TOPRIGHT)) ||
-	          (qi::raw_token(T_BOTTOMLEFT) >> attr(SITECLASS_ENDCAP_BOTTOMLEFT)) ||
-	          (qi::raw_token(T_BOTTOMRIGHT) >> attr(SITECLASS_ENDCAP_BOTTOMRIGHT));
+      padclass =  (raw_token(T_INPUT) >> attr(SITECLASS_PAD_INPUT)) |
+	          (raw_token(T_OUTPUT) >> attr(SITECLASS_PAD_OUTPUT)) |
+	          (raw_token(T_SPACER) >> attr(SITECLASS_PAD_SPACER)) |
+	          (raw_token(T_INOUT) >> attr(SITECLASS_PAD_INOUT)) |
+	          (raw_token(T_POWER) >> attr(SITECLASS_PAD_POWER));
+      coreclass = (raw_token(T_FEEDTHRU) >> attr(SITECLASS_CORE_FEEDTHRU)) |
+	          (raw_token(T_TIEHIGH) >> attr(SITECLASS_CORE_TIEHIGH)) |
+	          (raw_token(T_TIELOW) >> attr(SITECLASS_CORE_TIELOW));
+      endcapclass = (raw_token(T_PRE) >> attr(SITECLASS_ENDCAP_PRE)) ||
+	          (raw_token(T_POST) >> attr(SITECLASS_ENDCAP_POST)) ||
+	          (raw_token(T_TOPLEFT) >> attr(SITECLASS_ENDCAP_TOPLEFT)) ||
+	          (raw_token(T_TOPRIGHT) >> attr(SITECLASS_ENDCAP_TOPRIGHT)) ||
+	          (raw_token(T_BOTTOMLEFT) >> attr(SITECLASS_ENDCAP_BOTTOMLEFT)) ||
+	          (raw_token(T_BOTTOMRIGHT) >> attr(SITECLASS_ENDCAP_BOTTOMRIGHT));
 
-      classrule = qi::raw_token(T_CLASS) >
-	          ((qi::raw_token(T_PAD) >> padclass) |    // three kinds of two-keyword sites
-		   (qi::raw_token(T_CORE) >> coreclass) |
-		   (qi::raw_token(T_ENDCAP) > endcapclass) |
+      classrule = raw_token(T_CLASS) >
+	          ((raw_token(T_PAD) >> padclass) |    // three kinds of two-keyword sites
+		   (raw_token(T_CORE) >> coreclass) |
+		   (raw_token(T_ENDCAP) > endcapclass) |
 		   siteclass) > ';' ;               // try single keyword sites last
 
-      sitesym = (qi::raw_token(T_X) >> attr(SITESYM_X)) |
-	        (qi::raw_token(T_Y) >> attr(SITESYM_Y)) |
-	        (qi::raw_token(T_R90) >> attr(SITESYM_R90));
+      sitesym = (raw_token(T_X) >> attr(SITESYM_X)) |
+	        (raw_token(T_Y) >> attr(SITESYM_Y)) |
+	        (raw_token(T_R90) >> attr(SITESYM_R90));
 
       // BOZO add encountered sites to symbol table for checking
       // BOZO need a better way to handle case-insensitive keywords
-      siterule %= qi::raw_token(T_SITE) > tok.ident[_a = _1] >
+      siterule %= raw_token(T_SITE) > tok.ident[_a = _1] >
 	classrule >
-	-(qi::raw_token(T_SYMMETRY) > +sitesym > ';' ) >
+	-(raw_token(T_SYMMETRY) > +sitesym > ';' ) >
 	// BOZO use lefextent here
-	qi::raw_token(T_SIZE) > tok.double_ > qi::raw_token(T_BY) > tok.double_ > ';' >
+	raw_token(T_SIZE) > tok.double_ > raw_token(T_BY) > tok.double_ > ';' >
 	// BOZO optional ROWPATTERN goes here
-	qi::raw_token(T_END) > omit[tok.ident[_b = _1]] > eps[_a == _b];
+	raw_token(T_END) > omit[tok.ident[_b = _1]] > eps[_a == _b];
 
-      spacing = qi::raw_token(T_SPACING) >> *catchall >> qi::raw_token(T_END) > qi::raw_token(T_SPACING) ;
-      units = qi::raw_token(T_UNITS) >> *catchall >> qi::raw_token(T_END) >> qi::raw_token(T_UNITS) ;
+      spacing = raw_token(T_SPACING) >> *catchall >> raw_token(T_END) > raw_token(T_SPACING) ;
+      units = raw_token(T_UNITS) >> *catchall >> raw_token(T_END) >> raw_token(T_UNITS) ;
 
       // macro properties
       point = tok.double_ >> tok.double_ ;
-      foreign = qi::raw_token(T_FOREIGN) > tok.ident > point > ';' ;
-      origin  = qi::raw_token(T_ORIGIN) > point > ';' ;
-      macrosymmetry = qi::raw_token(T_SYMMETRY) > *sitesym > ';' ;
-      macrosize = qi::raw_token(T_SIZE) > tok.double_ > no_case[qi::raw_token(T_BY)] > tok.double_ > ';' ;
+      foreign = raw_token(T_FOREIGN) > tok.ident > point > ';' ;
+      origin  = raw_token(T_ORIGIN) > point > ';' ;
+      macrosymmetry = raw_token(T_SYMMETRY) > *sitesym > ';' ;
+      macrosize = raw_token(T_SIZE) > tok.double_ > no_case[raw_token(T_BY)] > tok.double_ > ';' ;
 
       // macro elements
-      pin_geom = qi::raw_token(T_PORT) >> *(qi::raw_token(T_LAYER) > tok.ident > ';' > +(tok.ident | tok.double_ | ';')) > qi::raw_token(T_END) ;
-      pin = qi::raw_token(T_PIN) > tok.ident[_a = _1] >>
+      pin_geom = raw_token(T_PORT) >> *(raw_token(T_LAYER) > tok.ident > ';' > +(tok.ident | tok.double_ | ';')) > raw_token(T_END) ;
+      pin = raw_token(T_PIN) > tok.ident[_a = _1] >>
 	*(catchall | padclass | pin_geom) >>
-	qi::raw_token(T_END) >> tok.ident[_b = _1] > eps(_a == _b) ;
-      obs = qi::raw_token(T_OBS) > *(catchall | qi::raw_token(T_LAYER)) > qi::raw_token(T_END) ;
+	raw_token(T_END) >> tok.ident[_b = _1] > eps(_a == _b) ;
+      obs = raw_token(T_OBS) > *(catchall | raw_token(T_LAYER)) > raw_token(T_END) ;
 
-      macro = qi::raw_token(T_MACRO) > tok.ident[_a = _1, at_c<0>(_val) = _1] >
+      macro = raw_token(T_MACRO) > tok.ident[_a = _1, at_c<0>(_val) = _1] >
 	// these can be in any order, but the caret checks that at least one is present
 	// SIZE is required, so I guess that makes it work
 	// have to use semantic actions here because the () grouped stuff becomes its own sequence
@@ -261,11 +262,11 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
 	 origin[at_c<3>(_val) = _1] ^
 	 macrosize[at_c<4>(_val) = _1] ^
 	 macrosymmetry[at_c<5>(_val) = _1] ^
-	 (qi::raw_token(T_SITE) > tok.ident[at_c<6>(_val) = _1] > ';')) >
+	 (raw_token(T_SITE) > tok.ident[at_c<6>(_val) = _1] > ';')) >
 	// BOZO not stored for now:
 	*pin >
 	-obs >
-	qi::raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
+	raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
 
 
       // define some major elements
@@ -276,7 +277,7 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
       lef_file = *(casesens | units | spacing | layer | via | viarule |
 		   siterule [push_back(at_c<0>(_val), _1)] |
 		   macro [push_back(at_c<1>(_val), _1)])
-	>> -(qi::raw_token(T_END) > qi::raw_token(T_LIBRARY)) ;
+	>> -(raw_token(T_END) > raw_token(T_LIBRARY)) ;
 
       // Debugging assistance
       BOOST_SPIRIT_DEBUG_NODE(casesens);

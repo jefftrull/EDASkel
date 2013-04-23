@@ -159,13 +159,14 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       using boost::phoenix::val;                // for error handling
       using boost::phoenix::construct;          // for error handling
       using boost::phoenix::at_c;               // to refer to pieces of wrapped structs
+      using qi::raw_token;                      // to turn token IDs into qi parsers
 
       // top-level elements in a DEF file
-      version_stmt = qi::raw_token(T_VERSION) > tok.double_ > ';' ;
+      version_stmt = raw_token(T_VERSION) > tok.double_ > ';' ;
 
       point %= '(' >> tok.int_ >> tok.int_ >> ')' ;       // points are parenthesized pairs, no comma
       rect %= point >> point ;                            // rects are just two points in a row
-      diearea_stmt %= qi::raw_token(T_DIEAREA) > rect > ';' ;
+      diearea_stmt %= raw_token(T_DIEAREA) > rect > ';' ;
 
       // define some major elements
 
@@ -176,9 +177,9 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       plcinfo %= '+' >> ((qi::token(T_FIXED) > point > tok.orient_) |
 			 (qi::token(T_PLACED) > point > tok.orient_)) ;    // location and orientation
 
-      weight %= '+' >> qi::raw_token(T_WEIGHT) > tok.int_ ;
+      weight %= '+' >> raw_token(T_WEIGHT) > tok.int_ ;
 
-      source = '+' >> qi::raw_token(T_SOURCE) > (qi::raw_token(T_DIST) | qi::raw_token(T_NETLIST) | qi::raw_token(T_USER) | qi::raw_token(T_TIMING)) ;
+      source = '+' >> raw_token(T_SOURCE) > (raw_token(T_DIST) | raw_token(T_NETLIST) | raw_token(T_USER) | raw_token(T_TIMING)) ;
 
       // components required instance name and celltype; optional any (or none) of placement and weight, in any order:
       component %= '-' > tok.ident_ > tok.ident_ > (plcinfo ^ omit[weight] ^ source ^ eps ) > ';' ;
@@ -187,47 +188,47 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       // I tried to make this generic but failed.  You can pass in the rule as an inherited attribute,
       // but the type of the parent rule needs to be different for each since the synthesized attribute is
       // different (i.e., std::vector<attribute_of_child_rule>)
-      comps_section %= qi::raw_token(T_COMPONENTS) > omit[tok.int_[_a = _1]] > ';' >  // remember count in a local variable
+      comps_section %= raw_token(T_COMPONENTS) > omit[tok.int_[_a = _1]] > ';' >  // remember count in a local variable
 	               repeat(_a)[component] >                           // expect that many copies of the supplied rule
-	qi::raw_token(T_END) > qi::raw_token(T_COMPONENTS) ;       // END followed by the section name again
+	raw_token(T_END) > raw_token(T_COMPONENTS) ;       // END followed by the section name again
 
       // My copy of the LEF/DEF reference does not show this SITE command as valid for DEF yet my example data does...
       // The example data's syntax is very similar to that defined for ROW, so I'll combine them
-      siterpt_stmt = qi::raw_token(T_DO) > tok.int_ > qi::raw_token(T_BY) > tok.int_ > -(qi::raw_token(T_STEP) > tok.int_ > tok.int_) ;
-      rowsite_stmt = ((qi::raw_token(T_ROW) > tok.ident_) | qi::raw_token(T_SITE)) > tok.ident_ > tok.int_ > tok.int_ > tok.orient_ >
+      siterpt_stmt = raw_token(T_DO) > tok.int_ > raw_token(T_BY) > tok.int_ > -(raw_token(T_STEP) > tok.int_ > tok.int_) ;
+      rowsite_stmt = ((raw_token(T_ROW) > tok.ident_) | raw_token(T_SITE)) > tok.ident_ > tok.int_ > tok.int_ > tok.orient_ >
 	             -siterpt_stmt > ';' ;
 
-      dbu = qi::raw_token(T_UNITS) > qi::raw_token(T_DISTANCE) > qi::raw_token(T_MICRONS) > tok.int_ > ';' ;
+      dbu = raw_token(T_UNITS) > raw_token(T_DISTANCE) > raw_token(T_MICRONS) > tok.int_ > ';' ;
 
       // This parser only handles components and a couple of misc. statements
       // here's a catchall parser to discard all other data
-      tracks_stmt = qi::raw_token(T_TRACKS) >> *(tok.ident_ | qi::raw_token(T_DO) | qi::raw_token(T_STEP) | tok.int_) > ';' ;
-      gcellgrid_stmt = qi::raw_token(T_GCELLGRID) > *(tok.ident_ | qi::raw_token(T_DO) | qi::raw_token(T_STEP) | tok.int_) > ';' ;
+      tracks_stmt = raw_token(T_TRACKS) >> *(tok.ident_ | raw_token(T_DO) | raw_token(T_STEP) | tok.int_) > ';' ;
+      gcellgrid_stmt = raw_token(T_GCELLGRID) > *(tok.ident_ | raw_token(T_DO) | raw_token(T_STEP) | tok.int_) > ';' ;
 
       // counted, but currently unparsed, stuff:
-      vias_section %= qi::raw_token(T_VIAS) > omit[tok.int_[_a = _1]] > ';' > 
+      vias_section %= raw_token(T_VIAS) > omit[tok.int_[_a = _1]] > ';' > 
 	              repeat(_a)['-' > *~qi::char_(';') > ';'] >
-	qi::raw_token(T_END) > qi::raw_token(T_VIAS) ;
-      nets_section %= qi::raw_token(T_NETS) > omit[tok.int_[_a = _1]] > ';' > 
+	raw_token(T_END) > raw_token(T_VIAS) ;
+      nets_section %= raw_token(T_NETS) > omit[tok.int_[_a = _1]] > ';' > 
 	              repeat(_a)['-' > *~qi::char_(';') > ';'] >
-	qi::raw_token(T_END) > qi::raw_token(T_NETS) ;
-      specialnets_section %= qi::raw_token(T_SPECIALNETS) > omit[tok.int_[_a = _1]] > ';' > 
+	raw_token(T_END) > raw_token(T_NETS) ;
+      specialnets_section %= raw_token(T_SPECIALNETS) > omit[tok.int_[_a = _1]] > ';' > 
 	              repeat(_a)['-' > *~qi::char_(';') > ';'] >
-	qi::raw_token(T_END) > qi::raw_token(T_SPECIALNETS) ;
-      pins_section %= qi::raw_token(T_PINS) > omit[tok.int_[_a = _1]] > ';' > 
+	raw_token(T_END) > raw_token(T_SPECIALNETS) ;
+      pins_section %= raw_token(T_PINS) > omit[tok.int_[_a = _1]] > ';' > 
 	              repeat(_a)['-' > *~qi::char_(';') > ';'] >
-	qi::raw_token(T_END) > qi::raw_token(T_PINS) ;
+	raw_token(T_END) > raw_token(T_PINS) ;
 
       unparsed = vias_section | nets_section | specialnets_section | pins_section | tracks_stmt | gcellgrid_stmt | history_stmt ;
 
-      def_file = qi::raw_token(T_DESIGN) > tok.ident_[at_c<0>(_val) = _1] > ';' >
+      def_file = raw_token(T_DESIGN) > tok.ident_[at_c<0>(_val) = _1] > ';' >
                  *(version_stmt[at_c<1>(_val) = _1] |
 		   diearea_stmt[at_c<2>(_val) = _1] |
 		   dbu[at_c<3>(_val) = _1] |
       	           comps_section[at_c<4>(_val) = _1] |
 		   rowsite_stmt[push_back(at_c<5>(_val), _1)] |
 		   unparsed) >
-	qi::raw_token(T_END) > qi::raw_token(T_DESIGN) ;
+	raw_token(T_END) > raw_token(T_DESIGN) ;
 
       // Debugging assistance
 
