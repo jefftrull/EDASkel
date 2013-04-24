@@ -52,6 +52,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       using boost::phoenix::at_c;               // to refer to pieces of wrapped structs
       using boost::spirit::repository::dkwd;
       using boost::spirit::repository::kwd;
+      using boost::spirit::qi::no_skip;         // when we (rarely) actually want the whitespace
 
       // top-level elements in a DEF file
       version_stmt = dkwd("VERSION", 1)[double_] > ';' ;
@@ -99,9 +100,11 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 
       dbu = dkwd("UNITS", 1)[dkwd("DISTANCE", 1)[dkwd("MICRONS", 1)[int_]]] > ';' ;
 
+      semi_terminated = no_skip[*(char_ - ';') > ';'] ;
       def_file = dkwd("DESIGN")[dname[at_c<0>(_val) = _1]] > ';' >
 	           // one giant case statement, of sorts, made possible by "dkwd"
 	           (dkwd("VERSION", 0, 1)[(double_ > ';')[at_c<1>(_val) = _1]] /
+                    dkwd("HISTORY")[semi_terminated [push_back(at_c<6>(_val), _1)]] /
 		    dkwd("DIEAREA", 0, 1)[(rect[at_c<2>(_val) = _1] > ';')] /
 		    dkwd("UNITS", 0, 1)[dkwd("DISTANCE")[dkwd("MICRONS")[(int_[at_c<3>(_val) = _1] > ';')]]] /
 		    // a semi-manual approach to repeated components.  May need to make my own directive
@@ -115,8 +118,8 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 		    dkwd("SITE")[site[push_back(at_c<5>(_val), _1)]] /
 		    // catchall parsers for stuff we don't handle yet
 		    dkwd((string("VIAS")|string("NETS")|string("SPECIALNETS")|string("PINS"))[_b=_1]
-			 )[int_ > ';' > *('-' > *(char_ - ';') > ';') > dkwd("END", 1)[lit(_b)]] /
-		    dkwd(string("TRACKS")|string("GCELLGRID")|string("HISTORY"))[*(char_ - ';') > ';']) >
+                       )[int_ > ';' > *('-' > semi_terminated) > dkwd("END", 1)[lit(_b)]] /
+		    dkwd(string("TRACKS")|string("GCELLGRID"))[semi_terminated]) >
 	dkwd("END", 1)[kwd("DESIGN", 1)[eps]] ;
 
       // Debugging assistance
@@ -130,6 +133,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       component.name("Component");
       orient.name("Orientation");
       plcinfo.name("Optional Placement Info");
+      semi_terminated.name("Semicolon-terminated string");
 
       on_error<fail>
         (
@@ -146,6 +150,9 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 
   // VERSION takes no parameters (a.k.a. "inherited attributes") and synthesizes a double for its attribute
   boost::spirit::qi::rule<Iterator, double(), lefdefskipper<Iterator> > version_stmt;
+
+  // for HISTORY, and for grabbing things we don't yet parse
+  boost::spirit::qi::rule<Iterator, std::string(), lefdefskipper<Iterator> > semi_terminated;
 
   // points "( x y )" produces defpoint structs (see deftypes.h)
   boost::spirit::qi::rule<Iterator, defpoint(), lefdefskipper<Iterator> > point;

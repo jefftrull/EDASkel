@@ -75,6 +75,7 @@ struct def {
   int dbupermicron;
   std::vector<defcomponent> components;
   std::vector<rowsite> rows;
+  std::vector<std::string> history;
 };
 
 }
@@ -135,6 +136,7 @@ BOOST_FUSION_ADAPT_STRUCT(
   (int, dbupermicron)
   (std::vector<DefParse::defcomponent>, components)
   (std::vector<DefParse::rowsite>, rows)
+  (std::vector<std::string>, history)
 )
 
 #endif

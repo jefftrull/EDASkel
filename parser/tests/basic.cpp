@@ -181,9 +181,7 @@ BOOST_AUTO_TEST_CASE( history ) {
   testdef.unsetf(std::ios::skipws);
   LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );
+  BOOST_CHECK( phrase_parse(beg, end, defParser, lefdefSkipper, result) );
   BOOST_CHECK( (beg == end) );                         // we should consume all input
   BOOST_CHECK_EQUAL( result.name, "test" );
   BOOST_REQUIRE_EQUAL( 3, result.history.size() );
