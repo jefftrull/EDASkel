@@ -19,7 +19,6 @@
 #define BOOST_TEST_MODULE basic test
 #include <boost/test/included/unit_test.hpp>
 
-#include "../lefdef.h"
 #include "../defparser.h"
 #include <string>
 #include <iostream>
@@ -194,3 +193,19 @@ BOOST_AUTO_TEST_CASE ( parse_ignored_stuff ) {
   BOOST_CHECK_EQUAL( result.components[0].placement->orient, "FN" );
 }
   
+BOOST_AUTO_TEST_CASE( history ) {
+  // history entries can have any random thing, some of which resembles other valid syntax
+   std::stringstream testdef("DESIGN test ;\nHISTORY basic history line;\nHISTORY extra keywords VERSION 1.211 DIEAREA ( 0 0 ) ( 10 10 ) COMPONENTS END COMPONENTS;\nHISTORY SPECIALNETS 1 more keywords END SPECIALNETS;\nEND DESIGN\n");
+  testdef.unsetf(std::ios::skipws);
+  LefDefIter beg = LefDefIter(testdef), end;
+  def result;
+  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
+  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
+  BOOST_CHECK( parse(it, lex_end, defParser, result) );
+  BOOST_CHECK( (beg == end) );                         // we should consume all input
+  BOOST_CHECK_EQUAL( result.name, "test" );
+  BOOST_REQUIRE_EQUAL( 3, result.history.size() );
+  BOOST_CHECK_EQUAL( "basic history line", result.history[0] );
+  BOOST_CHECK_EQUAL( "extra keywords VERSION 1.211 DIEAREA ( 0 0 ) ( 10 10 ) COMPONENTS END COMPONENTS", result.history[1] );
+  BOOST_CHECK_EQUAL( "SPECIALNETS 1 more keywords END SPECIALNETS", result.history[2] );
+}
