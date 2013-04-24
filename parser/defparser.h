@@ -46,11 +46,21 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
 {
   DefTokens()
     : orient_("F?[NSEW]"),
+      history_("^HISTORY[^;]*;"),
       double_("-?[0-9]+\\.[0-9]+"),
       int_("-?[0-9]+")
-
   {
     namespace lex = boost::spirit::lex;
+    // for lex semantic actions
+    using lex::_val;
+    using lex::_start;
+    using lex::_end;
+    using namespace boost::phoenix::local_names;
+    using boost::phoenix::construct;
+    using boost::phoenix::let;
+    using boost::phoenix::begin;
+    using boost::phoenix::end;
+    namespace phx = boost::phoenix;
 
     // identifiers
     // we cannot distinguish in the lexer between the different valid instance, cell, and design names
@@ -62,14 +72,16 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
     // with potentially embedded, quoted bracketed numbers, and optionally a final unquoted bracketed number
     ident_ = "[a-zA-Z]([a-zA-Z0-9_/]|-|(\\\\\\[[0-9+]\\\\\\]))*(\\[[0-9]+\\])?";
     
-    // strip out HISTORY entries, which contain unusual characters and stuff that resembles real tokens
-    this->self += lex::string("^HISTORY[^;]*;")
-        [
-            lex::_pass = lex::pass_flags::pass_ignore
-        ];
-
     this->self +=
-        lex::string("VERSION", T_VERSION)
+      // history is highest priority - may contain keywords!
+      // cleaner, but gives syntax error:
+//      history_ [ _val = construct<std::string>(_val, 8, size(_val)-9) ]
+        history_ [ let(_a = construct<std::string>(_start, _end))
+                  // have to create a string to do this because _start/_end are istream iterators
+                  // and cannot be indexed (random access)
+                  [ _val = construct<std::string>(begin(_a)+8, end(_a) -1) ]
+          ]
+      | lex::string("VERSION", T_VERSION)
       | lex::string("DIEAREA", T_DIEAREA)
       | lex::string("WEIGHT", T_WEIGHT)
       | lex::string("SOURCE", T_SOURCE)
@@ -103,7 +115,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
       | '+' | '-' | '(' | ')' | ';'
       ;
 
-    // whitespace and comments... and HISTORY statements
+    // whitespace and comments
     this->self += lex::string("([ \\t\\n]+)|(#[^\\n]*\\n)")
         [
             lex::_pass = lex::pass_flags::pass_ignore
@@ -117,7 +129,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
   // attribute-less tokens are all done above by tokenid per hkaiser recommendation
 
   // string attribute tokens (different kinds of identifiers, mostly)
-  boost::spirit::lex::token_def<std::string> ident_, orient_;
+  boost::spirit::lex::token_def<std::string> ident_, orient_, history_;
   // numbers
   boost::spirit::lex::token_def<double> double_;
   boost::spirit::lex::token_def<int> int_;
@@ -227,6 +239,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 		   dbu[at_c<3>(_val) = _1] |
       	           comps_section[at_c<4>(_val) = _1] |
 		   rowsite_stmt[push_back(at_c<5>(_val), _1)] |
+                   tok.history_[push_back(at_c<6>(_val), _1)] |
 		   unparsed) >
 	raw_token(T_END) > raw_token(T_DESIGN) ;
 
