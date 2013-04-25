@@ -32,7 +32,6 @@ using namespace EDASkel;
 
 namespace DefParse {
 
-
 // a starter DEF grammar
 template <typename Iterator>
 struct defparser : boost::spirit::qi::grammar<Iterator,
@@ -148,46 +147,57 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 	 );
     }
 
+  // helpful abbreviations
+  typedef lefdefskipper<Iterator> skipper;
+
+  template<typename Signature>
+  struct Rule
+  {
+    typedef boost::spirit::qi::rule<Iterator, Signature, skipper> type;
+  };
+
   // VERSION takes no parameters (a.k.a. "inherited attributes") and synthesizes a double for its attribute
-  boost::spirit::qi::rule<Iterator, double(), lefdefskipper<Iterator> > version_stmt;
+  typename Rule<double()>::type version_stmt;
 
   // for HISTORY, and for grabbing things we don't yet parse
-  boost::spirit::qi::rule<Iterator, std::string(), lefdefskipper<Iterator> > semi_terminated;
+  typename Rule<std::string()>::type semi_terminated;
 
   // points "( x y )" produces defpoint structs (see deftypes.h)
-  boost::spirit::qi::rule<Iterator, defpoint(), lefdefskipper<Iterator> > point;
+  typename Rule<defpoint()>::type point;
   // rects "( llx lly ) ( urx ury )" synthesize defrect structs containing two points
-  boost::spirit::qi::rule<Iterator, defrect(), lefdefskipper<Iterator> > rect, diearea_stmt;
+  typename Rule<defrect()>::type rect, diearea_stmt;
 
-  typedef boost::spirit::qi::rule<Iterator, std::string(), lefdefskipper<Iterator> > StringRule;
+  typedef typename Rule<std::string()>::type StringRule;
   StringRule orient, dname, iname, ctype;
 
-  // rules neither inheriting nor synthesizing an attribute
-  typedef boost::spirit::qi::rule<Iterator, lefdefskipper<Iterator> > NoAttrRule;
+  // boost::spirit::qi::rules neither inheriting nor synthesizing an attribute
+  typedef boost::spirit::qi::rule<Iterator, skipper> NoAttrRule;
   NoAttrRule weight;
 
   // Site (or named row) statement
-  boost::spirit::qi::rule<Iterator, siterepeat(), lefdefskipper<Iterator> > siterpt_stmt;
-  boost::spirit::qi::rule<Iterator, rowsite(), lefdefskipper<Iterator> > row, site;
-  boost::spirit::qi::rule<Iterator, rowsite_b(), lefdefskipper<Iterator> > rowsite_body;
+  typename Rule<siterepeat()>::type siterpt_stmt;
+  typename Rule<rowsite()>::type row, site;
+  typename Rule<rowsite_b()>::type rowsite_body;
 
-  // rules pertaining to COMPONENTS - see deftypes.h for data results
+  // boost::spirit::qi::rules pertaining to COMPONENTS - see deftypes.h for data results
 
   // optional placement info (placed vs. fixed, location, orientation)
-  boost::spirit::qi::rule<Iterator, defplcinfo(), lefdefskipper<Iterator> > plcinfo;
+  typename Rule<defplcinfo()>::type plcinfo;
   // a single instance within the COMPONENTS section (name, celltype, placement)
-  boost::spirit::qi::rule<Iterator, defcomponent(), lefdefskipper<Iterator> > component;
-  // a rule representing the entire COMPONENTS section
-  boost::spirit::qi::rule<Iterator, std::vector<defcomponent>(), boost::spirit::qi::locals<int>, lefdefskipper<Iterator> > comps_section;
+  typename Rule<defcomponent()>::type component;
+  // a boost::spirit::qi::rule representing the entire COMPONENTS section
+  boost::spirit::qi::rule<Iterator, std::vector<defcomponent>(),
+     boost::spirit::qi::locals<int>, skipper> comps_section;
 
-  boost::spirit::qi::rule<Iterator, int(), lefdefskipper<Iterator> > dbu;
+  typename Rule<int()>::type dbu;
 
-  // a catchall rule for everything I don't (yet) parse.  No attribute synthesized.
-  boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string>, lefdefskipper<Iterator> > unparsed, tracks_stmt, gcellgrid_stmt, history_stmt, source;
+  // a catchall boost::spirit::qi::rule for everything I don't (yet) parse.  No attribute synthesized.
+  boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string>, skipper>
+    unparsed, tracks_stmt, gcellgrid_stmt, history_stmt, source;
 
   // The DEF file as a whole
   boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<int, std::string>,
-    def(), lefdefskipper<Iterator> > def_file;
+    def(), skipper> def_file;
 
 };
 

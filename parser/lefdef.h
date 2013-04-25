@@ -49,7 +49,6 @@ namespace EDASkel {
       boost::spirit::qi::rule<Iterator> skip_it;
       boost::spirit::qi::rule<Iterator> comment;
     };
-
 }
 
 #endif
