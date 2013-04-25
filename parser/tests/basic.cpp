@@ -31,16 +31,23 @@ namespace EDASkel {
 }
 using namespace EDASkel;
 
-BOOST_AUTO_TEST_CASE( version_parse_simple ) {
-
-  std::stringstream testdef("DESIGN test ;\nVERSION 1.211 ;\nEND DESIGN\n");
+// boilerplate parsing code
+void parse_check(std::string const& str, def& result) {
+  std::stringstream testdef(str);
   testdef.unsetf(std::ios::skipws);
-  LefDefIter beg(testdef);
+  LefDefIter beg(testdef), end;
   DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, LefDefIter());
   DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  def result;
   BOOST_CHECK( parse(it, lex_end, defParser, result) );  // we should match
-  BOOST_CHECK( (it == lex_end) );                        // we should consume all input
+  BOOST_CHECK( beg == end );                             // we should consume all input
+
+}
+
+BOOST_AUTO_TEST_CASE( version_parse_simple ) {
+
+  def result;
+  parse_check("DESIGN test ;\nVERSION 1.211 ;\nEND DESIGN\n", result);
+
   BOOST_CHECK_EQUAL( result.name, "test" );
   BOOST_CHECK_EQUAL( result.version, 1.211 );
 }
@@ -80,26 +87,16 @@ BOOST_AUTO_TEST_CASE ( version_parse_spaced_keywd ) {
 }
 
 BOOST_AUTO_TEST_CASE ( components_parse_empty ) {
-  std::stringstream testdef("DESIGN test ;\nCOMPONENTS 0 ;\nEND COMPONENTS\nEND DESIGN\n");
-  testdef.unsetf(std::ios::skipws);
-  LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );
-  BOOST_CHECK( beg == end );
+  parse_check("DESIGN test ;\nCOMPONENTS 0 ;\nEND COMPONENTS\nEND DESIGN\n", result);
+
   BOOST_CHECK( result.components.empty() );
 }
   
 BOOST_AUTO_TEST_CASE ( components_parse_simple ) {
-  std::stringstream testdef("DESIGN test-hyphenated ;\nVERSION 1.211 ;\nDIEAREA ( 0 0 ) ( 100000 200000 ) ;\nCOMPONENTS 1 ;\n - I111_uscore/hiername INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nSITE CORE1 0 0 N DO 200 BY 1 STEP 100 500 ;\nEND DESIGN\n");
-  testdef.unsetf(std::ios::skipws);
-  LefDefIter beg = LefDefIter(testdef), end;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
   def result;
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );
-  BOOST_CHECK( beg == end );
+  parse_check("DESIGN test-hyphenated ;\nVERSION 1.211 ;\nDIEAREA ( 0 0 ) ( 100000 200000 ) ;\nCOMPONENTS 1 ;\n - I111_uscore/hiername INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nSITE CORE1 0 0 N DO 200 BY 1 STEP 100 500 ;\nEND DESIGN\n", result);
+
   BOOST_CHECK_EQUAL( result.name, "test-hyphenated" );
   BOOST_CHECK_EQUAL( result.diearea.ll.x, 0 );
   BOOST_CHECK_EQUAL( result.diearea.ll.y, 0 );
@@ -116,14 +113,9 @@ BOOST_AUTO_TEST_CASE ( components_parse_simple ) {
 }
   
 BOOST_AUTO_TEST_CASE ( components_noplace ) {
-  std::stringstream testdef("DESIGN test ;\nCOMPONENTS 1 ;\n - I111 INVX2 ;\nEND COMPONENTS\nEND DESIGN\n");
-  testdef.unsetf(std::ios::skipws);
-  LefDefIter beg = LefDefIter(testdef), end;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
   def result;
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );
-  BOOST_CHECK( (beg == end) );                         // we should consume all input
+  parse_check("DESIGN test ;\nCOMPONENTS 1 ;\n - I111 INVX2 ;\nEND COMPONENTS\nEND DESIGN\n", result);
+
   BOOST_CHECK_EQUAL( result.name, "test" );
   BOOST_REQUIRE_EQUAL( result.components.size(), 1 );    // exactly one component read
   BOOST_CHECK_EQUAL( result.components[0].name, "I111" );
@@ -141,14 +133,9 @@ BOOST_AUTO_TEST_CASE ( components_parse_wrongcount ) {
 }
   
 BOOST_AUTO_TEST_CASE ( site_basic ) {
-  std::stringstream testdef("DESIGN test ;\nVERSION 1.211 ;\nDIEAREA ( 0 0 ) ( 100000 200000 ) ;\nSITE CORE1 10 20 N DO 200 BY 1 STEP 100 500 ;\nEND DESIGN\n");
-  testdef.unsetf(std::ios::skipws);
-  LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );
-  BOOST_CHECK( (beg == end) );
+  parse_check("DESIGN test ;\nVERSION 1.211 ;\nDIEAREA ( 0 0 ) ( 100000 200000 ) ;\nSITE CORE1 10 20 N DO 200 BY 1 STEP 100 500 ;\nEND DESIGN\n", result);
+
   BOOST_CHECK_EQUAL( result.diearea.ll.x, 0 );
   BOOST_CHECK_EQUAL( result.diearea.ll.y, 0 );
   BOOST_CHECK_EQUAL( result.diearea.ur.x, 100000 );
@@ -170,14 +157,9 @@ BOOST_AUTO_TEST_CASE ( site_basic ) {
 // BOZO when we eventually parse everything this won't be a very interesting test and probably should be removed,
 // or have previously ignored stuff checked
 BOOST_AUTO_TEST_CASE ( parse_ignored_stuff ) {
-  std::stringstream testdef("DESIGN test ;\nVERSION 1.211 ;\nDIEAREA ( 0 0 ) ( 100000 200000 ) ;\nCOMPONENTS 1 ;\n - I111 INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nSITE CORE1 0 0 N DO 200 BY 1 STEP 100 500 ;\nSPECIALNETS 1 ;\n - GND ;\nEND SPECIALNETS\nEND DESIGN\n");
-  testdef.unsetf(std::ios::skipws);
-  LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );
-  BOOST_CHECK( (beg == end) );                         // we should consume all input
+  parse_check("DESIGN test ;\nVERSION 1.211 ;\nDIEAREA ( 0 0 ) ( 100000 200000 ) ;\nCOMPONENTS 1 ;\n - I111 INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nSITE CORE1 0 0 N DO 200 BY 1 STEP 100 500 ;\nSPECIALNETS 1 ;\n - GND ;\nEND SPECIALNETS\nEND DESIGN\n", result);
+
   BOOST_CHECK_EQUAL( result.name, "test" );
   BOOST_CHECK_EQUAL( result.diearea.ll.x, 0 );
   BOOST_CHECK_EQUAL( result.diearea.ll.y, 0 );
@@ -195,14 +177,9 @@ BOOST_AUTO_TEST_CASE ( parse_ignored_stuff ) {
   
 BOOST_AUTO_TEST_CASE( history ) {
   // history entries can have any random thing, some of which resembles other valid syntax
-   std::stringstream testdef("DESIGN test ;\nHISTORY basic history line;\nHISTORY extra keywords VERSION 1.211 DIEAREA ( 0 0 ) ( 10 10 ) COMPONENTS END COMPONENTS;\nHISTORY SPECIALNETS 1 more keywords END SPECIALNETS;\nEND DESIGN\n");
-  testdef.unsetf(std::ios::skipws);
-  LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );
-  BOOST_CHECK( (beg == end) );                         // we should consume all input
+  parse_check("DESIGN test ;\nHISTORY basic history line;\nHISTORY extra keywords VERSION 1.211 DIEAREA ( 0 0 ) ( 10 10 ) COMPONENTS END COMPONENTS;\nHISTORY SPECIALNETS 1 more keywords END SPECIALNETS;\nEND DESIGN\n", result);
+
   BOOST_CHECK_EQUAL( result.name, "test" );
   BOOST_REQUIRE_EQUAL( 3, result.history.size() );
   BOOST_CHECK_EQUAL( "basic history line", result.history[0] );
