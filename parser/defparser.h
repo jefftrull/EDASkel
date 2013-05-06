@@ -156,13 +156,58 @@ struct error_info_impl
   }
 };
 
+// first define some major subcomponents in their own "grammar"
+
+// All parts of a COMPONENT statement
+template <typename Iterator, typename Lexer>
+struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
+{
+  template <typename TokenDef>
+  comp_parser(TokenDef const& tok) : comp_parser::base_type(comp)
+  {
+    using namespace boost::spirit::qi;
+
+    point %= '(' >> tok.int_ >> tok.int_ >> ')' ;       // points are parenthesized pairs, no comma
+
+    plcinfo %= '+' >> ((token(T_FIXED) > point > tok.orient_) |
+                       (token(T_PLACED) > point > tok.orient_)) ;    // location and orientation
+
+    weight %= '+' >> raw_token(T_WEIGHT) > tok.int_ ;
+
+    source = '+' >> raw_token(T_SOURCE) > (raw_token(T_DIST) | raw_token(T_NETLIST) | raw_token(T_USER) | raw_token(T_TIMING)) ;
+
+    // components required instance name and celltype; optional any (or none) of placement and weight, in any order:
+    comp %= '-' > tok.ident_ > tok.ident_ > (plcinfo ^ omit[weight] ^ source ^ eps ) > ';' ;
+
+    BOOST_SPIRIT_DEBUG_NODE(point);
+    BOOST_SPIRIT_DEBUG_NODE(weight);
+    BOOST_SPIRIT_DEBUG_NODE(source);
+    BOOST_SPIRIT_DEBUG_NODE(comp);
+
+    // on_error here does not work... not sure why
+
+  }
+  // top level COMPONENT
+  boost::spirit::qi::rule<Iterator, defcomponent()> comp;
+
+  // points "( x y )" produces defpoint structs (see deftypes.h)
+  boost::spirit::qi::rule<Iterator, defpoint()> point;
+
+  // optional placement info (placed vs. fixed, location, orientation)
+  boost::spirit::qi::rule<Iterator, defplcinfo()> plcinfo;
+
+  // WEIGHT/SOURCE - presently no attributes or locals (parsed but not stored)
+  boost::spirit::qi::rule<Iterator> weight, source;
+
+};   
 
 template <typename Iterator, typename Lexer>
 struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 {
 
   template <typename TokenDef>
-  defparser(TokenDef const& tok) : defparser::base_type(def_file)
+    defparser(TokenDef const& tok) : defparser::base_type(def_file),
+                                     component(tok)
     {
       using namespace boost::spirit::qi;
       namespace qi = boost::spirit::qi;
@@ -181,20 +226,6 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       diearea_stmt %= raw_token(T_DIEAREA) > rect > ';' ;
 
       // define some major elements
-
-      // components (instances)
-
-      // Using ">" here instead of ">>" implies a required sequence and allows the parser to check it
-      // specifically (instead of simply failing on the whole input)
-      plcinfo %= '+' >> ((qi::token(T_FIXED) > point > tok.orient_) |
-			 (qi::token(T_PLACED) > point > tok.orient_)) ;    // location and orientation
-
-      weight %= '+' >> raw_token(T_WEIGHT) > tok.int_ ;
-
-      source = '+' >> raw_token(T_SOURCE) > (raw_token(T_DIST) | raw_token(T_NETLIST) | raw_token(T_USER) | raw_token(T_TIMING)) ;
-
-      // components required instance name and celltype; optional any (or none) of placement and weight, in any order:
-      component %= '-' > tok.ident_ > tok.ident_ > (plcinfo ^ omit[weight] ^ source ^ eps ) > ';' ;
 
       // define repeat rules for each element section
       // I tried to make this generic but failed.  You can pass in the rule as an inherited attribute,
@@ -248,8 +279,6 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       BOOST_SPIRIT_DEBUG_NODE(version_stmt);
       BOOST_SPIRIT_DEBUG_NODE(diearea_stmt);
       BOOST_SPIRIT_DEBUG_NODE(comps_section);
-      BOOST_SPIRIT_DEBUG_NODE(component);
-      BOOST_SPIRIT_DEBUG_NODE(plcinfo);
       BOOST_SPIRIT_DEBUG_NODE(tracks_stmt);
 
       on_error<fail>
@@ -258,6 +287,12 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 	 , std::cerr << error_info(boost::spirit::_3, boost::spirit::_4) << std::endl
 	 );
     }
+
+  // a rule representing the entire COMPONENTS section
+  boost::spirit::qi::rule<Iterator, std::vector<defcomponent>(), boost::spirit::qi::locals<int> > comps_section;
+
+  // a single instance within the COMPONENTS section (name, celltype, placement)
+  comp_parser<Iterator, Lexer> component;
 
   // VERSION takes no parameters (a.k.a. "inherited attributes") and synthesizes a double for its attribute
   boost::spirit::qi::rule<Iterator, double()> version_stmt;
@@ -269,27 +304,14 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 
   typedef boost::spirit::qi::rule<Iterator, std::string()> StringRule;
 
-  // rules neither inheriting nor synthesizing an attribute
-  typedef boost::spirit::qi::rule<Iterator> NoAttrRule;
-  NoAttrRule weight;
-
   // Site (or named row) statement
   boost::spirit::qi::rule<Iterator, siterepeat()> siterpt_stmt;
   boost::spirit::qi::rule<Iterator, rowsite()> rowsite_stmt;
 
-  // rules pertaining to COMPONENTS - see deftypes.h for data results
-
-  // optional placement info (placed vs. fixed, location, orientation)
-  boost::spirit::qi::rule<Iterator, defplcinfo()> plcinfo;
-  // a single instance within the COMPONENTS section (name, celltype, placement)
-  boost::spirit::qi::rule<Iterator, defcomponent()> component;
-  // a rule representing the entire COMPONENTS section
-  boost::spirit::qi::rule<Iterator, std::vector<defcomponent>(), boost::spirit::qi::locals<int> > comps_section;
-
   boost::spirit::qi::rule<Iterator, int()> dbu;
 
   // a catchall rule for everything I don't (yet) parse.  No attribute synthesized.
-  boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string> > tracks_stmt, gcellgrid_stmt, history_stmt, source;
+  boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string> > tracks_stmt, gcellgrid_stmt, history_stmt;
   // stuff I count, but don't parse
   boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<int> > vias_section, nets_section, specialnets_section, pins_section;
   // top level unparsed section - no attribute, no local variables
