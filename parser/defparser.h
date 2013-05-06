@@ -216,13 +216,9 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
                                      component(tok)
     {
       using namespace boost::spirit::qi;
-      namespace qi = boost::spirit::qi;
       using boost::spirit::_1;                  // access attributes for component count check
       using boost::phoenix::push_back;          // to store results in containers
-      using boost::phoenix::val;                // for error handling
-      using boost::phoenix::construct;          // for error handling
       using boost::phoenix::at_c;               // to refer to pieces of wrapped structs
-      using qi::raw_token;                      // to turn token IDs into qi parsers
 
       // top-level elements in a DEF file
       version_stmt = raw_token(T_VERSION) > tok.double_ > ';' ;
@@ -239,7 +235,21 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       // different (i.e., std::vector<attribute_of_child_rule>)
       comps_section %= raw_token(T_COMPONENTS) > omit[tok.int_[_a = _1]] > ';' >  // remember count in a local variable
 	               repeat(_a)[component] >                           // expect that many copies of the supplied rule
-	raw_token(T_END) > raw_token(T_COMPONENTS) ;       // END followed by the section name again
+                       raw_token(T_END) > raw_token(T_COMPONENTS) ;      // END followed by the section name again
+
+      // Similarly, other counted (but currently unparsed) stuff:
+      vias_section %= raw_token(T_VIAS) > omit[tok.int_[_a = _1]] > ';' > 
+	              repeat(_a)['-' > *~char_(';') > ';'] >
+                      raw_token(T_END) > raw_token(T_VIAS) ;
+      nets_section %= raw_token(T_NETS) > omit[tok.int_[_a = _1]] > ';' > 
+	              repeat(_a)['-' > *~char_(';') > ';'] >
+                      raw_token(T_END) > raw_token(T_NETS) ;
+      specialnets_section %= raw_token(T_SPECIALNETS) > omit[tok.int_[_a = _1]] > ';' > 
+	                     repeat(_a)['-' > *~char_(';') > ';'] >
+                             raw_token(T_END) > raw_token(T_SPECIALNETS) ;
+      pins_section %= raw_token(T_PINS) > omit[tok.int_[_a = _1]] > ';' > 
+	              repeat(_a)['-' > *~char_(';') > ';'] >
+                      raw_token(T_END) > raw_token(T_PINS) ;
 
       // My copy of the LEF/DEF reference does not show this SITE command as valid for DEF yet my example data does...
       // The example data's syntax is very similar to that defined for ROW, so I'll combine them
@@ -253,20 +263,6 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       // here's a catchall parser to discard all other data
       tracks_stmt = raw_token(T_TRACKS) >> *(tok.ident_ | raw_token(T_DO) | raw_token(T_STEP) | tok.int_) > ';' ;
       gcellgrid_stmt = raw_token(T_GCELLGRID) > *(tok.ident_ | raw_token(T_DO) | raw_token(T_STEP) | tok.int_) > ';' ;
-
-      // counted, but currently unparsed, stuff:
-      vias_section %= raw_token(T_VIAS) > omit[tok.int_[_a = _1]] > ';' > 
-	              repeat(_a)['-' > *~qi::char_(';') > ';'] >
-	raw_token(T_END) > raw_token(T_VIAS) ;
-      nets_section %= raw_token(T_NETS) > omit[tok.int_[_a = _1]] > ';' > 
-	              repeat(_a)['-' > *~qi::char_(';') > ';'] >
-	raw_token(T_END) > raw_token(T_NETS) ;
-      specialnets_section %= raw_token(T_SPECIALNETS) > omit[tok.int_[_a = _1]] > ';' > 
-	              repeat(_a)['-' > *~qi::char_(';') > ';'] >
-	raw_token(T_END) > raw_token(T_SPECIALNETS) ;
-      pins_section %= raw_token(T_PINS) > omit[tok.int_[_a = _1]] > ';' > 
-	              repeat(_a)['-' > *~qi::char_(';') > ';'] >
-	raw_token(T_END) > raw_token(T_PINS) ;
 
       unparsed = vias_section | nets_section | specialnets_section | pins_section | tracks_stmt | gcellgrid_stmt | history_stmt ;
 
