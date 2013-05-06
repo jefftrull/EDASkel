@@ -184,7 +184,11 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
     BOOST_SPIRIT_DEBUG_NODE(source);
     BOOST_SPIRIT_DEBUG_NODE(comp);
 
-    // on_error here does not work... not sure why
+    on_error<fail>
+    (
+      comp
+    , std::cerr << error_info(boost::spirit::_3, boost::spirit::_4) << std::endl
+    );
 
   }
   // top level COMPONENT
@@ -199,6 +203,8 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
   // WEIGHT/SOURCE - presently no attributes or locals (parsed but not stored)
   boost::spirit::qi::rule<Iterator> weight, source;
 
+  // error handler
+  boost::phoenix::function<error_info_impl> error_info;
 };   
 
 template <typename Iterator, typename Lexer>
@@ -282,10 +288,10 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       BOOST_SPIRIT_DEBUG_NODE(tracks_stmt);
 
       on_error<fail>
-        (
-	 def_file
-	 , std::cerr << error_info(boost::spirit::_3, boost::spirit::_4) << std::endl
-	 );
+      (
+        def_file
+      , std::cerr << error_info(boost::spirit::_3, boost::spirit::_4) << std::endl
+      );
     }
 
   // a rule representing the entire COMPONENTS section
