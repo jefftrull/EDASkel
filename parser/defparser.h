@@ -33,6 +33,86 @@ using namespace EDASkel;
 namespace DefParse {
 
 // a starter DEF grammar
+
+// first define some major subcomponents in their own "grammar"
+
+// All parts of a COMPONENT statement
+template <typename Iterator>
+struct comp_parser : boost::spirit::qi::grammar<Iterator,
+                                              defcomponent(),
+                                              lefdefskipper<Iterator> >
+{
+
+  comp_parser() : comp_parser::base_type(component)
+    {
+      using namespace boost::spirit::qi;
+      using boost::spirit::repository::dkwd;
+
+      point %= '(' >> int_ >> int_ >> ')' ;       // points are parenthesized pairs, no comma
+
+      // components (instances)
+      orient = repeat(1)[char_("NSEW")] |         // a single cardinal direction, OR
+	        (char_('F') >> char_("NSEW")) ;   // the same, but flipped
+
+      // Using ">" here instead of ">>" implies a required sequence and allows the parser to check it
+      // specifically (instead of simply failing on the whole input)
+      plcinfo %= '+' >> (dkwd("FIXED", 1)[attr("FIXED") > point > orient] |
+			 dkwd("PLACED", 1)[attr("PLACED") > point > orient]) ;    // location and orientation
+
+      weight %= '+' >> dkwd("WEIGHT", 1)[int_] ;
+
+      source = '+' >> dkwd("SOURCE", 1) [(dkwd("DIST")[attr("DIST")] /
+					  dkwd("NETLIST")[attr("NETLIST")] /
+					  dkwd("USER")[attr("USER")] /
+					  dkwd("TIMING")[attr("TIMING")])] ;
+
+      // instance names: letter followed by letters, numbers, underscore, hyphen, square brackets, slashes (hierarchy)
+      // BOZO support escapes
+      iname %= lexeme[alpha >> *(alnum | char_('-') | char_('_') | char_('[') | char_(']') | char_('/'))] ;
+      // celltypes: assuming only underscore might be used out of the non-alphanumeric chars
+      ctype %= lexeme[alpha >> *(alnum | char_('_'))] ;
+
+      // components required instance name and celltype; optional any (or none) of placement and weight, in any order:
+      component %= '-' > iname > ctype > (plcinfo ^ omit[weight] ^ source ^ eps ) > ';' ;
+
+      weight.name("Weight");
+      source.name("Source");
+      iname.name("Instance Name");
+      ctype.name("Cell Type");
+      plcinfo.name("Optional Placement Info");
+      component.name("Component");
+
+    }
+
+  // helpful abbreviations
+  typedef lefdefskipper<Iterator> skipper;
+
+  template<typename Signature>
+    struct Rule
+    {
+      typedef boost::spirit::qi::rule<Iterator, Signature, skipper> type;
+    };
+
+  // boost::spirit::qi::rules pertaining to COMPONENTS - see deftypes.h for data results
+
+  // points "( x y )" produces defpoint structs (see deftypes.h)
+  typename Rule<defpoint()>::type point;
+
+  // optional placement info (placed vs. fixed, location, orientation)
+  typename Rule<defplcinfo()>::type plcinfo;
+
+  typename Rule<std::string()>::type orient, iname, ctype;
+
+
+  // boost::spirit::qi::rules neither inheriting nor synthesizing an attribute
+  // BOZO try unused_type here
+  boost::spirit::qi::rule<Iterator, skipper> weight, source;
+
+  // a single instance within the COMPONENTS section (name, celltype, placement)
+  typename Rule<defcomponent()>::type component;
+
+};
+
 template <typename Iterator>
 struct defparser : boost::spirit::qi::grammar<Iterator,
                                               boost::spirit::qi::locals<int, std::string>,
@@ -63,32 +143,15 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       // identifiers
       // design name: letter followed by letters, numbers, underscore, or hyphen
       dname %= lexeme[alpha >> *(alnum | char_('-') | char_('_'))] ;
-      // instance names: letter followed by letters, numbers, underscore, hyphen, square brackets, slashes (hierarchy)
-      // BOZO support escapes
-      iname %= lexeme[alpha >> *(alnum | char_('-') | char_('_') | char_('[') | char_(']') | char_('/'))] ;
+
       // celltypes: assuming only underscore might be used out of the non-alphanumeric chars
       ctype %= lexeme[alpha >> *(alnum | char_('_'))] ;
 
-      // define some major elements
-
-      // components (instances)
+      // orientation
       orient = repeat(1)[char_("NSEW")] |         // a single cardinal direction, OR
 	        (char_('F') >> char_("NSEW")) ;   // the same, but flipped
 
-      // Using ">" here instead of ">>" implies a required sequence and allows the parser to check it
-      // specifically (instead of simply failing on the whole input)
-      plcinfo %= '+' >> (dkwd("FIXED", 1)[attr("FIXED") > point > orient] |
-			 dkwd("PLACED", 1)[attr("PLACED") > point > orient]) ;    // location and orientation
-
-      weight %= '+' >> dkwd("WEIGHT", 1)[int_] ;
-
-      source = '+' >> dkwd("SOURCE", 1) [(dkwd("DIST")[attr("DIST")] /
-					  dkwd("NETLIST")[attr("NETLIST")] /
-					  dkwd("USER")[attr("USER")] /
-					  dkwd("TIMING")[attr("TIMING")])] ;
-
-      // components required instance name and celltype; optional any (or none) of placement and weight, in any order:
-      component %= '-' > iname > ctype > (plcinfo ^ omit[weight] ^ source ^ eps ) > ';' ;
+      // define some major elements
 
       // My copy of the LEF/DEF reference does not show this SITE command as valid for DEF yet my example data does...
       // The example data's syntax is very similar to that defined for ROW, so I'll combine them
@@ -124,14 +187,12 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       // Debugging assistance
 
       dname.name("Design Name");
-      iname.name("Instance Name");
-      ctype.name("Cell Type");
       version_stmt.name("VERSION");
       diearea_stmt.name("DIEAREA");
       comps_section.name("COMPONENTS Section");
       component.name("Component");
       orient.name("Orientation");
-      plcinfo.name("Optional Placement Info");
+      ctype.name("Cell Type");
       semi_terminated.name("Semicolon-terminated string");
 
       on_error<fail>
@@ -151,10 +212,10 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
   typedef lefdefskipper<Iterator> skipper;
 
   template<typename Signature>
-  struct Rule
-  {
-    typedef boost::spirit::qi::rule<Iterator, Signature, skipper> type;
-  };
+    struct Rule
+    {
+      typedef boost::spirit::qi::rule<Iterator, Signature, skipper> type;
+    };
 
   // VERSION takes no parameters (a.k.a. "inherited attributes") and synthesizes a double for its attribute
   typename Rule<double()>::type version_stmt;
@@ -168,23 +229,16 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
   typename Rule<defrect()>::type rect, diearea_stmt;
 
   typedef typename Rule<std::string()>::type StringRule;
-  StringRule orient, dname, iname, ctype;
-
-  // boost::spirit::qi::rules neither inheriting nor synthesizing an attribute
-  typedef boost::spirit::qi::rule<Iterator, skipper> NoAttrRule;
-  NoAttrRule weight;
+  StringRule orient, dname, ctype;
 
   // Site (or named row) statement
   typename Rule<siterepeat()>::type siterpt_stmt;
   typename Rule<rowsite()>::type row, site;
   typename Rule<rowsite_b()>::type rowsite_body;
 
-  // boost::spirit::qi::rules pertaining to COMPONENTS - see deftypes.h for data results
-
-  // optional placement info (placed vs. fixed, location, orientation)
-  typename Rule<defplcinfo()>::type plcinfo;
   // a single instance within the COMPONENTS section (name, celltype, placement)
-  typename Rule<defcomponent()>::type component;
+  comp_parser<Iterator> component;
+
   // a boost::spirit::qi::rule representing the entire COMPONENTS section
   boost::spirit::qi::rule<Iterator, std::vector<defcomponent>(),
      boost::spirit::qi::locals<int>, skipper> comps_section;
@@ -193,7 +247,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 
   // a catchall boost::spirit::qi::rule for everything I don't (yet) parse.  No attribute synthesized.
   boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string>, skipper>
-    unparsed, tracks_stmt, gcellgrid_stmt, history_stmt, source;
+    unparsed, tracks_stmt, gcellgrid_stmt, history_stmt;
 
   // The DEF file as a whole
   boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<int, std::string>,
