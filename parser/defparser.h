@@ -47,6 +47,8 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator,
     {
       using namespace boost::spirit::qi;
       using boost::spirit::repository::dkwd;
+      using boost::phoenix::val;                // for error handling
+      using boost::phoenix::construct;          // for error handling
 
       point %= '(' >> int_ >> int_ >> ')' ;       // points are parenthesized pairs, no comma
 
@@ -82,6 +84,17 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator,
       plcinfo.name("Optional Placement Info");
       component.name("Component");
 
+      on_error<fail>
+        (
+	 component
+       , std::cerr
+       << val("Error! Expecting ")
+       << boost::spirit::_4                               // what failed?
+       << val(" here: \"")
+       << construct<std::string>(boost::spirit::_3, boost::spirit::_2)   // iterators to error-pos, end
+       << val("\"")
+       << std::endl
+        );
     }
 
   // helpful abbreviations
