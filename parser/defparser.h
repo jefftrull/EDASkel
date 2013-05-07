@@ -216,9 +216,12 @@ struct net_parser : boost::spirit::qi::grammar<Iterator, defnet()>
   {
     using namespace boost::spirit::qi;
 
-    net = '-' > tok.ident_ > *~char_(';') > ';' ;
+    connection = '(' > tok.ident_ > tok.ident_ > ')' ;
+
+    net = '-' > tok.ident_ > *connection > ';' ;
   }
 
+  boost::spirit::qi::rule<Iterator, defconnection()> connection;
   boost::spirit::qi::rule<Iterator, defnet()> net;
 };   
 

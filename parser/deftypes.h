@@ -47,8 +47,11 @@ struct defcomponent {
   boost::optional<defplcinfo> placement;
 };
 
+typedef std::pair<std::string, std::string> defconnection;
+
 struct defnet {
   std::string name;
+  std::vector<defconnection> connections;
 };
 
 
@@ -111,6 +114,7 @@ BOOST_FUSION_ADAPT_STRUCT(
 BOOST_FUSION_ADAPT_STRUCT(
   DefParse::defnet,
   (std::string, name)
+  (std::vector<DefParse::defconnection>, connections)
 )
 
 BOOST_FUSION_ADAPT_STRUCT(

@@ -181,13 +181,18 @@ BOOST_AUTO_TEST_CASE( history ) {
 
 BOOST_AUTO_TEST_CASE( net_simple ) {
   def result;
-  parse_check("DESIGN test ;\nNETS 3 ;\n- ALPHA ;\n- BETA ;\n- GAMMA ;\nEND NETS\nEND DESIGN\n", result);
+  parse_check("DESIGN test ;\nCOMPONENTS 2;\n- X C ;\n- Y C ;\nEND COMPONENTS\nNETS 3 ;\n- ALPHA ( X P1 ) ( Y P2 ) ;\n- BETA ;\n- GAMMA ;\nEND NETS\nEND DESIGN\n", result);
 
   BOOST_CHECK_EQUAL( result.name, "test" );
   BOOST_REQUIRE_EQUAL( 3, result.nets.size() );
   BOOST_CHECK_EQUAL( "ALPHA", result.nets[0].name );
   BOOST_CHECK_EQUAL( "BETA", result.nets[1].name );
   BOOST_CHECK_EQUAL( "GAMMA", result.nets[2].name );
+  BOOST_REQUIRE_EQUAL( 2, result.nets[0].connections.size() );
+  BOOST_CHECK_EQUAL( "X", result.nets[0].connections[0].first );
+  BOOST_CHECK_EQUAL( "P1", result.nets[0].connections[0].second );
+  BOOST_CHECK_EQUAL( "Y", result.nets[0].connections[1].first );
+  BOOST_CHECK_EQUAL( "P2", result.nets[0].connections[1].second );
 }
 
 BOOST_AUTO_TEST_CASE( net_wrong_count ) {
