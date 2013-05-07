@@ -207,13 +207,29 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
   boost::phoenix::function<error_info_impl> error_info;
 };   
 
+// A NET statement
+template <typename Iterator, typename Lexer>
+struct net_parser : boost::spirit::qi::grammar<Iterator, defnet()>
+{
+  template <typename TokenDef>
+  net_parser(TokenDef const& tok) : net_parser::base_type(net)
+  {
+    using namespace boost::spirit::qi;
+
+    net = '-' > tok.ident_ > *~char_(';') > ';' ;
+  }
+
+  boost::spirit::qi::rule<Iterator, defnet()> net;
+};   
+
+
 template <typename Iterator, typename Lexer>
 struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 {
 
   template <typename TokenDef>
     defparser(TokenDef const& tok) : defparser::base_type(def_file),
-                                     component(tok)
+                                     component(tok), net(tok)
     {
       using namespace boost::spirit::qi;
       using boost::spirit::_1;                  // access attributes for component count check
@@ -242,7 +258,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 	              repeat(_a)['-' > *~char_(';') > ';'] >
                       raw_token(T_END) > raw_token(T_VIAS) ;
       nets_section %= raw_token(T_NETS) > omit[tok.int_[_a = _1]] > ';' > 
-	              repeat(_a)['-' > *~char_(';') > ';'] >
+	              repeat(_a)[net] >
                       raw_token(T_END) > raw_token(T_NETS) ;
       specialnets_section %= raw_token(T_SPECIALNETS) > omit[tok.int_[_a = _1]] > ';' > 
 	                     repeat(_a)['-' > *~char_(';') > ';'] >
@@ -264,15 +280,16 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       tracks_stmt = raw_token(T_TRACKS) >> *(tok.ident_ | raw_token(T_DO) | raw_token(T_STEP) | tok.int_) > ';' ;
       gcellgrid_stmt = raw_token(T_GCELLGRID) > *(tok.ident_ | raw_token(T_DO) | raw_token(T_STEP) | tok.int_) > ';' ;
 
-      unparsed = vias_section | nets_section | specialnets_section | pins_section | tracks_stmt | gcellgrid_stmt | history_stmt ;
+      unparsed = vias_section | specialnets_section | pins_section | tracks_stmt | gcellgrid_stmt | history_stmt ;
 
       def_file = raw_token(T_DESIGN) > tok.ident_[at_c<0>(_val) = _1] > ';' >
                  *(version_stmt[at_c<1>(_val) = _1] |
 		   diearea_stmt[at_c<2>(_val) = _1] |
 		   dbu[at_c<3>(_val) = _1] |
       	           comps_section[at_c<4>(_val) = _1] |
-		   rowsite_stmt[push_back(at_c<5>(_val), _1)] |
-                   tok.history_[push_back(at_c<6>(_val), _1)] |
+      	           nets_section[at_c<5>(_val) = _1] |
+		   rowsite_stmt[push_back(at_c<6>(_val), _1)] |
+                   tok.history_[push_back(at_c<7>(_val), _1)] |
 		   unparsed) >
 	raw_token(T_END) > raw_token(T_DESIGN) ;
 
@@ -296,6 +313,12 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
   // a single instance within the COMPONENTS section (name, celltype, placement)
   comp_parser<Iterator, Lexer> component;
 
+  // The entire NETS section
+  boost::spirit::qi::rule<Iterator, std::vector<defnet>(), boost::spirit::qi::locals<int> > nets_section;
+
+  // a single net within the NETS section
+  net_parser<Iterator, Lexer> net;
+
   // VERSION takes no parameters (a.k.a. "inherited attributes") and synthesizes a double for its attribute
   boost::spirit::qi::rule<Iterator, double()> version_stmt;
 
@@ -315,7 +338,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
   // a catchall rule for everything I don't (yet) parse.  No attribute synthesized.
   boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string> > tracks_stmt, gcellgrid_stmt, history_stmt;
   // stuff I count, but don't parse
-  boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<int> > vias_section, nets_section, specialnets_section, pins_section;
+  boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<int> > vias_section, specialnets_section, pins_section;
   // top level unparsed section - no attribute, no local variables
   boost::spirit::qi::rule<Iterator> unparsed;
 

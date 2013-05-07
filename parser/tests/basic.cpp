@@ -43,6 +43,17 @@ void parse_check(std::string const& str, def& result) {
 
 }
 
+void parse_check_fail(std::string const& str) {
+  std::stringstream testdef(str);
+  testdef.unsetf(std::ios::skipws);
+  LefDefIter beg(testdef), end;
+  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, LefDefIter());
+  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
+  def result;
+  BOOST_CHECK( !parse(it, lex_end, defParser, result) );  // we should NOT match
+
+}
+
 BOOST_AUTO_TEST_CASE( version_parse_simple ) {
 
   def result;
@@ -53,36 +64,17 @@ BOOST_AUTO_TEST_CASE( version_parse_simple ) {
 }
 
 BOOST_AUTO_TEST_CASE ( version_parse_nospace ) {
-
-  std::stringstream testdef("DESIGN test ;\nVERSION1.211 ;\nEND DESIGN\n");
-  testdef.unsetf(std::ios::skipws);
-  LefDefIter beg = LefDefIter(testdef), end;
-  // should fail ("distinct" issue)
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( !parse(it, lex_end, defParser) );
+  parse_check_fail("DESIGN test ;\nVERSION1.211 ;\nEND DESIGN\n");
 
 }
 
 BOOST_AUTO_TEST_CASE ( version_parse_nonnum ) {
-
-  std::stringstream testdef("DESIGN test ;\nVERSION 1.21a ;\nEND DESIGN\n");
-  testdef.unsetf(std::ios::skipws);
-  LefDefIter beg = LefDefIter(testdef), end;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( !parse(it, lex_end, defParser) );
+  parse_check_fail("DESIGN test ;\nVERSION 1.21a ;\nEND DESIGN\n");
 
 }
 
 BOOST_AUTO_TEST_CASE ( version_parse_spaced_keywd ) {
-
-  std::stringstream testdef("DESIGN test ;\nVER SION 1.211 ;\nEND DESIGN\n");
-  testdef.unsetf(std::ios::skipws);
-  LefDefIter beg = LefDefIter(testdef), end;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( !parse(it, lex_end, defParser) );
+  parse_check_fail("DESIGN test ;\nVER SION 1.211 ;\nEND DESIGN\n");
 
 }
 
@@ -185,4 +177,21 @@ BOOST_AUTO_TEST_CASE( history ) {
   BOOST_CHECK_EQUAL( "basic history line", result.history[0] );
   BOOST_CHECK_EQUAL( "extra keywords VERSION 1.211 DIEAREA ( 0 0 ) ( 10 10 ) COMPONENTS END COMPONENTS", result.history[1] );
   BOOST_CHECK_EQUAL( "SPECIALNETS 1 more keywords END SPECIALNETS", result.history[2] );
+}
+
+BOOST_AUTO_TEST_CASE( net_simple ) {
+  def result;
+  parse_check("DESIGN test ;\nNETS 3 ;\n- ALPHA ;\n- BETA ;\n- GAMMA ;\nEND NETS\nEND DESIGN\n", result);
+
+  BOOST_CHECK_EQUAL( result.name, "test" );
+  BOOST_REQUIRE_EQUAL( 3, result.nets.size() );
+  BOOST_CHECK_EQUAL( "ALPHA", result.nets[0].name );
+  BOOST_CHECK_EQUAL( "BETA", result.nets[1].name );
+  BOOST_CHECK_EQUAL( "GAMMA", result.nets[2].name );
+}
+
+BOOST_AUTO_TEST_CASE( net_wrong_count ) {
+  // both too many and too few
+  parse_check_fail("DESIGN test ;\nNETS 2 ;\n- ALPHA ;\n- BETA ;\n- GAMMA ;\nEND NETS\nEND DESIGN\n");
+  parse_check_fail("DESIGN test ;\nNETS 2 ;\n- ALPHA ;\nEND NETS\nEND DESIGN\n");
 }

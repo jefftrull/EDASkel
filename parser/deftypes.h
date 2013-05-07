@@ -47,6 +47,11 @@ struct defcomponent {
   boost::optional<defplcinfo> placement;
 };
 
+struct defnet {
+  std::string name;
+};
+
+
 // BOOST_FUSION_ADAPT_STRUCT is a macro and will be confused by this embedded comma unless:
 typedef std::pair<int, int> IntPair;
 struct siterepeat {
@@ -70,6 +75,7 @@ struct def {
   defrect diearea;
   int dbupermicron;
   std::vector<defcomponent> components;
+  std::vector<defnet> nets;
   std::vector<rowsite> rows;
   std::vector<std::string> history;
 };
@@ -103,6 +109,11 @@ BOOST_FUSION_ADAPT_STRUCT(
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
+  DefParse::defnet,
+  (std::string, name)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
   DefParse::siterepeat,
   (int, xrepeat)
   (int, yrepeat)
@@ -126,6 +137,7 @@ BOOST_FUSION_ADAPT_STRUCT(
   (DefParse::defrect, diearea)
   (int, dbupermicron)
   (std::vector<DefParse::defcomponent>, components)
+  (std::vector<DefParse::defnet>, nets)
   (std::vector<DefParse::rowsite>, rows)
   (std::vector<std::string>, history)
 )
