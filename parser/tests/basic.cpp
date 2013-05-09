@@ -42,6 +42,14 @@ void parse_check(std::string const& str, def& result) {
   BOOST_CHECK( (beg == end) );                        // we should consume all input
 }
 
+void parse_check_fail(std::string const& str) {
+  std::stringstream testdef(str);
+  testdef.unsetf(std::ios::skipws);
+  LefDefIter beg(testdef), end;
+  def result;
+  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper, result) );  // we should NOT match
+}
+
 BOOST_AUTO_TEST_CASE( version_parse_simple ) {
   def result;
   parse_check("DESIGN test ;\nVERSION 1.211 ;\nEND DESIGN\n", result);
@@ -175,4 +183,21 @@ BOOST_AUTO_TEST_CASE( history ) {
   BOOST_CHECK_EQUAL( "basic history line", result.history[0] );
   BOOST_CHECK_EQUAL( "extra keywords VERSION 1.211 DIEAREA ( 0 0 ) ( 10 10 ) COMPONENTS END COMPONENTS", result.history[1] );
   BOOST_CHECK_EQUAL( "SPECIALNETS 1 more keywords END SPECIALNETS", result.history[2] );
+}
+
+BOOST_AUTO_TEST_CASE( net_simple ) {
+  def result;
+  parse_check("DESIGN test ;\nCOMPONENTS 2;\n- X C ;\n- Y C ;\nEND COMPONENTS\nNETS 3 ;\n- ALPHA ( X P1 ) ( Y P2 ) ;\n- BETA ;\n- GAMMA ;\nEND NETS\nEND DESIGN\n", result);
+
+  BOOST_CHECK_EQUAL( result.name, "test" );
+  BOOST_REQUIRE_EQUAL( 3, result.nets.size() );
+  BOOST_CHECK_EQUAL( "ALPHA", result.nets[0].name );
+  BOOST_CHECK_EQUAL( "BETA", result.nets[1].name );
+  BOOST_CHECK_EQUAL( "GAMMA", result.nets[2].name );
+}
+
+BOOST_AUTO_TEST_CASE( net_wrong_count ) {
+  // both too many and too few
+  parse_check_fail("DESIGN test ;\nNETS 2 ;\n- ALPHA ;\n- BETA ;\n- GAMMA ;\nEND NETS\nEND DESIGN\n");
+  parse_check_fail("DESIGN test ;\nNETS 2 ;\n- ALPHA ;\nEND NETS\nEND DESIGN\n");
 }

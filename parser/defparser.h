@@ -126,6 +126,26 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator,
 
 };
 
+// A NET statement
+template <typename Iterator>
+struct net_parser : boost::spirit::qi::grammar<Iterator,
+                                              defnet(),
+                                              lefdefskipper<Iterator> >
+{
+  net_parser() : net_parser::base_type(net)
+   {
+     using namespace boost::spirit::qi;
+
+     nname %= lexeme[alpha >> *(alnum | char_('-') | char_('_') | char_('[') | char_(']') | char_('/'))] ;
+
+     net = '-' > nname > *~char_(';') > ';' ;
+  }
+
+  boost::spirit::qi::rule<Iterator, std::string(), lefdefskipper<Iterator> > nname;
+  boost::spirit::qi::rule<Iterator, defnet(), lefdefskipper<Iterator> > net;
+};  
+
+
 template <typename Iterator>
 struct defparser : boost::spirit::qi::grammar<Iterator,
                                               boost::spirit::qi::locals<int, std::string>,
@@ -179,7 +199,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       def_file = dkwd("DESIGN")[dname[at_c<0>(_val) = _1]] > ';' >
 	           // one giant case statement, of sorts, made possible by "dkwd"
 	           (dkwd("VERSION", 0, 1)[(double_ > ';')[at_c<1>(_val) = _1]] /
-                    dkwd("HISTORY")[semi_terminated [push_back(at_c<6>(_val), _1)]] /
+                    dkwd("HISTORY")[semi_terminated [push_back(at_c<7>(_val), _1)]] /
 		    dkwd("DIEAREA", 0, 1)[(rect[at_c<2>(_val) = _1] > ';')] /
 		    dkwd("UNITS", 0, 1)[dkwd("DISTANCE")[dkwd("MICRONS")[(int_[at_c<3>(_val) = _1] > ';')]]] /
 		    // a semi-manual approach to repeated components.  May need to make my own directive
@@ -189,8 +209,11 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 		    dkwd("COMPONENTS", 0, 1)[omit[int_[_a = _1]] > ';' >
 					     repeat(_a)[component[push_back(at_c<4>(_val), _1)]] >
 					     dkwd("END")[dkwd("COMPONENTS")[eps]]] /
-		    dkwd("ROW")[row[push_back(at_c<5>(_val), _1)]] /
-		    dkwd("SITE")[site[push_back(at_c<5>(_val), _1)]] /
+		    dkwd("NETS", 0, 1)[omit[int_[_a = _1]] > ';' >
+				       repeat(_a)[net[push_back(at_c<5>(_val), _1)]] >
+				       dkwd("END")[dkwd("NETS")[eps]]] /
+		    dkwd("ROW")[row[push_back(at_c<6>(_val), _1)]] /
+		    dkwd("SITE")[site[push_back(at_c<6>(_val), _1)]] /
 		    // catchall parsers for stuff we don't handle yet
 		    dkwd((string("VIAS")|string("NETS")|string("SPECIALNETS")|string("PINS"))[_b=_1]
                        )[int_ > ';' > *('-' > semi_terminated) > dkwd("END", 1)[lit(_b)]] /
@@ -202,7 +225,6 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       dname.name("Design Name");
       version_stmt.name("VERSION");
       diearea_stmt.name("DIEAREA");
-      comps_section.name("COMPONENTS Section");
       component.name("Component");
       orient.name("Orientation");
       ctype.name("Cell Type");
@@ -252,9 +274,8 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
   // a single instance within the COMPONENTS section (name, celltype, placement)
   comp_parser<Iterator> component;
 
-  // a boost::spirit::qi::rule representing the entire COMPONENTS section
-  boost::spirit::qi::rule<Iterator, std::vector<defcomponent>(),
-     boost::spirit::qi::locals<int>, skipper> comps_section;
+  // a single NET
+  net_parser<Iterator> net;
 
   typename Rule<int()>::type dbu;
 
