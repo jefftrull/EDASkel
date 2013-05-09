@@ -158,14 +158,23 @@ struct error_info_impl
 
 // first define some major subcomponents in their own "grammar"
 
-// All parts of a COMPONENT statement
+// Components
+typedef boost::spirit::qi::symbols<char, std::string> comp_symtab_t;  // for reference checking
+
 template <typename Iterator, typename Lexer>
 struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
 {
   template <typename TokenDef>
-  comp_parser(TokenDef const& tok) : comp_parser::base_type(comp)
+    comp_parser(TokenDef const& tok, comp_symtab_t& compsym) :
+   comp_parser::base_type(comp), comp_symtab(compsym)
   {
     using namespace boost::spirit::qi;
+    using boost::phoenix::bind;
+    using boost::phoenix::at_c;
+    using boost::spirit::_1;
+    using boost::spirit::_2;
+    using boost::spirit::_3;
+    using boost::spirit::_val;
 
     point %= '(' >> tok.int_ >> tok.int_ >> ')' ;       // points are parenthesized pairs, no comma
 
@@ -177,7 +186,9 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
     source = '+' >> raw_token(T_SOURCE) > (raw_token(T_DIST) | raw_token(T_NETLIST) | raw_token(T_USER) | raw_token(T_TIMING)) ;
 
     // components required instance name and celltype; optional any (or none) of placement and weight, in any order:
-    comp %= '-' > tok.ident_ > tok.ident_ > (plcinfo ^ omit[weight] ^ source ^ eps ) > ';' ;
+    comp = ( '-' > tok.ident_[at_c<0>(_val) = _1] > tok.ident_[at_c<1>(_val) = _1] >
+             (plcinfo[at_c<2>(_val) = _1] ^ omit[weight] ^ source ^ eps ) >
+             ';' )[bind(comp_symtab.add, _1, _1)];  // turn symbol table add into "lazy" function
 
     BOOST_SPIRIT_DEBUG_NODE(point);
     BOOST_SPIRIT_DEBUG_NODE(weight);
@@ -191,8 +202,12 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
     );
 
   }
+
   // top level COMPONENT
   boost::spirit::qi::rule<Iterator, defcomponent()> comp;
+
+  // Symbol table storage for components
+  comp_symtab_t& comp_symtab;
 
   // points "( x y )" produces defpoint structs (see deftypes.h)
   boost::spirit::qi::rule<Iterator, defpoint()> point;
@@ -212,10 +227,12 @@ template <typename Iterator, typename Lexer>
 struct net_parser : boost::spirit::qi::grammar<Iterator, defnet()>
 {
   template <typename TokenDef>
-  net_parser(TokenDef const& tok) : net_parser::base_type(net)
+  net_parser(TokenDef const& tok, comp_symtab_t const& compsym) :
+  net_parser::base_type(net), comp_symtab(compsym)
   {
     using namespace boost::spirit::qi;
 
+//    connection = '(' > comp_symtab > tok.ident_ > ')' ;
     connection = '(' > tok.ident_ > tok.ident_ > ')' ;
 
     net = '-' > tok.ident_ > *connection > ';' ;
@@ -223,6 +240,8 @@ struct net_parser : boost::spirit::qi::grammar<Iterator, defnet()>
 
   boost::spirit::qi::rule<Iterator, defconnection()> connection;
   boost::spirit::qi::rule<Iterator, defnet()> net;
+
+  comp_symtab_t const& comp_symtab;
 };   
 
 
@@ -232,7 +251,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 
   template <typename TokenDef>
     defparser(TokenDef const& tok) : defparser::base_type(def_file),
-                                     component(tok), net(tok)
+                                     component(tok, compsym), net(tok, compsym)
     {
       using namespace boost::spirit::qi;
       using boost::spirit::_1;                  // access attributes for component count check
@@ -312,6 +331,9 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 
   // a rule representing the entire COMPONENTS section
   boost::spirit::qi::rule<Iterator, std::vector<defcomponent>(), boost::spirit::qi::locals<int> > comps_section;
+
+  // a symbol table holding all the components that were found
+  comp_symtab_t compsym;
 
   // a single instance within the COMPONENTS section (name, celltype, placement)
   comp_parser<Iterator, Lexer> component;
