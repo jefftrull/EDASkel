@@ -36,19 +36,26 @@ namespace DefParse {
 
 // first define some major subcomponents in their own "grammar"
 
-// All parts of a COMPONENT statement
+// Components
+typedef boost::spirit::qi::symbols<char, std::string> comp_symtab_t;  // for reference checking
+
 template <typename Iterator>
 struct comp_parser : boost::spirit::qi::grammar<Iterator,
                                               defcomponent(),
                                               lefdefskipper<Iterator> >
 {
 
-  comp_parser() : comp_parser::base_type(component)
+  comp_parser(comp_symtab_t& compsym) : comp_parser::base_type(component), comp_symtab(compsym)
     {
       using namespace boost::spirit::qi;
       using boost::spirit::repository::dkwd;
       using boost::phoenix::val;                // for error handling
       using boost::phoenix::construct;          // for error handling
+      using boost::phoenix::at_c;
+      using boost::phoenix::bind;
+      using boost::spirit::_1;
+      using boost::spirit::_2;
+      using boost::spirit::_val;
 
       point %= '(' >> int_ >> int_ >> ')' ;     // points are parenthesized pairs, no comma
 
@@ -75,7 +82,9 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator,
       ctype %= lexeme[alpha >> *(alnum | char_('_'))] ;
 
       // components required instance name and celltype; optional any (or none) of placement and weight, in any order:
-      component %= '-' > iname > ctype > (plcinfo ^ omit[weight] ^ source ^ eps ) > ';' ;
+      component = ('-' > iname[at_c<0>(_val) = _1] > ctype[at_c<1>(_val) = _1] >
+                   (plcinfo[at_c<2>(_val) = _1] ^ omit[weight] ^ source ^ eps ) >
+                   ';' )[bind(comp_symtab.add, _1, _1)];  // turn symbol table add into "lazy" function
 
       weight.name("Weight");
       source.name("Source");
@@ -95,6 +104,11 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator,
        << val("\"")
        << std::endl
         );
+
+      // BOZO testing
+      comp_symtab.add("foo", "foo");
+      comp_symtab.add(std::string("bar"), std::string("bar"));
+
     }
 
   // helpful abbreviations
@@ -124,6 +138,9 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator,
   // a single instance within the COMPONENTS section (name, celltype, placement)
   typename Rule<defcomponent()>::type component;
 
+  // Symbol table storage for components
+  comp_symtab_t& comp_symtab;
+
 };
 
 // A NET statement
@@ -132,13 +149,13 @@ struct net_parser : boost::spirit::qi::grammar<Iterator,
                                               defnet(),
                                               lefdefskipper<Iterator> >
 {
-  net_parser() : net_parser::base_type(net)
+  net_parser(comp_symtab_t const& compsym) : net_parser::base_type(net), comp_symtab(compsym)
    {
      using namespace boost::spirit::qi;
 
      nname %= lexeme[alpha >> *(alnum | char_('-') | char_('_') | char_('[') | char_(']') | char_('/'))] ;
 
-     connection = '(' > nname > nname > ')' ;
+     connection = '(' > comp_symtab > nname > ')' ;
 
      net = '-' > nname > *connection > ';' ;
   }
@@ -147,6 +164,7 @@ struct net_parser : boost::spirit::qi::grammar<Iterator,
   boost::spirit::qi::rule<Iterator, std::string(), skipper_t> nname;
   boost::spirit::qi::rule<Iterator, std::pair<std::string, std::string>(), skipper_t> connection;
   boost::spirit::qi::rule<Iterator, defnet(), skipper_t> net;
+  comp_symtab_t const& comp_symtab;
 };  
 
 
@@ -157,7 +175,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
                                               lefdefskipper<Iterator> >
 {
 
-  defparser() : defparser::base_type(def_file)
+  defparser() : defparser::base_type(def_file), component(comp_symtab), net(comp_symtab)
     {
       using namespace boost::spirit::qi;
 
@@ -274,6 +292,9 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
   typename Rule<siterepeat()>::type siterpt_stmt;
   typename Rule<rowsite()>::type row, site;
   typename Rule<rowsite_b()>::type rowsite_body;
+
+  // storage for component names for ease of parse checking
+  comp_symtab_t comp_symtab;
 
   // a single instance within the COMPONENTS section (name, celltype, placement)
   comp_parser<Iterator> component;

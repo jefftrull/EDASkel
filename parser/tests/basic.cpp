@@ -193,3 +193,10 @@ BOOST_AUTO_TEST_CASE( net_wrong_count ) {
   parse_check_fail("DESIGN test ;\nNETS 2 ;\n- ALPHA ;\n- BETA ;\n- GAMMA ;\nEND NETS\nEND DESIGN\n");
   parse_check_fail("DESIGN test ;\nNETS 2 ;\n- ALPHA ;\nEND NETS\nEND DESIGN\n");
 }
+
+BOOST_AUTO_TEST_CASE( erroneous_connection ) {
+  // no components, but the one net refers to a pin on one
+  parse_check_fail("DESIGN test ;\nCOMPONENTS 0;\nEND COMPONENTS\nNETS 1 ;\n- OMEGA ( C1 A ) ;\nEND NETS\nEND DESIGN\n");
+  // two components, but one net refers to a nonexistent component
+  parse_check_fail("DESIGN test ;\nCOMPONENTS 2;\n- X C ;\n- Y C ;\nEND COMPONENTS\nNETS 3 ;\n- ALPHA ( BOGUS P1 ) ( Y P2 ) ;\n- BETA ( Y SOMEPIN ) ;\n- GAMMA ;\nEND NETS\nEND DESIGN\n");
+}
