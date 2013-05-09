@@ -50,11 +50,11 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator,
       using boost::phoenix::val;                // for error handling
       using boost::phoenix::construct;          // for error handling
 
-      point %= '(' >> int_ >> int_ >> ')' ;       // points are parenthesized pairs, no comma
+      point %= '(' >> int_ >> int_ >> ')' ;     // points are parenthesized pairs, no comma
 
       // components (instances)
-      orient = repeat(1)[char_("NSEW")] |         // a single cardinal direction, OR
-	        (char_('F') >> char_("NSEW")) ;   // the same, but flipped
+      orient = repeat(1)[char_("NSEW")] |       // a single cardinal direction, OR
+	       (char_('F') >> char_("NSEW")) ;  // the same, but flipped
 
       // Using ">" here instead of ">>" implies a required sequence and allows the parser to check it
       // specifically (instead of simply failing on the whole input)
@@ -149,8 +149,8 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       // top-level elements in a DEF file
       version_stmt = dkwd("VERSION", 1)[double_] > ';' ;
 
-      point %= '(' >> int_ >> int_ >> ')' ;       // points are parenthesized pairs, no comma
-      rect %= point >> point ;                    // rects are just two points in a row
+      point %= '(' >> int_ >> int_ >> ')' ;     // points are parenthesized pairs, no comma
+      rect %= point >> point ;                  // rects are just two points in a row
       diearea_stmt %= dkwd("DIEAREA", 1)[rect] > ';' ;
 
       // identifiers
@@ -161,8 +161,8 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       ctype %= lexeme[alpha >> *(alnum | char_('_'))] ;
 
       // orientation
-      orient = repeat(1)[char_("NSEW")] |         // a single cardinal direction, OR
-	        (char_('F') >> char_("NSEW")) ;   // the same, but flipped
+      orient = repeat(1)[char_("NSEW")] |       // a single cardinal direction, OR
+	        (char_('F') >> char_("NSEW")) ; // the same, but flipped
 
       // define some major elements
 
@@ -195,7 +195,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 		    dkwd((string("VIAS")|string("NETS")|string("SPECIALNETS")|string("PINS"))[_b=_1]
                        )[int_ > ';' > *('-' > semi_terminated) > dkwd("END", 1)[lit(_b)]] /
 		    dkwd(string("TRACKS")|string("GCELLGRID"))[semi_terminated]) >
-	dkwd("END", 1)[kwd("DESIGN", 1)[eps]] ;
+                 dkwd("END", 1)[kwd("DESIGN", 1)[eps]] ;
 
       // Debugging assistance
 
@@ -260,7 +260,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 
   // a catchall boost::spirit::qi::rule for everything I don't (yet) parse.  No attribute synthesized.
   boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string>, skipper>
-    unparsed, tracks_stmt, gcellgrid_stmt, history_stmt;
+    tracks_stmt, gcellgrid_stmt, history_stmt;
 
   // The DEF file as a whole
   boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<int, std::string>,
