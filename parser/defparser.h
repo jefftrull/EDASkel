@@ -138,11 +138,15 @@ struct net_parser : boost::spirit::qi::grammar<Iterator,
 
      nname %= lexeme[alpha >> *(alnum | char_('-') | char_('_') | char_('[') | char_(']') | char_('/'))] ;
 
-     net = '-' > nname > *~char_(';') > ';' ;
+     connection = '(' > nname > nname > ')' ;
+
+     net = '-' > nname > *connection > ';' ;
   }
 
-  boost::spirit::qi::rule<Iterator, std::string(), lefdefskipper<Iterator> > nname;
-  boost::spirit::qi::rule<Iterator, defnet(), lefdefskipper<Iterator> > net;
+  typedef lefdefskipper<Iterator> skipper_t;
+  boost::spirit::qi::rule<Iterator, std::string(), skipper_t> nname;
+  boost::spirit::qi::rule<Iterator, std::pair<std::string, std::string>(), skipper_t> connection;
+  boost::spirit::qi::rule<Iterator, defnet(), skipper_t> net;
 };  
 
 

@@ -51,6 +51,7 @@ void parse_check_fail(std::string const& str) {
 }
 
 BOOST_AUTO_TEST_CASE( version_parse_simple ) {
+
   def result;
   parse_check("DESIGN test ;\nVERSION 1.211 ;\nEND DESIGN\n", result);
 
@@ -59,30 +60,18 @@ BOOST_AUTO_TEST_CASE( version_parse_simple ) {
 }
 
 BOOST_AUTO_TEST_CASE ( version_parse_nospace ) {
-
-  std::stringstream testdef("DESIGN test ;\nVERSION1.211 ;\nEND DESIGN\n");
-  testdef.unsetf(std::ios::skipws);
-  LefDefIter beg = LefDefIter(testdef), end;
   // should fail ("distinct" issue)
-  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper) );
+  parse_check_fail("DESIGN test ;\nVERSION1.211 ;\nEND DESIGN\n");
 
 }
 
 BOOST_AUTO_TEST_CASE ( version_parse_nonnum ) {
-
-  std::stringstream testdef("DESIGN test ;\nVERSION 1.21a ;\nEND DESIGN\n");
-  testdef.unsetf(std::ios::skipws);
-  LefDefIter beg = LefDefIter(testdef), end;
-  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper) );
+  parse_check_fail("DESIGN test ;\nVERSION 1.21a ;\nEND DESIGN\n");
 
 }
 
 BOOST_AUTO_TEST_CASE ( version_parse_spaced_keywd ) {
-
-  std::stringstream testdef("DESIGN test ;\nVER SION 1.211 ;\nEND DESIGN\n");
-  testdef.unsetf(std::ios::skipws);
-  LefDefIter beg = LefDefIter(testdef), end;
-  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper) );
+  parse_check_fail("DESIGN test ;\nVER SION 1.211 ;\nEND DESIGN\n");
 
 }
 
@@ -124,10 +113,8 @@ BOOST_AUTO_TEST_CASE ( components_noplace ) {
 }  
 
 BOOST_AUTO_TEST_CASE ( components_parse_wrongcount ) {
-  std::stringstream testdef("DESIGN test ;\nCOMPONENTS 2 ;\n - I111 INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nEND DESIGN\n");
-  testdef.unsetf(std::ios::skipws);
-  LefDefIter beg = LefDefIter(testdef), end;
-  BOOST_CHECK( !phrase_parse(beg, end, defParser, lefdefSkipper) );
+  parse_check_fail("DESIGN test ;\nCOMPONENTS 2 ;\n - I111 INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nEND DESIGN\n");
+
 }
   
 BOOST_AUTO_TEST_CASE ( site_basic ) {
@@ -194,6 +181,11 @@ BOOST_AUTO_TEST_CASE( net_simple ) {
   BOOST_CHECK_EQUAL( "ALPHA", result.nets[0].name );
   BOOST_CHECK_EQUAL( "BETA", result.nets[1].name );
   BOOST_CHECK_EQUAL( "GAMMA", result.nets[2].name );
+  BOOST_REQUIRE_EQUAL( 2, result.nets[0].connections.size() );
+  BOOST_CHECK_EQUAL( "X", result.nets[0].connections[0].first );
+  BOOST_CHECK_EQUAL( "P1", result.nets[0].connections[0].second );
+  BOOST_CHECK_EQUAL( "Y", result.nets[0].connections[1].first );
+  BOOST_CHECK_EQUAL( "P2", result.nets[0].connections[1].second );
 }
 
 BOOST_AUTO_TEST_CASE( net_wrong_count ) {
