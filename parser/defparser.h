@@ -232,13 +232,28 @@ struct net_parser : boost::spirit::qi::grammar<Iterator, defnet()>
   {
     using namespace boost::spirit::qi;
 
-//    connection = '(' > comp_symtab > tok.ident_ > ')' ;
-    connection = '(' > tok.ident_ > tok.ident_ > ')' ;
+    // symbol tables cannot be used directly in parsers taking lexer tokens
+    // however, we can get the token's string value and then do a lookup
+    // we will do this for the component names supplied in connections
+
+    // disambiguate call to symbols::find
+    typedef typename comp_symtab_t::value_type const* (comp_symtab_t::*findfn_t)(std::string const&) const;
+
+    using boost::spirit::_1;
+    using boost::spirit::_a;
+    using boost::spirit::_val;
+    using boost::phoenix::at_c;
+    connection = '(' > tok.ident_[_a = _1] // component name
+               > eps[_pass = bind(static_cast<findfn_t>(&comp_symtab_t::find),
+                                  comp_symtab, _a)]
+               > tok.ident_[at_c<0>(_val) = _a, at_c<1>(_val) = _1] > ')' ;
 
     net = '-' > tok.ident_ > *connection > ';' ;
   }
 
-  boost::spirit::qi::rule<Iterator, defconnection()> connection;
+  boost::spirit::qi::rule<Iterator,
+                          boost::spirit::locals<std::string>,
+                          defconnection()> connection;
   boost::spirit::qi::rule<Iterator, defnet()> net;
 
   comp_symtab_t const& comp_symtab;
