@@ -10,8 +10,12 @@ if (CMAKE_COMPILER_IS_GNUCC)
   add_definitions(-std=c++0x)     # enable C++11
 endif()
 
+# for packages without a standard CMake find script:
+set( CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
+
 add_subdirectory( parser )
 add_subdirectory( gui )
 add_subdirectory( db )
 add_subdirectory( apps )
 add_subdirectory( tclint )
+add_subdirectory( analysis )
