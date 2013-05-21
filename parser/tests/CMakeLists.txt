@@ -7,3 +7,6 @@ foreach( tname basic lefbasic semantic )
   endif()
   target_link_libraries( ${tname} lefdef )
 endforeach()
+
+add_executable( spefbasic spefbasic.cpp )
+add_test( spefbasic spefbasic )
