@@ -30,11 +30,23 @@ void stamp(M& matrix, std::size_t i, Float g)
    matrix(i, i) += g;
 }
 
+// for voltage sources (inputs)
+template<typename M>
+void stamp_i(M& matrix, std::size_t vnodeno, std::size_t istateno)
+{
+   // just basically marks the connection between the inductor (or voltage source)
+   // and the voltage, because unlike capacitance, both are state variables.
+   // Doing this brings in the V = LdI/dt equations:
+
+   matrix(vnodeno, istateno) = 1;   // current is taken *into* inductor or vsource
+   matrix(istateno, vnodeno) = 1;
+}
+
 typedef vector<double> state_type;
 
 struct signal_coupling {
-  typedef Matrix<float, 8, 8> Matrix8f;
-  Matrix8f coeff_;
+  typedef Matrix<float, 10, 10> Matrix10f;
+  Matrix10f coeff_;
 
   double agg_r1_, agg_c1_;   // aggressor first stage pi model (prior to coupling point)
   double agg_r2_, agg_c2_;   // aggressor second stage pi model (after coupling point)
@@ -75,7 +87,7 @@ struct signal_coupling {
       // of V, giving us the desired format for odeint.
 
       // apply values via "stamp"
-      Matrix8f C = Matrix8f::Zero(), G = Matrix8f::Zero();
+      Matrix10f C = Matrix10f::Zero(), G = Matrix10f::Zero();
 
       stamp(G, 0, 1, 1/agg_imp_);   // driver impedances
       stamp(G, 4, 5, 1/vic_imp_);
@@ -102,6 +114,11 @@ struct signal_coupling {
 
       stamp(C, 3, agg_cl_);
       stamp(C, 7, vic_cl_);
+
+      // add an additional pair of equations for the independent sources
+      // aggressor and victim driver source currents will be nodes 8 and 9
+      stamp_i(G, 0, 8);
+      stamp_i(G, 4, 9);
 
       // Solve to produce a single matrix with the equations for each node
       coeff_ = C.fullPivLu().solve(-1.0 * G);
@@ -143,16 +160,16 @@ struct signal_coupling {
     {
       // BOZO std::accumulate with lambda or something
       dxdt[nodeno] = 0.f;
-      for (std::size_t stateno = 0; stateno <= 7; ++stateno)
+      for (std::size_t stateno = 0; stateno <= 9; ++stateno)
       {
          dxdt[nodeno] += coeff_(nodeno, stateno) * x[stateno];
       }
     }
 
-    for (std::size_t nodeno = 4; nodeno <= 7; ++nodeno)
+    for (std::size_t nodeno = 5; nodeno <= 9; ++nodeno)
     {
       dxdt[nodeno] = 0.f;
-      for (std::size_t stateno = 0; stateno <= 7; ++stateno)
+      for (std::size_t stateno = 0; stateno <= 9; ++stateno)
       {
          dxdt[nodeno] += coeff_(nodeno, stateno) * x[stateno];
       }
@@ -235,7 +252,7 @@ int main() {
 		      coupling_c, v);
 
   // initial state: all low
-  state_type x({0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  state_type x({0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
 
   vector<state_type> state_history;
   vector<double>     times;
