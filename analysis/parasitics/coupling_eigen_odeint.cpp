@@ -45,8 +45,8 @@ void stamp_i(M& matrix, std::size_t vnodeno, std::size_t istateno)
 typedef vector<double> state_type;
 
 struct signal_coupling {
-  typedef Matrix<float, 10, 10> Matrix10f;
-  Matrix10f coeff_;
+  typedef Matrix<double, 10, 10> Matrix10d;
+  Matrix10d coeff_;
 
   double agg_r1_, agg_c1_;   // aggressor first stage pi model (prior to coupling point)
   double agg_r2_, agg_c2_;   // aggressor second stage pi model (after coupling point)
@@ -87,7 +87,7 @@ struct signal_coupling {
       // of V, giving us the desired format for odeint.
 
       // apply values via "stamp"
-      Matrix10f C = Matrix10f::Zero(), G = Matrix10f::Zero();
+      Matrix10d C = Matrix10d::Zero(), G = Matrix10d::Zero();
 
       stamp(G, 0, 1, 1/agg_imp_);   // driver impedances
       stamp(G, 4, 5, 1/vic_imp_);
@@ -156,23 +156,15 @@ struct signal_coupling {
     }
 
     // All other node voltages are determined by odeint through our equations:
+    Map<const Matrix<double, 1, 10> > xvec(x.data());   // adapt std::vector to Eigen
     for (std::size_t nodeno = 1; nodeno <= 3; ++nodeno)
     {
-      // BOZO std::accumulate with lambda or something
-      dxdt[nodeno] = 0.f;
-      for (std::size_t stateno = 0; stateno <= 9; ++stateno)
-      {
-         dxdt[nodeno] += coeff_(nodeno, stateno) * x[stateno];
-      }
+      dxdt[nodeno] = coeff_.row(nodeno).dot(xvec);
     }
 
     for (std::size_t nodeno = 5; nodeno <= 9; ++nodeno)
     {
-      dxdt[nodeno] = 0.f;
-      for (std::size_t stateno = 0; stateno <= 9; ++stateno)
-      {
-         dxdt[nodeno] += coeff_(nodeno, stateno) * x[stateno];
-      }
+      dxdt[nodeno] = coeff_.row(nodeno).dot(xvec);
     }
 
   }

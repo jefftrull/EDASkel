@@ -47,7 +47,7 @@ typedef vector<double> state_type;
 struct rlc_tank {
   double r_, l_, c_;
   double vin_;
-  Matrix4f coeff_;
+  Matrix4d coeff_;
 
   rlc_tank(double r, double l, double c, double vin) : r_(r), l_(l), c_(c), vin_(vin) {
     // state variables are:
@@ -59,7 +59,7 @@ struct rlc_tank {
     // Create matrices implementing the equation G*X + C*dX/dt = u(t)
     // where u(t) is the independent sources
 
-    Matrix4f C = Matrix4f::Zero(), G = Matrix4f::Zero();
+    Matrix4d C = Matrix4d::Zero(), G = Matrix4d::Zero();
 
     stamp(G, 0, 1, 1.0/r_);
     stamp(C, 1, c_);
@@ -84,14 +84,10 @@ struct rlc_tank {
     }
 
     // All other node voltages are determined by odeint through our equations:
+    Map<const Matrix<double, 1, 4> > xvec(x.data());
     for (std::size_t nodeno = 1; nodeno <= 3; ++nodeno)
     {
-      // BOZO std::accumulate with lambda or something
-      dxdt[nodeno] = 0.f;
-      for (std::size_t stateno = 0; stateno <= 3; ++stateno)
-      {
-         dxdt[nodeno] += coeff_(nodeno, stateno) * x[stateno];
-      }
+      dxdt[nodeno] = coeff_.row(nodeno).dot(xvec);
     }
   }
 };
