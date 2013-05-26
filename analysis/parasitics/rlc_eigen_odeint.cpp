@@ -70,7 +70,7 @@ struct rlc_tank {
 
     // Rewrite equation as C*dX/dt = -G*X + u(t)
     // Solve to produce a single matrix with the equations for each node
-    coeff_ = C.fullPivLu().solve(-1.0 * G);
+    coeff_ = C.ldlt().solve(-1.0 * G);
      
   }
 

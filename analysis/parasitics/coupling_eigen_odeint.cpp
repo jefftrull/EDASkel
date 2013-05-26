@@ -121,7 +121,7 @@ struct signal_coupling {
       stamp_i(G, 4, 9);
 
       // Solve to produce a single matrix with the equations for each node
-      coeff_ = C.fullPivLu().solve(-1.0 * G);
+      coeff_ = C.ldlt().solve(-1.0 * G);
 }
 				   
   void operator() (const state_type x, state_type& dxdt, double t) {
