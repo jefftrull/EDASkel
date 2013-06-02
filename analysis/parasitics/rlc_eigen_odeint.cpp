@@ -39,7 +39,7 @@ void stamp_i(M& matrix, std::size_t vnodeno, std::size_t istateno)
    // Doing this brings in the V = LdI/dt equations:
 
    matrix(vnodeno, istateno) = 1;   // current is taken *into* inductor or vsource
-   matrix(istateno, vnodeno) = 1;
+   matrix(istateno, vnodeno) = -1;
 }
 
 typedef vector<double> state_type;
@@ -65,7 +65,7 @@ struct rlc_tank {
     stamp(C, 1, c_);
     stamp_i(G, 0, 2);   // connect input current to voltage source
     // for the inductor, two operations:
-    stamp(C, 3, -l_);   // set derivative coefficient (minus, because same side as voltage)
+    stamp(C, 3, l_);    // set derivative coefficient
     stamp_i(G, 1, 3);   // connect inductor current derivative to associated voltage
 
     // Rewrite equation as C*dX/dt = -G*X + u(t)
