@@ -203,12 +203,8 @@ struct rlc_tank {
     Map<const Matrix<double, 3, 1> > xvec(x.data());  // turn state vector into Eigen matrix
     Matrix<double, 1, 1> u; u << Va;                  // input excitation is 1x1 vector of Va
 
-    // BOZO one more rollup using Eigen features should be possible here:
-    for (size_t nodeno = 0; nodeno <= 2; ++nodeno)
-    {
-      // dx/dt = (Cprime.inverse() * -Gprime) * x + (Cprime.inverse() * Bprime) * u
-      dxdt[nodeno] = coeff_.row(nodeno).dot(xvec) + input_.row(nodeno).dot(u);
-    }
+    Map<Matrix<double, 3, 1> > result(dxdt.data());
+    result = coeff_ * xvec + input_ * u;
 
   }
 
