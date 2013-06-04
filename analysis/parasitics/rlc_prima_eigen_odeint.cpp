@@ -152,10 +152,9 @@ struct rlc_tank {
     // Step 6: Set Xfinal to the concatenation of all those bases we calculated above,
     //         truncated to q==3 columns
     size_t cols = accumulate(X.begin(), X.end(), 0,
-                             [](size_t sum,
-                                Matrix4dX const& m) { return sum + m.cols(); });
+                             [](size_t sum, Matrix4dX const& m) { return sum + m.cols(); });
 
-    Matrix<double, 4, 3> Xfinal(4, cols);
+    Matrix<double, 4, Dynamic> Xfinal(4, cols);
     size_t col = 0;
     for (size_t k = 0; (k <= n) && (col < cols); ++k)
     {
