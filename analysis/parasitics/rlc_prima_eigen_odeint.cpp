@@ -3,6 +3,7 @@
 // Jeff Trull 2013-06-01
 
 #include <vector>
+#include <algorithm>
 using namespace std;
 #include <boost/numeric/odeint.hpp>
 using namespace boost::numeric;
@@ -106,9 +107,10 @@ struct rlc_tank {
     // Inside the loop Xk[j] stores the temporary sequence that uses parenthesized (j) superscripts
     // Xfinal is the result matrix we get at the end
 
-    std::vector<Matrix<double, 4, 1>,
-                aligned_allocator<Matrix<double, 4,1> > > X;  // each item in the sequence of Xk's may have
-                // a different column count
+    typedef Matrix<double, 4, Dynamic> Matrix4dX;
+    typedef aligned_allocator<Matrix4dX> Allocator4dX;
+    typedef vector<Matrix4dX, Allocator4dX> Matrix4dXList;
+    Matrix4dXList X;  // each item in the sequence of Xk's may have a different column count
 
     // Step 3: Set X0 to the orthonormal basis of R as determined by QR factorization
     // As pointed out in Boyer for this case (R is a column vector) we simply normalize
@@ -123,8 +125,8 @@ struct rlc_tank {
     // Step 5: Block Arnoldi (see Boyer for detailed explanation)
     for (size_t k = 1; k <= n; ++k)
     {
-      std::vector<Matrix<double, 4, 1>,
-                  aligned_allocator<Matrix<double, 4, 1> > > Xk(n+1);
+      vector<Matrix<double, 4, 1>,
+             aligned_allocator<Matrix<double, 4, 1> > > Xk(n+1);
 
        // set V = C * X[k-1]
        auto V = C * X[k-1];
@@ -138,7 +140,7 @@ struct rlc_tank {
           auto H = X[k-j].transpose() * Xk[j-1];
 
           // X[k][j] = X[k][j-1] - X[k-j]*H
-          Xk[j] = Xk[j-1] - X[k-j] * H;    // problem happens on k=2,j=2
+          Xk[j] = Xk[j-1] - X[k-j] * H;
        }
 
        // set X[k] to the orthonormal basis of X[k][k] via QR factorization
@@ -149,22 +151,25 @@ struct rlc_tank {
 
     // Step 6: Set Xfinal to the concatenation of all those bases we calculated above,
     //         truncated to q==3 columns
-    Matrix<double, 4, 3> Xfinal;
-    size_t cols = 0;
-    for (size_t k = 0; (cols < 3) && (k <= n); ++k)
+    size_t cols = accumulate(X.begin(), X.end(), 0,
+                             [](size_t sum,
+                                Matrix4dX const& m) { return sum + m.cols(); });
+
+    Matrix<double, 4, 3> Xfinal(4, cols);
+    size_t col = 0;
+    for (size_t k = 0; (k <= n) && (col < cols); ++k)
     {
       // copy columns from X[k] to Xfinal
-      for (int j = 0; (cols < 3) && (j < X[k].cols()); ++j)
+      for (int j = 0; (j < X[k].cols()) && (col < cols); ++j)
       {
-        Xfinal.resize(4, cols+1);
-        Xfinal.col(cols++) = X[k].col(j);
+        Xfinal.col(col++) = X[k].col(j);
       }
     }
 
     // Step 7: Compute the C and G matrices in the new state variables using X
-    auto Cprime = Xfinal.transpose() * C * Xfinal;
-    auto Gprime = Xfinal.transpose() * G * Xfinal;
-    auto Bprime = Xfinal.transpose() * B;
+    MatrixXd Cprime = Xfinal.transpose() * C * Xfinal;
+    MatrixXd Gprime = Xfinal.transpose() * G * Xfinal;
+    auto     Bprime = Xfinal.transpose() * B;
 
     // We are done with PRIMA.  Set up suitable matrices so we can calculate
     // new state and output values:
@@ -199,7 +204,7 @@ struct rlc_tank {
     Matrix<double, 1, 1> u; u << Va;                  // input excitation is 1x1 vector of Va
 
     // BOZO one more rollup using Eigen features should be possible here:
-    for (std::size_t nodeno = 0; nodeno <= 2; ++nodeno)
+    for (size_t nodeno = 0; nodeno <= 2; ++nodeno)
     {
       // dx/dt = (Cprime.inverse() * -Gprime) * x + (Cprime.inverse() * Bprime) * u
       dxdt[nodeno] = coeff_.row(nodeno).dot(xvec) + input_.row(nodeno).dot(u);
@@ -217,10 +222,10 @@ struct rlc_tank {
 // observer to record times and state values
 struct push_back_state_and_time
 {
-    std::vector< state_type >& m_states;
-    std::vector< double >& m_times;
+    vector< state_type >& m_states;
+    vector< double >& m_times;
 
-    push_back_state_and_time( std::vector< state_type > &states , std::vector< double > &times )
+    push_back_state_and_time( vector< state_type > &states , vector< double > &times )
     : m_states( states ) , m_times( times ) { }
 
     void operator()( const state_type &x , double t )
