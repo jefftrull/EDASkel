@@ -3,12 +3,10 @@
 // Jeff Trull 2013-06-01
 
 #include <vector>
-#include <algorithm>
 using namespace std;
 #include <boost/numeric/odeint.hpp>
 using namespace boost::numeric;
 #include <Eigen/Dense>
-#include <Eigen/StdVector>
 using namespace Eigen;
 
 // Functions for implementing MNA with an Eigen matrix
