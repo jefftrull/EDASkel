@@ -47,9 +47,11 @@ typedef vector<double> state_type;
 struct signal_coupling {
   typedef Matrix<double, 10, 10> Matrix10d;   // for the MNA-based system
 
-  Matrix<double, 4, 4> coeff_;                // reduced system state evolution
-  Matrix<double, 4, 2> input_;                // inputs (agg/vic) to reduced system state
-  Matrix<double, 2, 4> output_;               // reduced system state to current outputs
+  static const size_t q = 6; // desired number of state variables
+
+  Matrix<double, q, q> coeff_;                // reduced system state evolution
+  Matrix<double, q, 2> input_;                // inputs (agg/vic) to reduced system state
+  Matrix<double, 2, q> output_;               // reduced system state to current outputs
 
   double agg_r1_, agg_c1_;   // aggressor first stage pi model (prior to coupling point)
   double agg_r2_, agg_c2_;   // aggressor second stage pi model (after coupling point)
@@ -125,7 +127,7 @@ struct signal_coupling {
 
       // PRIMA
       
-      // Aiming for 4 state variables, a significant reduction from 10...
+      // Aiming for q state variables, a significant reduction from 10...
 
       // Step 1: create B and L (input and output) matrices
 
@@ -145,11 +147,11 @@ struct signal_coupling {
       Matrix<double, 10, 2> L; L << 0, 0
                                   , 0, 0
                                   , 0, 0
-                                  , -1, 0    // extract V3 (aggressor rcvr)
+                                  , 1, 0    // extract V3 (aggressor rcvr)
                                   , 0, 0
                                   , 0, 0
                                   , 0, 0
-                                  , 0, -1    // extract v7 (victim rcvr)
+                                  , 0, 1    // extract v7 (victim rcvr)
                                   , 0, 0
                                   , 0, 0 ;
                                   
@@ -171,13 +173,9 @@ struct signal_coupling {
       Matrix10dX rQ = rQR.householderQ();    // gets 10x10 matrix, only part of which we need
       X.push_back(rQ.leftCols(rQR.rank()));  // only use the basis part
 
-      std::cout << "X[0] is of rank " << R.colPivHouseholderQr().rank() << endl;
-      std::cout << "X[0] has " << X[0].cols() << " columns\n";
-
       // Step 4: Set n = floor(q/N)+1 if q/N is not an integer, and q/N otherwise
-      const size_t q = 4; // desired number of state variables in the reduced system (guessing here)
       const size_t N = 4; // number of ports.  But for us, two are in, two out.  Hm...
-      size_t n = 2;       // this seems to work best despite not matching PRIMA equation :(
+      size_t n = (q % N) ? (q/N + 1) : (q/N);
 
       // Step 5: Block Arnoldi (see Boyer for detailed explanation)
       for (size_t k = 1; k <= n; ++k)
@@ -206,12 +204,10 @@ struct signal_coupling {
          {
             // a single column is automatically orthogonalized; just normalize
             X.push_back(Xk[k].normalized());
-            std::cout << "produced 1 column on this iteration:\n" << X[k] << endl;
          } else {
             auto xkkQR = Xk[k].colPivHouseholderQr();
             Matrix10dX xkkQ = xkkQR.householderQ();
             X.push_back(xkkQ.leftCols(xkkQR.rank()));
-            std::cout << "produced " << xkkQR.rank() << " columns on this iteration:\n" << X[k] << endl;
          }
       }
 
@@ -232,9 +228,6 @@ struct signal_coupling {
          }
       }
 
-      std::cout << "Xfinal is:\n" << Xfinal << endl;
-      std::cout << "Xfinal transpose times Xfinal is:\n" << Xfinal.transpose() * Xfinal << endl;
-
       // Step 7: Compute the C and G matrices in the new state variables using X
       MatrixXd Cprime = Xfinal.transpose() * C * Xfinal;
       MatrixXd Gprime = Xfinal.transpose() * G * Xfinal;
@@ -246,10 +239,6 @@ struct signal_coupling {
       input_ = Cprime.ldlt().solve(Bprime);          // from inputs to state variables
       auto Lprime = Xfinal.transpose() * L;
       output_ = Lprime.transpose();                  // from state to outputs
-
-      std::cout << "Cprime:\n" << Cprime << endl;
-      std::cout << "Gprime:\n" << Gprime << endl;
-      std::cout << "Bprime:\n" << Bprime << endl;
 
   }
 
@@ -264,8 +253,6 @@ struct signal_coupling {
       double real_start = agg_start_ - transition_time;
       double real_end = agg_start_ + transition_time;
 
-      std::cout << "calculated real_start=" << real_start << " and real_end=" << real_end << endl;
-
       if (t >= real_end) {
         Vagg = (agg_slew_ < 0) ? 0 : v_;      // straight to final value
       } else if (t <= real_start) {
@@ -273,9 +260,6 @@ struct signal_coupling {
       } else {
         Vagg += agg_slew_ * (t - real_start);  // proportional to time in ramp
       }
-
-      std::cout << "so for t=" << t << " Vagg=" << Vagg << endl;
-
     }
         
     // same for the victim driver
@@ -296,20 +280,15 @@ struct signal_coupling {
       }
     }
         
-    Map<const Matrix<double, 4, 1> > xvec(x.data());  // turn state vector into Eigen matrix
+    Map<const Matrix<double, q, 1> > xvec(x.data());  // turn state vector into Eigen matrix
     Matrix<double, 2, 1> u; u << Vagg, Vvic;          // input excitation
 
-    Map<Matrix<double, 4, 1> > result(dxdt.data());
+    Map<Matrix<double, q, 1> > result(dxdt.data());
     result = coeff_ * xvec + input_ * u;              // sets dxdt via reference
-
-    std::cout << "at time " << t << " with a state vector of\n" << xvec << endl << " and inputs of\n";
-    std::cout << u << endl << "we applied coefficients of " << coeff_ << endl;
-    std::cout << " and input applicator of " << input_ << endl;
-    std::cout << " to come up with a dx/dt value of " << result << endl;
 
   }
 
-  Matrix<double, 2, 4> output() const
+  Matrix<double, 2, q> output() const
   {
     return output_;
   }
@@ -390,7 +369,7 @@ int main() {
 		      coupling_c, v);
 
   // initial state: all low
-  state_type x({0.0, 0.0, 0.0, 0.0});
+  state_type x(signal_coupling::q, 0.0);
 
   vector<state_type> state_history;
   vector<double>     times;
@@ -402,7 +381,7 @@ int main() {
 
   for (size_t i = 0; i < times.size(); ++i) {
     // format for gnuplot.  We are remembering the output voltages
-    Map<const Matrix<double, 4, 1> > statevec(state_history[i].data());
+    Map<const Matrix<double, signal_coupling::q, 1> > statevec(state_history[i].data());
     double vagg = (output_translator * statevec)(0);
     double vvic = (output_translator * statevec)(1);
 
@@ -418,3 +397,5 @@ int main() {
   return 0;
 
 }
+
+const size_t signal_coupling::q;
