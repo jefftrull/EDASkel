@@ -47,7 +47,11 @@ typedef vector<double> state_type;
 struct rlc_tank {
   double r_, l_, c_;
   double vin_;
-  Matrix4d coeff_;
+  Matrix2d coeff_;
+  Matrix<double, 2, 1> input_;
+
+  Matrix<double, 2, 3> Lred_;   // (regularized/reduced) state variable to output mapping
+  Matrix<double, 3, 1> Dred_;   // regularized input to output mapping
 
   rlc_tank(double r, double l, double c, double vin) : r_(r), l_(l), c_(c), vin_(vin) {
     // state variables are:
@@ -68,28 +72,99 @@ struct rlc_tank {
     stamp(C, 3, l_);    // set derivative coefficient
     stamp_i(G, 1, 3);   // connect inductor current derivative to associated voltage
 
-    // Rewrite equation as C*dX/dt = -G*X + u(t)
+    // input application matrix
+    Matrix<double, 4, 1> B; B << 0, 0, -1, 0;   // match Va up with V0
+
+    // output observation matrix - we want to see input, output, and input current
+    Matrix<double, 4, 3> L; L << 1, 0, 0
+                               , 0, 1, 0
+                               , 0, 0, -1       // extract input current as *out* of the source
+                               , 0, 0, 0 ;
+
+    // Rewrite equation as C*dX/dt = -G*X + B*u(t)
+    // Further the variables we want to view are Y = L.transpose() * X
+
+    // Now we have a set of differential equations, not all of which are in the required form
+    // for ODEINT.  Specifically, some of the derivative terms have a coefficient of zero,
+    // so they cannot be meaningfully integrated.  This problem is discussed in detail in:
+    // Chen, "A Practical Regularization Technique for Modiﬁed Nodal Analysis...",
+    // IEEE TCAD, July 2012 and my chosen solution is the simple one used in Su,
+    // "Efﬁcient Approximate Balanced Truncation of General Large-Scale RLC Systems via Krylov Methods"
+    // Proc. 15th ASP-DAC, 2002
+
+    // We begin by performing an LU factorization of C, which will move the non-zero rows of C
+    // to the top and also supply a useful "permutation" matrix we can use to adjust G and B
+    // for the state variable reordering.
+    auto lu = C.fullPivLu();
+    Matrix4d Cprime = lu.matrixLU();
+    Matrix4d pp = lu.permutationP();
+    Matrix4d Gprime = pp.transpose() * G * pp;
+    Vector4d Bprime = pp.transpose() * B;
+    Matrix<double, 4, 3> Lprime = pp.transpose() * L;
+
+    std::size_t nonzero_count = lu.nonzeroPivots();
+    std::size_t zero_count = 4 - nonzero_count;
+    // now the first nonzero_count rows of Cprime, Gprime, and Bprime contain equations acceptable to
+    // ODEINT, but the remaining rows do not.  We partition the state space into integrable state (X1)
+    // and non-integrable (X2) and do the same with the matrices
+
+    auto G11 = Gprime.topLeftCorner(nonzero_count, nonzero_count);
+    auto G12 = Gprime.topRightCorner(zero_count, zero_count);
+    auto G21 = Gprime.bottomLeftCorner(zero_count, zero_count);
+    auto G22 = Gprime.bottomRightCorner(zero_count, zero_count);
+
+    auto L1 = Lprime.topRows(nonzero_count);
+    auto L2 = Lprime.bottomRows(zero_count);
+
+    auto B1 = Bprime.topRows(nonzero_count);
+    auto B2 = Bprime.bottomRows(zero_count);
+
+    // produce reduced equations following Su:
+    auto Cred = Cprime.topLeftCorner(nonzero_count, nonzero_count);
+    auto G22inv = G22.inverse();   // this is the most expensive thing we will do
+    auto Gred = G11 - G12 * G22inv * G21;
+    // our L, per PRIMA, is the transpose of the one described in Su
+    Lred_ = (L1.transpose() - L2.transpose() * G22inv * G21).transpose();  // simplify?
+    auto Bred = B1 - G12 * G22inv * B2;
+    // we had no "D" (direct input to output) originally but it can happen, especially
+    // since we directly control one state variable that we are mapping to an output
+    Dred_ = L2.transpose() * G22inv * B2;
+
     // Solve to produce a single matrix with the equations for each node
-    coeff_ = C.ldlt().solve(-1.0 * G);
-     
+    coeff_ = Cred.ldlt().solve(-1.0 * Gred);
+
+    input_ = Cred.ldlt().solve(Bred);
+
   }
 
   void operator() (const state_type x, state_type& dxdt, double t) {
 
     // for input voltage, model a step function at time zero
-    if ((t < 0.0) || (x[0] >= vin_)) {
-      dxdt[0] = 0.0;
-    } else {
-      dxdt[0] = numeric_limits<double>::max();
+    double Va = 0;
+    if (t > 0.0) {
+      Va = vin_;
     }
+    Matrix<double, 1, 1> u; u << Va;
 
     // All other node voltages are determined by odeint through our equations:
-    Map<const Matrix<double, 1, 4> > xvec(x.data());
-    for (std::size_t nodeno = 1; nodeno <= 3; ++nodeno)
-    {
-      dxdt[nodeno] = coeff_.row(nodeno).dot(xvec);
-    }
+    Map<const Matrix<double, 2, 1> > xvec(x.data());
+    Map<Matrix<double, 2, 1> > result(dxdt.data());
+
+    result = coeff_ * xvec + input_ * u;
   }
+
+  // utility function for displaying data.  Applies internal matrices to state
+  std::vector<double> state2output(state_type const& x,
+                                   std::vector<double> const& in) {
+    std::vector<double> result(3);
+    Map<const Vector2d> xvec(x.data());
+    Map<const Matrix<double, 1, 1> > invec(in.data());
+
+    Map<Matrix<double, 3, 1> > ovec(result.data());
+    ovec = Lred_.transpose() * xvec + Dred_ * invec;
+    return result;
+  }
+
 };
 
 // observer to record times and state values
@@ -119,7 +194,7 @@ int main() {
 
 
   // initial state: all voltages and currents 0
-  state_type x({0.0, 0.0, 0.0, 0.0});
+  state_type x({0.0, 0.0});
 
   vector<state_type> state_history;
   vector<double>     times;
@@ -128,8 +203,15 @@ int main() {
                      push_back_state_and_time( state_history, times ) );
 
   for (size_t i = 0; i < times.size(); ++i) {
+    double Va = 0.0;
+    if (times[i] > 0)
+    {
+      Va = v;
+    }
+    auto output = ckt.state2output(state_history[i], vector<double>(1, Va));
+
     // format for gnuplot.  Only vin and vout are interesting
-    cout << times[i] << " " << state_history[i][1] << " " << state_history[i][0] << endl;
+    cout << times[i] << " " << output[1] << " " << output[0] << endl;
   }
 
   return 0;
