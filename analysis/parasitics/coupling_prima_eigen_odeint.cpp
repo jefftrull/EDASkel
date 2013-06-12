@@ -51,7 +51,7 @@ struct signal_coupling {
 
   Matrix<double, q, q> coeff_;                // reduced system state evolution
   Matrix<double, q, 2> input_;                // inputs (agg/vic) to reduced system state
-  Matrix<double, 2, q> output_;               // reduced system state to current outputs
+  Matrix<double, 4, q> output_;               // reduced system state to chosen outputs
 
   double agg_r1_, agg_c1_;   // aggressor first stage pi model (prior to coupling point)
   double agg_r2_, agg_c2_;   // aggressor second stage pi model (after coupling point)
@@ -126,6 +126,11 @@ struct signal_coupling {
       stamp_i(G, 4, 9);
 
       // PRIMA
+      // This is a famous model reduction technique invented around 1997/8 at CMU
+      // I am generally following the treatment in Odabasioglu, IEEE TCAD, August 1998
+      // They base their work on the prior Block Arnoldi algorithm, for a helpful
+      // explanation of which you can find in their 6th citation:
+      // D. L. Boley, “Krylov space methods on state-space control models”
       
       // Aiming for q state variables, a significant reduction from 10...
 
@@ -140,20 +145,20 @@ struct signal_coupling {
                                   , 0, 0
                                   , 0, 0
                                   , 0, 0
-                                  , -1, 0     // insert Vagg = V0
-                                  , 0, -1 ;   // insert Vvic = V4
+                                  , -1, 0         // insert Vagg = V0
+                                  , 0, -1 ;       // insert Vvic = V4
 
-      // Similarly, two outputs (voltages at the receivers, not source currents!)
-      Matrix<double, 10, 2> L; L << 0, 0
-                                  , 0, 0
-                                  , 0, 0
-                                  , 1, 0    // extract V3 (aggressor rcvr)
-                                  , 0, 0
-                                  , 0, 0
-                                  , 0, 0
-                                  , 0, 1    // extract v7 (victim rcvr)
-                                  , 0, 0
-                                  , 0, 0 ;
+      // Four outputs, for viewing and performing measurements
+      Matrix<double, 10, 4> L; L << 0, 0, 0, 0
+                                  , 1, 0, 0, 0    // extract V1 (aggressor driver output)
+                                  , 0, 0, 0, 0
+                                  , 0, 0, 0, 1    // extract V3 (aggressor receiver)
+                                  , 0, 0, 0, 0
+                                  , 0, 0, 0, 0
+                                  , 0, 1, 0, 0    // extract v6 (victim coupling node)
+                                  , 0, 0, 1, 0    // extract v7 (victim rcvr)
+                                  , 0, 0, 0, 0
+                                  , 0, 0, 0, 0 ;
                                   
       // Step 2: Solve GR = B for R
       Matrix<double, 10, 2> R = G.colPivHouseholderQr().solve(B);
@@ -233,7 +238,7 @@ struct signal_coupling {
       MatrixXd Gprime = Xfinal.transpose() * G * Xfinal;
       auto     Bprime = Xfinal.transpose() * B;
 
-      // PRIMA done.  Set up reduced system matrices
+      // PRIMA done.  Next step: Regularize inputs (see RLC example for more detail)
 
       coeff_ = Cprime.ldlt().solve(-1.0 * Gprime);   // state evolution
       input_ = Cprime.ldlt().solve(Bprime);          // from inputs to state variables
@@ -288,7 +293,7 @@ struct signal_coupling {
 
   }
 
-  Matrix<double, 2, q> output() const
+  Matrix<double, 4, q> output() const
   {
     return output_;
   }
@@ -372,6 +377,7 @@ int main() {
   state_type x(signal_coupling::q, 0.0);
 
   vector<state_type> state_history;
+  vector<state_type> outputs;
   vector<double>     times;
 
   odeint::integrate( ckt, x, 0.0, 1000e-12, 1e-12,
@@ -383,16 +389,19 @@ int main() {
     // format for gnuplot.  We are remembering the output voltages
     Map<const Matrix<double, signal_coupling::q, 1> > statevec(state_history[i].data());
     double vagg = (output_translator * statevec)(0);
-    double vvic = (output_translator * statevec)(1);
+    double vcoup = (output_translator * statevec)(1);
+    double vvic = (output_translator * statevec)(2);
+    double vagg_rcv = (output_translator * statevec)(3);
 
-    cout << times[i] << " " << vagg << " " << vvic << endl;
+    cout << times[i] << " " << vagg << " " << vcoup << " " << vvic << endl;
+    outputs.push_back({vagg, vcoup, vvic, vagg_rcv});
 
   }
 
   // find the highest voltage on the victim (which is supposed to be low)
-  cerr << "max victim excursion is: " << max_voltage(state_history, 7) << endl;
+  cerr << "max victim excursion is: " << max_voltage(outputs, 2) << endl;
 
-  cerr << "driver delay is: " << delay(times, state_history, v/2.0, 1, 3, RiseRise) << endl;
+  cerr << "driver delay is: " << delay(times, outputs, v/2.0, 0, 3, RiseRise) << endl;
 
   return 0;
 
