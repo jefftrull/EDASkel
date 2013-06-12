@@ -1,0 +1,58 @@
+.title NGSpice coupling simulation circuit for comparison with odeint
+* by Jeff Trull <edaskel@att.net> 2012-05-25
+ 
+*** passive subcircuit module representing the driver impedances, traces, and receiver loads
+*** (leaves input voltages to caller)
+.subckt coupling_testcase aggdrv vicdrv aggrcv vicrcv gnd
++ raggdrv=100 ragg1=1k cagg1=100f ragg2=1k cagg2=100f caggl=20f
++ rvicdrv=100 rvic1=1k cvic1=100f rvic2=1k cvic2=100f cvicl=20f
++ ccoup=100f
+ 
+* Aggressor trace
+Raggdrv aggdrv agg1   {raggdrv}            ; driver impedance
+Cagg1a  agg1   gnd    {cagg1/2.0}          ; first pi model
+Ragg1   agg1   aggc   {ragg1}              ; first pi model
+Cagg1b  aggc   gnd    {cagg1/2.0}          ; first pi model
+Cagg2a  aggc   gnd    {cagg2/2.0}          ; second pi model
+Ragg2   aggc   aggrcv {ragg2}              ; second pi model
+Cagg2b  aggrcv gnd    {cagg2/2.0}          ; second pi model
+Caggl   aggrcv gnd    {caggl}              ; aggressor rcvr load
+ 
+* Victim trace
+Rvicdrv vicdrv vic1   {rvicdrv}  
+Cvic1a  vic1   gnd    {cvic1/2.0}
+Rvic1   vic1   vicc   {rvic1}    
+Cvic1b  vicc   gnd    {cvic1/2.0}
+Cvic2a  vicc   gnd    {cvic2/2.0}
+Rvic2   vicc   vicrcv {rvic2}    
+Cvic2b  vicrcv gnd    {cvic2/2.0}
+Cvicl   vicrcv gnd    {cvicl}
+ 
+* Coupling point
+Ccoup   aggc   vicc   {ccoup}              ; coupling cap
+ 
+.ends
+ 
+ 
+*** inputs
+Vaggdrv aggdrv 0      PWL(0 0 200ps 1.0)   ; driver ramp
+Vvicdrv vicdrv 0      0                    ; quiescent
+ 
+ 
+*** instantiate test circuit
+Xtraces aggdrv vicdrv aggrcv vicrcv 0 coupling_testcase
++ raggdrv=100 ragg1=1000 cagg1=100f ragg2=1000 cagg2=100f caggl=20f
++ rvicdrv=100 rvic1=1000 cvic1=100f rvic2=1000 cvic2=100f cvicl=20f
++ ccoup=100f
+ 
+*** perform analysis
+.tran 1ps 1000ps
+ 
+*** print tabular values to compare vs. C++ simulation
+.print tran v(xtraces.agg1) v(xtraces.vicc) v(vicrcv)
+
+* measure statements corresponding to data analysis done in C++
+.measure tran VictimReceiverExcursion MAX v(vicrcv)
+.measure tran AggDelay TRIG V(xtraces.agg1) VAL=0.5 RISE=1 TARG V(aggrcv) VAL=0.5 RISE=1
+ 
+.end
