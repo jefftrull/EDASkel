@@ -141,7 +141,7 @@ struct signal_coupling {
                                   , -1, 0     // insert Vagg = V0
                                   , 0, -1 ;   // insert Vvic = V4
 
-      // Similarly, two outputs (voltages at the receivers, not source currents!)
+      // Three outputs, for viewing and performing measurements
       Matrix<double, 10, 3> L; L << 0, 0, 0
                                   , 1, 0, 0    // extract V1 (aggressor driver output)
                                   , 0, 0, 0
