@@ -39,14 +39,18 @@ void stamp_i(M& matrix, std::size_t vnodeno, std::size_t istateno)
    // Doing this brings in the V = LdI/dt equations:
 
    matrix(vnodeno, istateno) = 1;   // current is taken *into* inductor or vsource
-   matrix(istateno, vnodeno) = 1;
+   matrix(istateno, vnodeno) = -1;
 }
 
 typedef vector<double> state_type;
 
 struct signal_coupling {
-  typedef Matrix<double, 10, 10> Matrix10d;
-  Matrix10d coeff_;
+  typedef Matrix<double, 6, 6> Matrix6d;
+  Matrix6d coeff_;
+  Matrix<double, 6, 2> input_;
+
+  Matrix<double, 6, 3> Lred_;   // (regularized/reduced) state variable to output mapping
+  Matrix<double, 3, 2> Dred_;   // regularized input to output mapping
 
   double agg_r1_, agg_c1_;   // aggressor first stage pi model (prior to coupling point)
   double agg_r2_, agg_c2_;   // aggressor second stage pi model (after coupling point)
@@ -87,6 +91,7 @@ struct signal_coupling {
       // of V, giving us the desired format for odeint.
 
       // apply values via "stamp"
+      typedef Matrix<double, 10, 10> Matrix10d;
       Matrix10d C = Matrix10d::Zero(), G = Matrix10d::Zero();
 
       stamp(G, 0, 1, 1/agg_imp_);   // driver impedances
@@ -120,54 +125,151 @@ struct signal_coupling {
       stamp_i(G, 0, 8);
       stamp_i(G, 4, 9);
 
-      // Solve to produce a single matrix with the equations for each node
-      coeff_ = C.ldlt().solve(-1.0 * G);
-}
+      // Model inputs and outputs with two matrices so that:
+      // C*dX/dt = -G*X + B*u(t) and
+      // Y = L.transpose() * X 
+
+      // We have two inputs, so u(t) is 2x1 and B is 10x2
+      Matrix<double, 10, 2> B; B << 0, 0
+                                  , 0, 0
+                                  , 0, 0
+                                  , 0, 0
+                                  , 0, 0
+                                  , 0, 0
+                                  , 0, 0
+                                  , 0, 0
+                                  , -1, 0     // insert Vagg = V0
+                                  , 0, -1 ;   // insert Vvic = V4
+
+      // Similarly, two outputs (voltages at the receivers, not source currents!)
+      Matrix<double, 10, 3> L; L << 0, 0, 0
+                                  , 1, 0, 0    // extract V1 (aggressor driver output)
+                                  , 0, 0, 0
+                                  , 0, 0, 0
+                                  , 0, 0, 0
+                                  , 0, 0, 0
+                                  , 0, 1, 0    // extract v6 (victim coupling node)
+                                  , 0, 0, 1    // extract v7 (victim rcvr)
+                                  , 0, 0, 0
+                                  , 0, 0, 0 ;
+                                  
+      // 10x10 matrix from MNA cannot be directly integrated because some state
+      // variable derivatives are not present.  This process substitutes other
+      // state variables and in the process reduces the state size by 4 (by
+      // eliminating the input voltage and current).
+      // See comments in rlc_eigen_odeint.cpp
+
+      // 1. Create a permutation of the state vector variables so those with
+      //    non-zero rows in C are clustered at the top
+
+      // Use Eigen reductions to find zero rows
+      auto zero_rows = (C.array() == 0.0).rowwise().all();   // per row "all zeros"
+
+      Matrix10d permut = Matrix10d::Identity();   // null permutation to start
+      std::size_t i, j;
+      for (i = 0, j=9; i < j;) {
+        // loop invariant: rows > j are all zero; rows < i are not
+        while ((i < 10) && !zero_rows(i)) ++i;
+        while ((j > 0) && zero_rows(j)) --j;
+        if (i < j) {
+          // exchange rows i and j via the permutation vector
+          permut(i, i) = 0; permut(j, j) = 0;
+          permut(i, j) = 1; permut(j, i) = 1;
+          ++i; --j;
+        }
+      }
+
+      // 2. Apply permutation to MNA matrices
+      Matrix10d Cprime = permut * C * permut;       // permute rows and columns
+      Matrix10d Gprime = permut * G * permut;
+      Matrix<double, 10, 2> Bprime = permut * B;    // permute only rows
+      Matrix<double, 10, 3> Lprime = permut * L;
+      
+      // 3. Produce reduced equations following Su (Proc. 15th ASP-DAC, 2002)
+      std::size_t zero_count = zero_rows.count();
+      std::size_t nonzero_count = 10 - zero_count;
+
+      auto G11 = Gprime.topLeftCorner(nonzero_count, nonzero_count);
+      auto G12 = Gprime.topRightCorner(nonzero_count, zero_count);
+      auto G21 = Gprime.bottomLeftCorner(zero_count, nonzero_count);
+      auto G22 = Gprime.bottomRightCorner(zero_count, zero_count);
+
+      auto L1 = Lprime.topRows(nonzero_count);
+      auto L2 = Lprime.bottomRows(zero_count);
+
+      auto B1 = Bprime.topRows(nonzero_count);
+      auto B2 = Bprime.bottomRows(zero_count);
+
+      auto Cred = Cprime.topLeftCorner(nonzero_count, nonzero_count);
+      auto G22inv = G22.inverse();   // this is the most expensive thing we will do
+      auto Gred = G11 - G12 * G22inv * G21;
+      // our L, per PRIMA, is the transpose of the one described in Su
+      Lred_ = (L1.transpose() - L2.transpose() * G22inv * G21).transpose();  // simplify?
+      auto Bred = B1 - G12 * G22inv * B2;
+      // we had no "D" (direct input to output) originally but it can happen
+      Dred_ = L2.transpose() * G22inv * B2;
+
+      // 4. Solve to produce a pair of matrices we can use to calculation dX/dt
+      coeff_ = Cred.ldlt().solve(-1.0 * Gred);  // state evolution
+      input_ = Cred.ldlt().solve(Bred);         // input -> state
+  }
 				   
   void operator() (const state_type x, state_type& dxdt, double t) {
-    // state mapping (all voltages):
-
-    // 0 - aggressor voltage source
-    dxdt[0] = 0.0;
-    // slew of 0.0 means constant
-    if (agg_slew_ != 0.0) {
+    // determine input voltages
+    double Vagg = (agg_slew_ < 0) ? v_ : 0;   // initial value
+    if (agg_slew_ == 0) {
+      Vagg = 0.0;                             // quiescent
+    } else {
       // find the "real" ramp starting point, since we use the center of the swing
-      double real_start = agg_start_ - ( ( v_ / fabs(agg_slew_) ) / 2.0 );
-      if ((t >= real_start) &&
-	  (((agg_slew_ > 0.0) && (x[0] < v_)) ||
-	   ((agg_slew_ < 0.0) && (x[0] > 0.0)))) {
-	  // we are past the starting point but haven't reached our final voltage
-	  dxdt[0] = agg_slew_;
-	}
-    }
+      double transition_time = ( v_ / fabs(agg_slew_) ) / 2.0;
+      double real_start = agg_start_ - transition_time;
+      double real_end = agg_start_ + transition_time;
 
-    // 4 - victim driving node
-    dxdt[4] = 0.0;
-    // slew of 0.0 means constant
-    if (vic_slew_ != 0.0) {
+      if (t >= real_end) {
+        Vagg = (agg_slew_ < 0) ? 0 : v_;      // straight to final value
+      } else if (t <= real_start) {
+        Vagg = (agg_slew_ > 0) ? 0 : v_;      // remain at initial value
+      } else {
+        Vagg += agg_slew_ * (t - real_start);  // proportional to time in ramp
+      }
+    }
+        
+    // same for the victim driver
+    double Vvic = (vic_slew_ < 0) ? v_ : 0;   // initial value
+    if (vic_slew_ == 0) {
+      Vvic = 0.0;
+    } else {
       // find the "real" ramp starting point, since we use the center of the swing
-      double real_start = vic_start_ - ( ( v_ / fabs(vic_slew_) ) / 2.0 );
-      if ((t >= real_start) &&
-	  (((vic_slew_ > 0.0) && (x[0] < v_)) ||
-	   ((vic_slew_ < 0.0) && (x[0] > 0.0)))) {
-	  // we are past the starting point but haven't reached our final voltage
-	  dxdt[4] = vic_slew_;
-	}
+      double transition_time = ( v_ / fabs(vic_slew_) ) / 2.0;
+      double real_start = vic_start_ - transition_time;
+      double real_end = vic_start_ + transition_time;
+      if (t >= real_end) {
+        Vvic = (vic_slew_ < 0) ? 0 : v_;      // straight to final value
+      } else if (t <= real_start) {
+        Vvic = (vic_slew_ > 0) ? 0 : v_;      // remain at initial value
+      } else {
+        Vvic += vic_slew_ * (t - real_start);  // proportional to time in ramp
+      }
     }
+        
+    Map<const Matrix<double, 6, 1> > xvec(x.data());  // turn state vector into Eigen matrix
+    Matrix<double, 2, 1> u; u << Vagg, Vvic;          // input excitation
 
-    // All other node voltages are determined by odeint through our equations:
-    Map<const Matrix<double, 1, 10> > xvec(x.data());   // adapt std::vector to Eigen
-    for (std::size_t nodeno = 1; nodeno <= 3; ++nodeno)
-    {
-      dxdt[nodeno] = coeff_.row(nodeno).dot(xvec);
-    }
-
-    for (std::size_t nodeno = 5; nodeno <= 9; ++nodeno)
-    {
-      dxdt[nodeno] = coeff_.row(nodeno).dot(xvec);
-    }
+    Map<Matrix<double, 6, 1> > result(dxdt.data());
+    result = coeff_ * xvec + input_ * u;              // sets dxdt via reference
 
   }
+
+  // utility function for displaying data.  Applies internal matrices to state
+  std::vector<double> state2output(state_type const& x) {
+    std::vector<double> result(2);
+    Map<const Matrix<double, 6, 1> > xvec(x.data());
+
+    Map<Matrix<double, 3, 1> > ovec(result.data());
+    ovec = Lred_.transpose() * xvec;  // in theory the input could be involved via Dred_
+    return result;
+  }
+
 };
 
 // observer to record times and state values
@@ -244,7 +346,7 @@ int main() {
 		      coupling_c, v);
 
   // initial state: all low
-  state_type x({0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  state_type x(6, 0.0);
 
   vector<state_type> state_history;
   vector<double>     times;
@@ -254,12 +356,12 @@ int main() {
 
   for (size_t i = 0; i < times.size(); ++i) {
     // format for gnuplot.  look at driver output, victim coupling node, and victim receiver node
-    cout << times[i] << " " << state_history[i][1] << " " << state_history[i][6] << " " << state_history[i][7] << endl;
-    //    cout << times[i] << " " << state_history[i][1] << " " << state_history[i][3] << endl;
+    auto output = ckt.state2output(state_history[i]);
+    cout << times[i] << " " << output[0] << " " << output[1] << " " << output[2] << endl;
   }
 
   // find the highest voltage on the victim (which is supposed to be low)
-  cerr << "max victim excursion is: " << max_voltage(state_history, 7) << endl;
+  cerr << "max victim excursion is: " << max_voltage(state_history, 0) << endl;
 
   cerr << "driver delay is: " << delay(times, state_history, v/2.0, 1, 3, RiseRise) << endl;
 
