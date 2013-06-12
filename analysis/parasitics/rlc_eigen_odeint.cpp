@@ -92,21 +92,37 @@ struct rlc_tank {
     // "Efﬁcient Approximate Balanced Truncation of General Large-Scale RLC Systems via Krylov Methods"
     // Proc. 15th ASP-DAC, 2002
 
-    // We begin by performing an LU factorization of C, which will move the non-zero rows of C
-    // to the top and also supply a useful "permutation" matrix we can use to adjust G and B
-    // for the state variable reordering.
-    auto lu = C.fullPivLu();
-    Matrix4d Cprime = lu.matrixLU();
-    Matrix4d pp = lu.permutationP();
-    Matrix4d Gprime = pp.transpose() * G * pp;
-    Vector4d Bprime = pp.transpose() * B;
-    Matrix<double, 4, 3> Lprime = pp.transpose() * L;
+    // Permute C to move the non-zero rows of C to the top while creating a "permutation" matrix
+    // we can use to adjust G and B for the state variable reordering.
 
-    std::size_t nonzero_count = lu.nonzeroPivots();
-    std::size_t zero_count = 4 - nonzero_count;
+    // Use Eigen reductions to find zero rows
+    auto zero_rows = (C.array() == 0.0).rowwise().all();   // per row "all zeros"
+
+    Matrix4d permut = Matrix4d::Identity();   // null permutation to start
+    std::size_t i, j;
+    for (i = 0, j=3; i < j;) {
+      // loop invariant: rows > j are all zero; rows < i are not
+      while ((i < 4) && !zero_rows(i)) ++i;
+      while ((j > 0) && zero_rows(j)) --j;
+      if (i < j) {
+        // exchange rows i and j via the permutation vector
+        permut(i, i) = 0; permut(j, j) = 0;
+        permut(i, j) = 1; permut(j, i) = 1;
+        ++i; --j;
+      }
+    }
+
+    // 2. Apply permutation to MNA matrices
+    Matrix4d Cprime = permut * C * permut;       // permute rows and columns
+    Matrix4d Gprime = permut * G * permut;
+    Vector4d Bprime = permut * B;    // permute only rows
+    Matrix<double, 4, 3> Lprime = permut * L;
+
     // now the first nonzero_count rows of Cprime, Gprime, and Bprime contain equations acceptable to
     // ODEINT, but the remaining rows do not.  We partition the state space into integrable state (X1)
     // and non-integrable (X2) and do the same with the matrices
+    std::size_t zero_count = zero_rows.count();
+    std::size_t nonzero_count = 4 - zero_count;
 
     auto G11 = Gprime.topLeftCorner(nonzero_count, nonzero_count);
     auto G12 = Gprime.topRightCorner(zero_count, zero_count);
