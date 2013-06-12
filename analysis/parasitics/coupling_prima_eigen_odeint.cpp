@@ -47,7 +47,7 @@ typedef vector<double> state_type;
 struct signal_coupling {
   typedef Matrix<double, 10, 10> Matrix10d;   // for the MNA-based system
 
-  static const size_t q = 6; // desired number of state variables
+  static const size_t q = 4; // desired number of state variables. 6 is the "natural" count.
 
   Matrix<double, q, q> coeff_;                // reduced system state evolution
   Matrix<double, q, 2> input_;                // inputs (agg/vic) to reduced system state
