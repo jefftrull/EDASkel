@@ -11,6 +11,8 @@
 namespace EDASkel {
   namespace SpefParse {
 
+    using namespace boost::units;
+
     // typedef for stream iterator we will use
     typedef boost::spirit::istream_iterator SpefIter;
 
@@ -45,12 +47,19 @@ namespace EDASkel {
         using boost::phoenix::val;
         using boost::phoenix::construct;
 
-        design_name = omit[lexeme["*DESIGN"]] >> '"' >> no_skip[*(char_ - '"')] >> '"' ;
+        eng_prefix.add("M", 1E-3)("U", 1E-6)("N", 1E-9)("P", 1E-12);
 
-        spef_file = design_name ;                  // the only thing we parse for now
+        design_name = omit[lexeme["*DESIGN"]] >> '"' >> no_skip[*(char_ - '"')] >> '"' ;
+        standard    = omit[lexeme["*SPEF"]] >> '"' >> no_skip[*(char_ - '"')] >> '"' ;
+        t_unit      = omit[lexeme["*T_UNIT"]] >> double_ >> lexeme[eng_prefix >> 'S'] ;
+
+        spef_file = omit[lexeme["SPEF"]] >> standard >> design_name   // TODO: any order?
+                                         >> t_unit ;
 
         spef_file.name("SPEF top level");
         design_name.name("DESIGN name");
+        standard.name("SPEF standard version");
+        t_unit.name("time unit declaration");
 
         on_error<fail>(spef_file, std::cerr << val("Error! Expecting ")
                                             << boost::spirit::_4
@@ -69,7 +78,9 @@ namespace EDASkel {
       };
 
       typename Rule<spef()>::type spef_file;
-      typename Rule<std::string()>::type design_name;
+      typename Rule<std::string()>::type design_name, standard;
+      boost::spirit::qi::symbols<char, double> eng_prefix;
+      typename Rule<quantity<si::time, double> >::type t_unit;
     };
   }  // namespace SpefParse
 } // namespace EDASkel

@@ -39,9 +39,12 @@ void parse_check_fail(std::string const& str) {
 BOOST_AUTO_TEST_CASE( design_name ) {
 
    spef result;
-   parse_check("// some comment\n*DESIGN \"GreatDesign\"\n// some other comment\n", result);
+   parse_check("SPEF\n// some comment\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n// some other comment\n*T_UNIT 1 PS\n", result);
    BOOST_CHECK_EQUAL( "GreatDesign", result.name );
+   BOOST_CHECK_EQUAL( "IEEE 1481-1998", result.standard );
 
-   parse_check_fail("// initial comment\n// look, no design name here\n");
+   parse_check_fail("// no initial SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"SomewhatLessGood\"\n");
+   parse_check_fail("SPEF\n// initial comment\n*SPEF \"IEEE 1481-1998\"\n// look, no design name here\n");
+   parse_check_fail("SPEF\n// some comment\n// missing standard string\n*DESIGN \"BadDesign\"\n// some other comment\n");
 
 }
