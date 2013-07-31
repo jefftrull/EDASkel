@@ -161,7 +161,7 @@ struct signal_coupling {
                                   , 0, 0, 0, 0 ;
                                   
       // Step 2: Solve GR = B for R
-      Matrix<double, 10, 2> R = G.colPivHouseholderQr().solve(B);
+      Matrix<double, 10, 2> R = G.fullPivHouseholderQr().solve(B);
 
       // set up types for various versions of "X" variables used in PRIMA
       // matrices we are gathering will all be 10 rows tall but some unknown number
@@ -174,8 +174,8 @@ struct signal_coupling {
       Matrix10dXList X;   // one entry per value of "k", gathered at the end into a single Xfinal
 
       // Step 3: Set X[0] to the orthonormal basis of R as determined by QR factorization
-      auto rQR = R.colPivHouseholderQr();
-      Matrix10dX rQ = rQR.householderQ();    // gets 10x10 matrix, only part of which we need
+      auto rQR = R.fullPivHouseholderQr();
+      Matrix10dX rQ = rQR.matrixQ();    // gets 10x10 matrix, only part of which we need
       X.push_back(rQ.leftCols(rQR.rank()));  // only use the basis part
 
       // Step 4: Set n = floor(q/N)+1 if q/N is not an integer, and q/N otherwise
@@ -187,13 +187,13 @@ struct signal_coupling {
       {
          // because X[] will vary in number of columns, so will Xk[]
          vector<Matrix<double, 10, Dynamic>,
-                aligned_allocator<Matrix<double, 10, Dynamic> > > Xk(n+1);
+                aligned_allocator<Matrix<double, 10, Dynamic> > > Xk(n+1);  // note to self: the size seems wrong (too large)
 
          // set V = C * X[k-1]
          auto V = C * X[k-1];
 
          // solve G*X[k][0] = V for X[k][0]
-         Xk[0] = G.colPivHouseholderQr().solve(V);
+         Xk[0] = G.fullPivHouseholderQr().solve(V);
 
          for (size_t j = 1; j <= k; ++j)
          {
@@ -210,8 +210,8 @@ struct signal_coupling {
             // a single column is automatically orthogonalized; just normalize
             X.push_back(Xk[k].normalized());
          } else {
-            auto xkkQR = Xk[k].colPivHouseholderQr();
-            Matrix10dX xkkQ = xkkQR.householderQ();
+            auto xkkQR = Xk[k].fullPivHouseholderQr();
+            Matrix10dX xkkQ = xkkQR.matrixQ();
             X.push_back(xkkQ.leftCols(xkkQR.rank()));
          }
       }
@@ -245,6 +245,22 @@ struct signal_coupling {
       auto Lprime = Xfinal.transpose() * L;
       output_ = Lprime.transpose();                  // from state to outputs
 
+      // Compare block moments between original and reduced model
+      // Prima claims to produce the same moments up to floor(q/N)
+      Matrix<double, 10, 10> A = C.fullPivHouseholderQr().solve(-1.0 * G);
+      Matrix<double, q, q> Aprime = coeff_;
+      Matrix<double, q, 2> Rprime = Gprime.fullPivHouseholderQr().solve(Bprime);
+      Matrix<double, 10, 10> AtotheI = Matrix<double, 10, 10>::Identity();
+      Matrix<double, q, q> AprimetotheI = Matrix<double, q, q>::Identity();
+      for (size_t i = 0; i < (q/N); ++i) {
+        std::cerr << "moment " << i << " of original model is:" << std::endl;
+        std::cerr << L.transpose() * AtotheI * R << std::endl;
+        std::cerr << "moment " << i << " of reduced model is:" << std::endl;
+        std::cerr << Lprime.transpose() * AprimetotheI * Rprime << std::endl;
+        AtotheI = A * AtotheI;
+        AprimetotheI = Aprime * AprimetotheI;
+      }
+      
   }
 
   void operator() (const state_type x, state_type& dxdt, double t) {
