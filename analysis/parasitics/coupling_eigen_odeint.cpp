@@ -45,11 +45,12 @@ void stamp_i(M& matrix, std::size_t vnodeno, std::size_t istateno)
 typedef vector<double> state_type;
 
 struct signal_coupling {
-  typedef Matrix<double, 6, 6> Matrix6d;
-  Matrix6d coeff_;
-  Matrix<double, 6, 2> input_;
+  static const size_t states = 10;
 
-  Matrix<double, 6, 3> Lred_;   // (regularized/reduced) state variable to output mapping
+  Matrix<double, states, states> coeff_;
+  Matrix<double, states, 2> input_;
+
+  Matrix<double, states, 3> Lred_;   // (regularized/reduced) state variable to output mapping
   Matrix<double, 3, 2> Dred_;   // regularized input to output mapping
 
   double agg_r1_, agg_c1_;   // aggressor first stage pi model (prior to coupling point)
@@ -91,46 +92,60 @@ struct signal_coupling {
       // of V, giving us the desired format for odeint.
 
       // apply values via "stamp"
-      typedef Matrix<double, 10, 10> Matrix10d;
-      Matrix10d C = Matrix10d::Zero(), G = Matrix10d::Zero();
+      typedef Matrix<double, 14, 14> Matrix14d;
+      Matrix14d C = Matrix14d::Zero(), G = Matrix14d::Zero();
 
       stamp(G, 0, 1, 1/agg_imp_);   // driver impedances
-      stamp(G, 4, 5, 1/vic_imp_);
+      stamp(G, 6, 7, 1/vic_imp_);
 
-      stamp(C, 1, agg_c1_ / 2.0);   // beginning of first stage pi model
-      stamp(C, 5, vic_c1_ / 2.0);
+      stamp(C, 1, agg_c1_ / 4.0);   // beginning of first stage pi model
+      stamp(C, 7, vic_c1_ / 4.0);
+      stamp(G, 1, 2, 2/agg_r1_);    // first stage pi resistance
+      stamp(G, 7, 8, 2/vic_r1_);
+      stamp(C, 2, agg_c1_ / 4.0);   // end of first stage pi model
+      stamp(C, 8, vic_c1_ / 4.0);
 
-      stamp(G, 1, 2, 1/agg_r1_);    // first stage pi resistance
-      stamp(G, 5, 6, 1/vic_r1_);
-   
-      stamp(C, 2, agg_c1_ / 2.0);   // end of first stage pi model
-      stamp(C, 6, vic_c1_ / 2.0);
+      stamp(C, 2, agg_c1_ / 4.0);   // beginning of second stage pi model
+      stamp(C, 8, vic_c1_ / 4.0);
+      stamp(G, 2, 3, 2/agg_r1_);    // second stage pi resistance
+      stamp(G, 8, 9, 2/vic_r1_);
+      stamp(C, 3, agg_c1_ / 4.0);   // end of second stage pi model
+      stamp(C, 9, vic_c1_ / 4.0);
 
-      stamp(C, 2, 6, coup_c_);      // coupling capacitance between traces
+      stamp(C, 3, 9, coup_c_);      // coupling capacitance between traces
 
-      stamp(C, 2, agg_c2_ / 2.0);   // beginning of second stage pi model
-      stamp(C, 6, vic_c2_ / 2.0);
+      stamp(C, 3, agg_c2_ / 4.0);   // beginning of third stage pi model
+      stamp(C, 9, vic_c2_ / 4.0);
+      stamp(G, 3, 4, 2/agg_r2_);    // third stage pi resistance
+      stamp(G, 9, 10, 2/vic_r2_);
+      stamp(C, 4, agg_c2_ / 4.0);   // end of third stage pi model
+      stamp(C, 10, vic_c2_ / 4.0);
 
-      stamp(G, 2, 3, 1/agg_r2_);    // second stage pi resistance
-      stamp(G, 6, 7, 1/vic_r2_);
-   
-      stamp(C, 3, agg_c2_ / 2.0);   // end of second stage pi model
-      stamp(C, 7, vic_c2_ / 2.0);
+      stamp(C, 4, agg_c2_ / 4.0);   // beginning of fourth stage pi model
+      stamp(C, 10, vic_c2_ / 4.0);
+      stamp(G, 4, 5, 2/agg_r2_);    // fourth stage pi resistance
+      stamp(G, 10, 11, 2/vic_r2_);
+      stamp(C, 5, agg_c2_ / 4.0);   // end of fourth stage pi model
+      stamp(C, 11, vic_c2_ / 4.0);
 
-      stamp(C, 3, agg_cl_);
-      stamp(C, 7, vic_cl_);
+      stamp(C, 5, agg_cl_);
+      stamp(C, 11, vic_cl_);
 
       // add an additional pair of equations for the independent sources
-      // aggressor and victim driver source currents will be nodes 8 and 9
-      stamp_i(G, 0, 8);
-      stamp_i(G, 4, 9);
+      // aggressor and victim driver source currents will be nodes 12 and 13
+      stamp_i(G, 0, 12);
+      stamp_i(G, 6, 13);
 
       // Model inputs and outputs with two matrices so that:
       // C*dX/dt = -G*X + B*u(t) and
       // Y = L.transpose() * X 
 
-      // We have two inputs, so u(t) is 2x1 and B is 10x2
-      Matrix<double, 10, 2> B; B << 0, 0
+      // We have two inputs, so u(t) is 2x1 and B is 14x2
+      Matrix<double, 14, 2> B; B << 0, 0
+                                  , 0, 0
+                                  , 0, 0
+                                  , 0, 0
+                                  , 0, 0
                                   , 0, 0
                                   , 0, 0
                                   , 0, 0
@@ -139,21 +154,25 @@ struct signal_coupling {
                                   , 0, 0
                                   , 0, 0
                                   , -1, 0     // insert Vagg = V0
-                                  , 0, -1 ;   // insert Vvic = V4
+                                  , 0, -1 ;   // insert Vvic = V6
 
       // Three outputs, for viewing and performing measurements
-      Matrix<double, 10, 3> L; L << 0, 0, 0
+      Matrix<double, 14, 3> L; L << 0, 0, 0
                                   , 1, 0, 0    // extract V1 (aggressor driver output)
                                   , 0, 0, 0
                                   , 0, 0, 0
                                   , 0, 0, 0
                                   , 0, 0, 0
-                                  , 0, 1, 0    // extract v6 (victim coupling node)
-                                  , 0, 0, 1    // extract v7 (victim rcvr)
+                                  , 0, 0, 0
+                                  , 0, 1, 0    // extract v7 (victim coupling node)
+                                  , 0, 0, 0
+                                  , 0, 0, 0
+                                  , 0, 0, 0
+                                  , 0, 0, 1    // extract v11 (victim rcvr)
                                   , 0, 0, 0
                                   , 0, 0, 0 ;
                                   
-      // 10x10 matrix from MNA cannot be directly integrated because some state
+      // 14x14 matrix from MNA cannot be directly integrated because some state
       // variable derivatives are not present.  This process substitutes other
       // state variables and in the process reduces the state size by 4 (by
       // eliminating the input voltage and current).
@@ -165,11 +184,11 @@ struct signal_coupling {
       // Use Eigen reductions to find zero rows
       auto zero_rows = (C.array() == 0.0).rowwise().all();   // per row "all zeros"
 
-      Matrix10d permut = Matrix10d::Identity();   // null permutation to start
+      Matrix14d permut = Matrix14d::Identity();   // null permutation to start
       std::size_t i, j;
-      for (i = 0, j=9; i < j;) {
+      for (i = 0, j=13; i < j;) {
         // loop invariant: rows > j are all zero; rows < i are not
-        while ((i < 10) && !zero_rows(i)) ++i;
+        while ((i < 14) && !zero_rows(i)) ++i;
         while ((j > 0) && zero_rows(j)) --j;
         if (i < j) {
           // exchange rows i and j via the permutation vector
@@ -180,14 +199,14 @@ struct signal_coupling {
       }
 
       // 2. Apply permutation to MNA matrices
-      Matrix10d Cprime = permut * C * permut;       // permute rows and columns
-      Matrix10d Gprime = permut * G * permut;
-      Matrix<double, 10, 2> Bprime = permut * B;    // permute only rows
-      Matrix<double, 10, 3> Lprime = permut * L;
+      Matrix14d Cprime = permut * C * permut;       // permute rows and columns
+      Matrix14d Gprime = permut * G * permut;
+      Matrix<double, 14, 2> Bprime = permut * B;    // permute only rows
+      Matrix<double, 14, 3> Lprime = permut * L;
       
       // 3. Produce reduced equations following Su (Proc. 15th ASP-DAC, 2002)
       std::size_t zero_count = zero_rows.count();
-      std::size_t nonzero_count = 10 - zero_count;
+      std::size_t nonzero_count = 14 - zero_count;
 
       auto G11 = Gprime.topLeftCorner(nonzero_count, nonzero_count);
       auto G12 = Gprime.topRightCorner(nonzero_count, zero_count);
@@ -252,10 +271,10 @@ struct signal_coupling {
       }
     }
         
-    Map<const Matrix<double, 6, 1> > xvec(x.data());  // turn state vector into Eigen matrix
+    Map<const Matrix<double, states, 1> > xvec(x.data());  // turn state vector into Eigen matrix
     Matrix<double, 2, 1> u; u << Vagg, Vvic;          // input excitation
 
-    Map<Matrix<double, 6, 1> > result(dxdt.data());
+    Map<Matrix<double, states, 1> > result(dxdt.data());
     result = coeff_ * xvec + input_ * u;              // sets dxdt via reference
 
   }
@@ -263,7 +282,7 @@ struct signal_coupling {
   // utility function for displaying data.  Applies internal matrices to state
   std::vector<double> state2output(state_type const& x) {
     std::vector<double> result(2);
-    Map<const Matrix<double, 6, 1> > xvec(x.data());
+    Map<const Matrix<double, states, 1> > xvec(x.data());
 
     Map<Matrix<double, 3, 1> > ovec(result.data());
     ovec = Lred_.transpose() * xvec;  // in theory the input could be involved via Dred_
@@ -346,7 +365,7 @@ int main() {
 		      coupling_c, v);
 
   // initial state: all low
-  state_type x(6, 0.0);
+  state_type x(signal_coupling::states, 0.0);
 
   vector<state_type> state_history;
   vector<double>     times;
@@ -363,7 +382,7 @@ int main() {
   // find the highest voltage on the victim (which is supposed to be low)
   cerr << "max victim excursion is: " << max_voltage(state_history, 0) << endl;
 
-  cerr << "driver delay is: " << delay(times, state_history, v/2.0, 1, 3, RiseRise) << endl;
+  cerr << "driver delay is: " << delay(times, state_history, v/2.0, 1, 5, RiseRise) << endl;
 
   return 0;
 

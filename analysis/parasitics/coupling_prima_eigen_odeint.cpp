@@ -45,9 +45,7 @@ void stamp_i(M& matrix, std::size_t vnodeno, std::size_t istateno)
 typedef vector<double> state_type;
 
 struct signal_coupling {
-  typedef Matrix<double, 10, 10> Matrix10d;   // for the MNA-based system
-
-  static const size_t q = 4; // desired number of state variables. 6 is the "natural" count.
+  static const size_t q = 6; // desired number of state variables. 10 is the "natural" count.
 
   Matrix<double, q, q> coeff_;                // reduced system state evolution
   Matrix<double, q, 2> input_;                // inputs (agg/vic) to reduced system state
@@ -92,38 +90,49 @@ struct signal_coupling {
       // of V, giving us the desired format for odeint.
 
       // apply values via "stamp"
-      Matrix10d C = Matrix10d::Zero(), G = Matrix10d::Zero();
+      typedef Matrix<double, 14, 14> Matrix14d;
+      Matrix14d C = Matrix14d::Zero(), G = Matrix14d::Zero();
 
       stamp(G, 0, 1, 1/agg_imp_);   // driver impedances
-      stamp(G, 4, 5, 1/vic_imp_);
+      stamp(G, 6, 7, 1/vic_imp_);
 
-      stamp(C, 1, agg_c1_ / 2.0);   // beginning of first stage pi model
-      stamp(C, 5, vic_c1_ / 2.0);
+      stamp(C, 1, agg_c1_ / 4.0);   // beginning of first stage pi model
+      stamp(C, 7, vic_c1_ / 4.0);
+      stamp(G, 1, 2, 2/agg_r1_);    // first stage pi resistance
+      stamp(G, 7, 8, 2/vic_r1_);
+      stamp(C, 2, agg_c1_ / 4.0);   // end of first stage pi model
+      stamp(C, 8, vic_c1_ / 4.0);
 
-      stamp(G, 1, 2, 1/agg_r1_);    // first stage pi resistance
-      stamp(G, 5, 6, 1/vic_r1_);
-   
-      stamp(C, 2, agg_c1_ / 2.0);   // end of first stage pi model
-      stamp(C, 6, vic_c1_ / 2.0);
+      stamp(C, 2, agg_c1_ / 4.0);   // beginning of second stage pi model
+      stamp(C, 8, vic_c1_ / 4.0);
+      stamp(G, 2, 3, 2/agg_r1_);    // second stage pi resistance
+      stamp(G, 8, 9, 2/vic_r1_);
+      stamp(C, 3, agg_c1_ / 4.0);   // end of second stage pi model
+      stamp(C, 9, vic_c1_ / 4.0);
 
-      stamp(C, 2, 6, coup_c_);      // coupling capacitance between traces
+      stamp(C, 3, 9, coup_c_);      // coupling capacitance between traces
 
-      stamp(C, 2, agg_c2_ / 2.0);   // beginning of second stage pi model
-      stamp(C, 6, vic_c2_ / 2.0);
+      stamp(C, 3, agg_c2_ / 4.0);   // beginning of third stage pi model
+      stamp(C, 9, vic_c2_ / 4.0);
+      stamp(G, 3, 4, 2/agg_r2_);    // third stage pi resistance
+      stamp(G, 9, 10, 2/vic_r2_);
+      stamp(C, 4, agg_c2_ / 4.0);   // end of third stage pi model
+      stamp(C, 10, vic_c2_ / 4.0);
 
-      stamp(G, 2, 3, 1/agg_r2_);    // second stage pi resistance
-      stamp(G, 6, 7, 1/vic_r2_);
-   
-      stamp(C, 3, agg_c2_ / 2.0);   // end of second stage pi model
-      stamp(C, 7, vic_c2_ / 2.0);
+      stamp(C, 4, agg_c2_ / 4.0);   // beginning of fourth stage pi model
+      stamp(C, 10, vic_c2_ / 4.0);
+      stamp(G, 4, 5, 2/agg_r2_);    // fourth stage pi resistance
+      stamp(G, 10, 11, 2/vic_r2_);
+      stamp(C, 5, agg_c2_ / 4.0);   // end of fourth stage pi model
+      stamp(C, 11, vic_c2_ / 4.0);
 
-      stamp(C, 3, agg_cl_);
-      stamp(C, 7, vic_cl_);
+      stamp(C, 5, agg_cl_);
+      stamp(C, 11, vic_cl_);
 
       // add an additional pair of equations for the independent sources
       // aggressor and victim driver source currents will be nodes 8 and 9
-      stamp_i(G, 0, 8);
-      stamp_i(G, 4, 9);
+      stamp_i(G, 0, 12);
+      stamp_i(G, 6, 13);
 
       // PRIMA
       // This is a famous model reduction technique invented around 1997/8 at CMU
@@ -136,8 +145,8 @@ struct signal_coupling {
 
       // Step 1: create B and L (input and output) matrices
 
-      // We have two inputs, so u(t) is 2x1 and B is 10x2
-      Matrix<double, 10, 2> B; B << 0, 0
+      // We have two inputs, so u(t) is 2x1 and B is 14x2
+      Matrix<double, 14, 2> B; B << 0, 0
                                   , 0, 0
                                   , 0, 0
                                   , 0, 0
@@ -145,37 +154,45 @@ struct signal_coupling {
                                   , 0, 0
                                   , 0, 0
                                   , 0, 0
-                                  , -1, 0         // insert Vagg = V0
-                                  , 0, -1 ;       // insert Vvic = V4
+                                  , 0, 0
+                                  , 0, 0
+                                  , 0, 0
+                                  , 0, 0
+                                  , -1, 0     // insert Vagg = V0
+                                  , 0, -1 ;   // insert Vvic = V6
 
       // Four outputs, for viewing and performing measurements
-      Matrix<double, 10, 4> L; L << 0, 0, 0, 0
+      Matrix<double, 14, 4> L; L << 0, 0, 0, 0
                                   , 1, 0, 0, 0    // extract V1 (aggressor driver output)
                                   , 0, 0, 0, 0
-                                  , 0, 0, 0, 1    // extract V3 (aggressor receiver)
                                   , 0, 0, 0, 0
                                   , 0, 0, 0, 0
-                                  , 0, 1, 0, 0    // extract v6 (victim coupling node)
-                                  , 0, 0, 1, 0    // extract v7 (victim rcvr)
+                                  , 0, 0, 0, 1    // extract V5 (aggressor receiver)
+                                  , 0, 0, 0, 0
+                                  , 0, 0, 0, 0
+                                  , 0, 1, 0, 0    // extract v8 (victim coupling node)
+                                  , 0, 0, 0, 0
+                                  , 0, 0, 0, 0
+                                  , 0, 0, 1, 0    // extract v11 (victim rcvr)
                                   , 0, 0, 0, 0
                                   , 0, 0, 0, 0 ;
                                   
       // Step 2: Solve GR = B for R
-      Matrix<double, 10, 2> R = G.fullPivHouseholderQr().solve(B);
+      Matrix<double, 14, 2> R = G.fullPivHouseholderQr().solve(B);
 
       // set up types for various versions of "X" variables used in PRIMA
-      // matrices we are gathering will all be 10 rows tall but some unknown number
+      // matrices we are gathering will all be 14 rows tall but some unknown number
       // of columns, depending on how many bases we harvest from each Krylov matrix
-      typedef Matrix<double, 10, Dynamic> Matrix10dX;
+      typedef Matrix<double, 14, Dynamic> Matrix14dX;
       // we want to use these in std::vectors, which requires a special allocator
       // in order to be Eigen-compatible:
-      typedef aligned_allocator<Matrix10dX> Allocator10dX;
-      typedef vector<Matrix10dX, Allocator10dX> Matrix10dXList;
-      Matrix10dXList X;   // one entry per value of "k", gathered at the end into a single Xfinal
+      typedef aligned_allocator<Matrix14dX> Allocator14dX;
+      typedef vector<Matrix14dX, Allocator14dX> Matrix14dXList;
+      Matrix14dXList X;   // one entry per value of "k", gathered at the end into a single Xfinal
 
       // Step 3: Set X[0] to the orthonormal basis of R as determined by QR factorization
       auto rQR = R.fullPivHouseholderQr();
-      Matrix10dX rQ = rQR.matrixQ();    // gets 10x10 matrix, only part of which we need
+      Matrix14dX rQ = rQR.matrixQ();    // gets 14x14 matrix, only part of which we need
       X.push_back(rQ.leftCols(rQR.rank()));  // only use the basis part
 
       // Step 4: Set n = floor(q/N)+1 if q/N is not an integer, and q/N otherwise
@@ -186,8 +203,8 @@ struct signal_coupling {
       for (size_t k = 1; k <= n; ++k)
       {
          // because X[] will vary in number of columns, so will Xk[]
-         vector<Matrix<double, 10, Dynamic>,
-                aligned_allocator<Matrix<double, 10, Dynamic> > > Xk(n+1);  // note to self: the size seems wrong (too large)
+         vector<Matrix<double, 14, Dynamic>,
+                aligned_allocator<Matrix<double, 14, Dynamic> > > Xk(n+1);  // note to self: the size seems wrong (too large)
 
          // set V = C * X[k-1]
          auto V = C * X[k-1];
@@ -211,7 +228,7 @@ struct signal_coupling {
             X.push_back(Xk[k].normalized());
          } else {
             auto xkkQR = Xk[k].fullPivHouseholderQr();
-            Matrix10dX xkkQ = xkkQR.matrixQ();
+            Matrix14dX xkkQ = xkkQR.matrixQ();
             X.push_back(xkkQ.leftCols(xkkQR.rank()));
          }
       }
@@ -219,10 +236,10 @@ struct signal_coupling {
       // Step 6: Set Xfinal to the concatenation of all those bases we calculated above,
       //         truncated to q columns
       size_t cols = accumulate(X.begin(), X.end(), 0,
-                               [](size_t sum, Matrix10dX const& m) { return sum + m.cols(); });
+                               [](size_t sum, Matrix14dX const& m) { return sum + m.cols(); });
       cols = std::min(q, cols);  // truncate to q
 
-      Matrix10dX Xfinal(10, cols);
+      Matrix14dX Xfinal(14, cols);
       size_t col = 0;
       for (size_t k = 0; (k <= n) && (col < cols); ++k)
       {
@@ -239,18 +256,17 @@ struct signal_coupling {
       auto     Bprime = Xfinal.transpose() * B;
 
       // PRIMA done.  Next step: Regularize inputs (see RLC example for more detail)
-
       coeff_ = Cprime.ldlt().solve(-1.0 * Gprime);   // state evolution
       input_ = Cprime.ldlt().solve(Bprime);          // from inputs to state variables
-      auto Lprime = Xfinal.transpose() * L;
+      Matrix<double, Dynamic, 4> Lprime = Xfinal.transpose() * L;
       output_ = Lprime.transpose();                  // from state to outputs
 
       // Compare block moments between original and reduced model
       // Prima claims to produce the same moments up to floor(q/N)
-      Matrix<double, 10, 10> A = C.fullPivHouseholderQr().solve(-1.0 * G);
+      Matrix<double, 14, 14> A = C.fullPivHouseholderQr().solve(-1.0 * G);
       Matrix<double, q, q> Aprime = coeff_;
       Matrix<double, q, 2> Rprime = Gprime.fullPivHouseholderQr().solve(Bprime);
-      Matrix<double, 10, 10> AtotheI = Matrix<double, 10, 10>::Identity();
+      Matrix<double, 14, 14> AtotheI = Matrix<double, 14, 14>::Identity();
       Matrix<double, q, q> AprimetotheI = Matrix<double, q, q>::Identity();
       for (size_t i = 0; i < (q/N); ++i) {
         std::cerr << "moment " << i << " of original model is:" << std::endl;
