@@ -157,6 +157,24 @@ BOOST_AUTO_TEST_CASE ( lefdef_combined_basic ) {
   sitename = db.siteAt(100, 200);
   BOOST_REQUIRE( sitename );
   BOOST_CHECK( *sitename == "CORE0" );
+  // extreme upper right site
+  sitename = db.siteAt(900, 800);
+  BOOST_REQUIRE( sitename );
+  BOOST_CHECK( *sitename == "CORE0" );
+  // just outside - bottom right
+  sitename = db.siteAt(1000, 0);
+  BOOST_CHECK( !sitename );
+  // just outside - upper left
+  sitename = db.siteAt(0, 1000);
+  BOOST_CHECK( !sitename );
+  // TBD: is it valid to have a cell not on a site boundary, if it completely overlaps sites?
+  // Our existing logic assumes this is *not* valid
+  // off-grid in X:
+  sitename = db.siteAt(50, 200);
+  BOOST_CHECK( !sitename );
+  // off-grid in Y:
+  sitename = db.siteAt(100, 300);
+  BOOST_CHECK( !sitename );
 
   typedef Database::InstPtr InstPtr;
   InstPtr inst = db.findInst("inst1");
@@ -166,7 +184,7 @@ BOOST_AUTO_TEST_CASE ( lefdef_combined_basic ) {
   BOOST_CHECK( (inst->getOrigin().x() == 300) && (inst->getOrigin().y() == 600) );
   BOOST_CHECK( inst->getOrient() == "FS" );
   BOOST_CHECK( !inst->isFixed() );
-  db.siteAt(300, 600);
+  sitename = db.siteAt(300, 600);
   BOOST_REQUIRE( sitename );
   BOOST_CHECK( *sitename == "CORE0" );
 
