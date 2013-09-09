@@ -256,6 +256,9 @@ namespace SimpleDB {
       m_instances.erase(std::remove(m_instances.begin(), m_instances.end(), inst), m_instances.end());
     }
 
+    void setDbuPerMicron(int dbu) { m_dbupermicron = dbu; }
+    int getDbuPerMicron() const { return m_dbupermicron; }
+
     void addRow(const std::string& name, const std::string& sitename,
 		int xcount, int ycount,
 		const DesPoint& start, int xstep, int ystep) {
@@ -272,28 +275,38 @@ namespace SimpleDB {
       // if we had access to the library we could do better checks
       // however it's a tricky architectural decision whether to have the db
       // "know" about the library.  Deferring this decision for now.
-      for (std::vector<RowSiteInst>::const_iterator sit = m_rows.begin();
-	   sit != m_rows.end(); ++sit) {
-	int sx = sit->getStartLoc().x();
-	int sy = sit->getStartLoc().y();
-	for (int ct = 0; ct < sit->getCount(); ++ct) {
-	  if ((x == sx) && (y == sy))
-	    // found it!
-	    return sit->getSiteName();
-	  if (sit->getDir() == ROWDIR_HORZ)
-	    sx += sit->getStep();
-	  else
-	    sy += sit->getStep();
-	}
+
+      // see if there's a site definition that matches the chosen location
+      auto matching_it =
+        std::find_if(m_rows.begin(), m_rows.end(),
+                     std::bind(&site_match, std::placeholders::_1, x, y));
+
+      if (matching_it != m_rows.end()) {
+        return matching_it->getSiteName();
       }
 
       return boost::optional<std::string>();
     }
 
-    void setDbuPerMicron(int dbu) { m_dbupermicron = dbu; }
-    int getDbuPerMicron() const { return m_dbupermicron; }
-
   private:
+    // utility function to determine if the given location is on one of this row's sites
+    static bool site_match(RowSiteInst const& row, int x, int y) {
+      // check non-stepped dimension first
+      if (((row.getDir() == ROWDIR_HORZ) && (y != row.getStartLoc().y())) ||
+          ((row.getDir() == ROWDIR_VERT) && (x != row.getStartLoc().x()))) {
+        // this location is not on the selected row
+        return false;
+      }
+
+      // determine if the location falls on one of the offsets
+      // [start, start+step, ..., start+(count-1)*step]
+      int start = (row.getDir() == ROWDIR_HORZ) ? row.getStartLoc().x() : row.getStartLoc().y();
+      int offset = (row.getDir() == ROWDIR_HORZ) ? x : y;
+      return (((offset - start) % row.getStep()) == 0) &&
+             (((offset - start) / row.getStep()) < row.getCount());
+
+    }
+
     std::vector<InstPtr> m_instances;
     boost::optional<DesRect> m_extent;
     std::vector<RowSiteInst> m_rows;
