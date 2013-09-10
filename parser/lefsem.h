@@ -50,14 +50,13 @@ namespace LefParse {
     // get site definitions from AST, check, and install into lib
     typedef typename Lib::Site LibSite;
     typedef typename Lib::SitePtr LibSitePtr;
-    for (std::vector<Site>::const_iterator sit = lefin.sites.begin();
-	 sit != lefin.sites.end(); ++sit) {
+    for (auto const& site : lefin.sites) {
       // All I can think of to check for sites is whether they've been defined already
-      LibSitePtr prevsite = lib.findSite(sit->name);
+      LibSitePtr prevsite = lib.findSite(site.name);
       bool site_was_redefined = (prevsite != LibSitePtr());
       if (site_was_redefined && !CheckPolicy<LEFERR_SITE_REDEF>::silent) {
 	// really need some more diagnostics here: file and line number of original and new definitions
-	std::cerr << "LEF Checker: Site " << sit->name << " is being redefined\n";
+	std::cerr << "LEF Checker: Site " << site.name << " is being redefined\n";
       }
       if (!site_was_redefined || !CheckPolicy<LEFERR_SITE_REDEF>::skip) {
 	// "don't skip" in this case will mean "overwrite previous definition"
@@ -66,11 +65,11 @@ namespace LefParse {
 	if (site_was_redefined)
 	  lib.removeSite(prevsite);
 
-	LibSitePtr sptr(new LibSite(sit->name));
-	sptr->setClass(sit->class_);
-	if (sit->symmetry)
-	  sptr->setSymmetry(*(sit->symmetry));
-	sptr->setDimensions(sit->width, sit->height);
+	LibSitePtr sptr(new LibSite(site.name));
+	sptr->setClass(site.class_);
+	if (site.symmetry)
+	  sptr->setSymmetry(*(site.symmetry));
+	sptr->setDimensions(site.width, site.height);
 	lib.addSite(sptr);
       }
       if (site_was_redefined && CheckPolicy<LEFERR_SITE_REDEF>::abort)
@@ -79,37 +78,36 @@ namespace LefParse {
     // get cell definitions from AST
     typedef typename Lib::Cell LibCell;
     typedef typename Lib::CellPtr LibCellPtr;
-    for (std::vector<lefmacro>::const_iterator mit = lefin.macros.begin();
-	 mit != lefin.macros.end(); ++mit) {
+    for (auto const& macro : lefin.macros) {
       // check to see if this cell is being redefined
-      LibCellPtr prevcell = lib.findCell(mit->name);
+      LibCellPtr prevcell = lib.findCell(macro.name);
       bool cell_was_redefined = (prevcell != LibCellPtr());
       if (cell_was_redefined && !CheckPolicy<LEFERR_MACRO_REDEF>::silent) {
-	std::cerr << "LEF Checker: Cell " << mit->name << " is being redefined\n";
+	std::cerr << "LEF Checker: Cell " << macro.name << " is being redefined\n";
       }
       if (!cell_was_redefined || !CheckPolicy<LEFERR_MACRO_REDEF>::skip) {
 	if (cell_was_redefined)
 	  lib.removeCell(prevcell);
 
-	LibCellPtr cptr(new LibCell(mit->name));
-	if (mit->class_)
-	  cptr->setClass(*(mit->class_));
+	LibCellPtr cptr(new LibCell(macro.name));
+	if (macro.class_)
+	  cptr->setClass(*(macro.class_));
 	else {
 	  cptr->setClass(SITECLASS_CORE);
 	  if (!CheckPolicy<LEFERR_MACRO_NOCLASS>::silent)
 	    // LEF/DEF 5.6 specifies a warning here
-	    std::cerr << "LEF Checker: Cell " << mit->name << " has no class defined; assuming CORE\n";
+	    std::cerr << "LEF Checker: Cell " << macro.name << " has no class defined; assuming CORE\n";
 	}
-	if (mit->origin)
-	  cptr->setOrigin(std::make_pair(mit->origin->x, mit->origin->y));
+	if (macro.origin)
+	  cptr->setOrigin(std::make_pair(macro.origin->x, macro.origin->y));
 	else
 	  cptr->setOrigin(std::make_pair(0.0f, 0.0f));  // default
-	if (mit->size)
-	  cptr->setDimensions(mit->size->width, mit->size->height);
-	if (mit->symmetry)
-	  cptr->setSymmetry(*(mit->symmetry));
-	if (mit->site)
-	  cptr->setSite(*(mit->site));
+	if (macro.size)
+	  cptr->setDimensions(macro.size->width, macro.size->height);
+	if (macro.symmetry)
+	  cptr->setSymmetry(*(macro.symmetry));
+	if (macro.site)
+	  cptr->setSite(*(macro.site));
 
 	lib.addCell(cptr);
       }
