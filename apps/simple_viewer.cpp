@@ -97,10 +97,13 @@ int main(int argc, char **argv) {
     if (lef_it != lef_end) {
        std::cerr << "did not consume all input; ";
        std::cerr << std::distance(lef_it, lef_end) << " tokens remain:" << std::endl;
-       for (auto tok_it = lef_it; tok_it != lef_end; ++tok_it) {
-          std::cerr << "|" << boost::get<boost::iterator_range<LefDefIter> >(tok_it->value());
-          std::cerr << "|" << std::endl;
-       }
+       std::transform(lef_it, lef_end,
+                      std::ostream_iterator<boost::iterator_range<LefDefIter> >(std::cerr, "|"),
+                      [](LefTokens<LefDefLexer>::iterator_type::value_type const& tok) {
+                        // token's value is a variant which initially stores the original iterator
+                        // range matched by the token, i.e., a range of characters
+                           return boost::get<boost::iterator_range<LefDefIter> >(tok.value());
+                      });
     }
     return 1;
   }
@@ -127,10 +130,11 @@ int main(int argc, char **argv) {
     if (it != lex_end) {
        std::cerr << "did not consume all input; ";
        std::cerr << std::distance(it, lex_end) << " tokens remain:" << std::endl;
-       for (auto tok_it = it; tok_it != lex_end; ++tok_it) {
-          std::cerr << "|" << boost::get<boost::iterator_range<LefDefIter> >(tok_it->value());
-          std::cerr << "|" << std::endl;
-       }
+       std::transform(it, lex_end,
+                      std::ostream_iterator<boost::iterator_range<LefDefIter> >(std::cerr, "|"),
+                      [](DefTokens<LefDefLexer>::iterator_type::value_type const& tok) {
+                           return boost::get<boost::iterator_range<LefDefIter> >(tok.value());
+                      });
     }
     return 1;
   }
