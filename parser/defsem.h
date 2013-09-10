@@ -93,15 +93,14 @@ namespace DefParse {
 
       // Examine row/site statements and see if they make sense (exist and are inside design)
       // if STEP is provided at least one must be 1
-      for (std::vector<rowsite>::const_iterator rit = defin.rows.begin();
-	   rit != defin.rows.end(); ++rit) {
+      for (auto const& rs : defin.rows) {
 	// verify the Site referenced by this DEF line is defined in the library
 	// (or tech LEF, tbd)
 	typedef typename Lib::SitePtr LibSitePtr;
-	LibSitePtr sptr = lib.findSite(rit->sitename);
+	LibSitePtr sptr = lib.findSite(rs.sitename);
 	bool site_not_found = (sptr == LibSitePtr());
 	if (site_not_found && !CheckPolicy<DEFERR_SITE_UNKNOWN_NAME>::silent)
-	  std::cerr << "DEF Checker: unknown site name " << rit->sitename << std::endl;
+	  std::cerr << "DEF Checker: unknown site name " << rs.sitename << std::endl;
 
 	// set up some defaults for count and stepping
 	int xcount = 1; int ycount = 1;
@@ -111,39 +110,39 @@ namespace DefParse {
 	  xstep = (int)(defin.dbupermicron * sptr->getWidth());
 	  ystep = (int)(defin.dbupermicron * sptr->getHeight());
 	}
-	if (rit->repeat) {
-	  xcount = rit->repeat->xrepeat;
-	  ycount = rit->repeat->yrepeat;
-	  if (rit->repeat->step) {
-	    xstep = rit->repeat->step->first;
-	    ystep = rit->repeat->step->second;
+	if (rs.repeat) {
+	  xcount = rs.repeat->xrepeat;
+	  ycount = rs.repeat->yrepeat;
+	  if (rs.repeat->step) {
+	    xstep = rs.repeat->step->first;
+	    ystep = rs.repeat->step->second;
 	  }
 	}
 	bool site_malformed = (ycount != 1) && (xcount != 1);
 	if (site_malformed && !CheckPolicy<DEFERR_SITE_MALFORMED>::silent) {
-	  if (rit->rowname)
-	    std::cerr << "DEF Checker: row " << rit->rowname << " must have either X or Y count == 1\n";
+	  if (rs.rowname)
+	    std::cerr << "DEF Checker: row " << rs.rowname << " must have either X or Y count == 1\n";
 	  else
 	    std::cerr << "DEF Checker: site row definition must have either X or Y count == 1\n";
 	}
 
 	// check limits
-	int farx = rit->origx + (xcount - 1) * xstep;
-	int fary = rit->origy + (ycount - 1) * ystep;
+	int farx = rs.origx + (xcount - 1) * xstep;
+	int fary = rs.origy + (ycount - 1) * ystep;
 	if (!site_not_found) {
 	  // also add in site width/height
 	  farx += (int)(defin.dbupermicron * sptr->getWidth());
 	  fary += (int)(defin.dbupermicron * sptr->getHeight());
 	}
-	bool out_of_diearea = ((rit->origx < defin.diearea.ll.x) || (farx < defin.diearea.ll.x) ||
-			       (rit->origy < defin.diearea.ll.y) || (fary < defin.diearea.ll.y) ||
-			       (rit->origx > defin.diearea.ur.x) || (farx > defin.diearea.ur.x) ||
-			       (rit->origy > defin.diearea.ur.y) || (fary > defin.diearea.ur.y));
+	bool out_of_diearea = ((rs.origx < defin.diearea.ll.x) || (farx < defin.diearea.ll.x) ||
+			       (rs.origy < defin.diearea.ll.y) || (fary < defin.diearea.ll.y) ||
+			       (rs.origx > defin.diearea.ur.x) || (farx > defin.diearea.ur.x) ||
+			       (rs.origy > defin.diearea.ur.y) || (fary > defin.diearea.ur.y));
 	if (out_of_diearea && !CheckPolicy<DEFERR_SITE_OUTSIDE_DIEAREA>::silent) {
-	  if (rit->rowname)
-	    std::cerr << "DEF Checker: row " << rit->rowname << " from (" << rit->origx << ", " << rit->origy << ") to (" << farx << ", " << fary << ") extends beyond DIEAREA boundary\n";
+	  if (rs.rowname)
+	    std::cerr << "DEF Checker: row " << rs.rowname << " from (" << rs.origx << ", " << rs.origy << ") to (" << farx << ", " << fary << ") extends beyond DIEAREA boundary\n";
 	  else
-	    std::cerr << "DEF Checker: sites from (" << rit->origx << ", " << rit->origy << ") to (" << farx << ", " << fary << ") extend beyond DIEAREA boundary\n";
+	    std::cerr << "DEF Checker: sites from (" << rs.origx << ", " << rs.origy << ") to (" << farx << ", " << fary << ") extend beyond DIEAREA boundary\n";
 	}
 	  
 	if ((site_not_found && CheckPolicy<DEFERR_SITE_UNKNOWN_NAME>::skip) ||
@@ -151,10 +150,10 @@ namespace DefParse {
 	    (site_malformed && CheckPolicy<DEFERR_SITE_MALFORMED>::skip))
 	  continue;
 	// add sites to database
-	if (rit->rowname)
-	  db.addRow(*(rit->rowname), rit->sitename, xcount, ycount, Point(rit->origx, rit->origy), xstep, ystep);
+	if (rs.rowname)
+	  db.addRow(*(rs.rowname), rs.sitename, xcount, ycount, Point(rs.origx, rs.origy), xstep, ystep);
 	else
-	  db.addRow("<UNNAMED>", rit->sitename, xcount, ycount, Point(rit->origx, rit->origy), xstep, ystep);
+	  db.addRow("<UNNAMED>", rs.sitename, xcount, ycount, Point(rs.origx, rs.origy), xstep, ystep);
 	if ((site_not_found && CheckPolicy<DEFERR_SITE_UNKNOWN_NAME>::abort) ||
 	    (out_of_diearea && CheckPolicy<DEFERR_SITE_OUTSIDE_DIEAREA>::abort) ||
 	    (site_malformed && CheckPolicy<DEFERR_SITE_MALFORMED>::abort))
@@ -163,19 +162,18 @@ namespace DefParse {
       }
 
       // Examine each instance
-      for (std::vector<defcomponent>::const_iterator iit = defin.components.begin();
-	   iit != defin.components.end(); ++iit) {
+      for (auto const& inst : defin.components) {
 	typedef typename Lib::CellPtr CellPtr;
-	CellPtr cell = lib.findCell(iit->celltype);
+	CellPtr cell = lib.findCell(inst.celltype);
 	bool cell_not_found = (cell == CellPtr());
 	if (cell_not_found && !CheckPolicy<DEFERR_INST_UNKNOWN_CELL>::silent)
-	  std::cerr << "DEF Checker: Instance " << iit->name << " is of unknown cell type " << iit->celltype << std::endl;
+	  std::cerr << "DEF Checker: Instance " << inst.name << " is of unknown cell type " << inst.celltype << std::endl;
 
 	typedef typename DB::InstPtr InstPtr;
-	InstPtr previnst = db.findInst(iit->name);
+	InstPtr previnst = db.findInst(inst.name);
 	bool inst_redefined = (previnst != InstPtr());
 	if (inst_redefined && !CheckPolicy<DEFERR_INST_REDEFINED>::silent)
-	  std::cerr << "DEF Checker: Instance " << iit->name << " is of unknown cell type " << iit->celltype << std::endl;
+	  std::cerr << "DEF Checker: Instance " << inst.name << " is of unknown cell type " << inst.celltype << std::endl;
 
 	if ((!cell_not_found || !CheckPolicy<DEFERR_INST_UNKNOWN_CELL>::skip) &&
 	    (!inst_redefined || !CheckPolicy<DEFERR_INST_REDEFINED>::skip)) {
@@ -183,11 +181,11 @@ namespace DefParse {
 	    // we really can't have both of these in the db, so delete the previously found one
 	    db.removeInst(previnst);
 	  typedef typename DB::Inst Inst;
-	  InstPtr inst(new Inst(iit->name, iit->celltype));
-	  if (iit->placement)
-	    inst->setPlacement(Point(iit->placement->origin.x, iit->placement->origin.y),
-			       iit->placement->orient, (iit->placement->plcfix == "FIXED"));
-	  db.addInst(inst);
+	  InstPtr instp(new Inst(inst.name, inst.celltype));
+	  if (inst.placement)
+	    instp->setPlacement(Point(inst.placement->origin.x, inst.placement->origin.y),
+			       inst.placement->orient, (inst.placement->plcfix == "FIXED"));
+	  db.addInst(instp);
 	}
 	if ((cell_not_found && CheckPolicy<DEFERR_INST_UNKNOWN_CELL>::abort) ||
 	    (inst_redefined && CheckPolicy<DEFERR_INST_REDEFINED>::abort))
