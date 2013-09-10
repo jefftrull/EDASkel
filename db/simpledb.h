@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <boost/assert.hpp>
 #include <boost/optional.hpp>
+#include <boost/range.hpp>
 #include <memory>
 
 #include "globals.h"
@@ -238,8 +239,9 @@ namespace SimpleDB {
     typedef std::vector<InstPtr>::const_iterator InstIter;  // users cannot change stored pointers
 
     Database() {};
-    std::pair<InstIter, InstIter> getInstances() const { return std::make_pair(m_instances.begin(),
-									       m_instances.end()); }
+    boost::iterator_range<InstIter> getInstances() const {
+      return boost::make_iterator_range(m_instances.begin(), m_instances.end());
+    }
     void setExtent(DesRect r) {m_extent = r;}
     bool hasExtent() const {return m_extent;}
     DesRect getExtent() const {BOOST_ASSERT(m_extent); return *m_extent;}

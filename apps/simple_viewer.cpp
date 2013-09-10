@@ -19,7 +19,6 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include <tuple>
 
 #include <QApplication>
 #include <QGraphicsView>
@@ -130,10 +129,8 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  typedef Database::InstIter InstIter;
-  InstIter iit, instend;
-  std::tie(iit, instend) = db.getInstances();
-  std::cerr << "DEF contains " << distance(iit, instend) << " instances\n";
+  boost::iterator_range<Database::InstIter> instRange = db.getInstances();
+  std::cerr << "DEF contains " << std::distance(std::begin(instRange), std::end(instRange)) << " instances\n";
 
   // create a "scene" (model) for display from the filled-out library and database
   DesignScene<Database, Library> myScene(db, lib);

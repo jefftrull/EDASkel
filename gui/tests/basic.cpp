@@ -27,12 +27,12 @@
 #include <QApplication>
 #include <QGraphicsItem>
 
-#include <tuple>
 
 BOOST_AUTO_TEST_CASE( basic ) {
   int argc = 0;
   QApplication app(argc, 0);
 
+  using namespace std;
   using namespace SimpleDB;
   // create a fake library
   Library lib;
@@ -47,17 +47,16 @@ BOOST_AUTO_TEST_CASE( basic ) {
   Database db;
   db.setDbuPerMicron(1);
   db.setExtent(Database::Rect(Database::Point(0, 0), Database::Point(10000, 10000)));
-  Database::InstIter beg, end;
-  tie(beg, end) = db.getInstances();
-  BOOST_CHECK( beg == end );   // we haven't added any yet
+  auto instRange = db.getInstances();
+  BOOST_CHECK( begin(instRange) == end(instRange) );  // we haven't added any yet
   Database::InstPtr i1(new Instance("Inst1", "BIGCELL"));
   i1->setPlacement(Database::Point(2000, 2000), "N");
   db.addInst(i1);
   Database::InstPtr i2(new Instance("Inst2", "SMALLCELL"));
   i2->setPlacement(Database::Point(2095, 2095), "N");   // create a small overlap
   db.addInst(i2);
-  tie(beg, end) = db.getInstances();
-  BOOST_CHECK( distance(beg, end) == 2 );
+  instRange = db.getInstances();
+  BOOST_CHECK( distance(begin(instRange), end(instRange)) == 2 );
 
   // now verify that the resulting scene has the expected contents
   DesignScene<Database, Library> myScene(db, lib);
