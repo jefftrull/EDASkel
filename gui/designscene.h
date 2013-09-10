@@ -70,8 +70,9 @@ class DesignScene : public DesignSceneBase {
     // the appearance (e.g., by marking the UR corner to make orientation more obvious)
     QPen instPen(Qt::red, 0);
     typename DB::InstIter iit, end;
-    for (std::tie(iit, end) = db.getInstances(); iit != end; ++iit) {
-      const typename Lib::CellPtr cell = lib.findCell((*iit)->getCellName());
+    
+    for (auto const& instp : db.getInstances()) {
+      const typename Lib::CellPtr cell = lib.findCell(instp->getCellName());
       if (!cell)
 	continue;   // or produce an error somehow?
 
@@ -81,14 +82,14 @@ class DesignScene : public DesignSceneBase {
       int width = cell->getWidth() * dbu;
       int height = cell->getHeight() * dbu;
 
-      typename DB::Point orig = (*iit)->getOrigin();
+      typename DB::Point orig = instp->getOrigin();
       // handle orientation
       // From what I can tell the DEF coordinate is the location of the LL corner *after*
       // orientation is taken into account
       // For instance outlines all we care about is the location of the UR corner
       // It seems like this can be handled by conditionally exchanging width and height
-      if (((*iit)->getOrient() == "E") || ((*iit)->getOrient() == "FE") ||
-	  ((*iit)->getOrient() == "W") || ((*iit)->getOrient() == "FW"))
+      if ((instp->getOrient() == "E") || (instp->getOrient() == "FE") ||
+	  (instp->getOrient() == "W") || (instp->getOrient() == "FW"))
 	std::swap(width, height);
       // when we display the geometries within the cell we'll have to revisit this with
       // a more sophisticated technique involving transforms
@@ -97,11 +98,11 @@ class DesignScene : public DesignSceneBase {
       instrect->setPen(instPen);
       // create a formatted "Tool Tip" (hover text) to identify this inst
       instrect->setToolTip(QString("%1 (%2) (%3, %4) %5").
-			   arg((*iit)->getName().c_str()).
-			   arg((*iit)->getCellName().c_str()).
+			   arg(instp->getName().c_str()).
+			   arg(instp->getCellName().c_str()).
 			   arg(orig.x()).
 			   arg(orig.y()).
-			   arg((*iit)->getOrient().c_str()));
+			   arg(instp->getOrient().c_str()));
     }
   }
 };
