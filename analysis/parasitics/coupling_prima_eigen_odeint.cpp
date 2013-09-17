@@ -415,19 +415,23 @@ int main() {
   odeint::integrate( ckt, x, 0.0, 1000e-12, 1e-12,
                      push_back_state_and_time( state_history, times ) );
 
+  // generate observable (output) values by applying output transform matrix to each state
   auto output_translator = ckt.output();
+  transform(state_history.begin(), state_history.end(), back_inserter(outputs),
+            [output_translator]
+            (const state_type& state) -> state_type {
+              // access vector state data through an Eigen map so we can multiply
+              Map<const Matrix<double, signal_coupling::q, 1> > statevec(state.data());
+              state_type ovec(4);   // result
+              Map<Matrix<double, 4, 1> > outputvec(ovec.data(), 4, 1);   // also needs a Map
+              outputvec = output_translator * statevec;  // multiply into vector via Map
+              return ovec;
+            });
 
   for (size_t i = 0; i < times.size(); ++i) {
     // format for gnuplot.  We are remembering the output voltages
-    Map<const Matrix<double, signal_coupling::q, 1> > statevec(state_history[i].data());
-    double vagg = (output_translator * statevec)(0);
-    double vcoup = (output_translator * statevec)(1);
-    double vvic = (output_translator * statevec)(2);
-    double vagg_rcv = (output_translator * statevec)(3);
-
-    cout << times[i] << " " << vagg << " " << vcoup << " " << vvic << endl;
-    outputs.push_back({vagg, vcoup, vvic, vagg_rcv});
-
+    // time, vagg, vcoup, vvic (vagg_rcv omitted)
+    cout << times[i] << " " << outputs[i][0] << " " << outputs[i][1] << " " << outputs[i][2] << endl;
   }
 
   // find the highest voltage on the victim (which is supposed to be low)
