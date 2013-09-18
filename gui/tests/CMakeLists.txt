@@ -12,6 +12,8 @@ if (MSVC)
 endif()
 add_test( BasicGUI basicgui )
 if (WIN32)
+  get_target_property( WidgetLibDir Qt5::Widgets LOCATION )
+  get_filename_component( QT_BINARY_DIR ${WidgetLibDir} PATH )
   set_tests_properties( BasicGUI PROPERTIES ENVIRONMENT "Path=${QT_BINARY_DIR}" )
 endif()
 

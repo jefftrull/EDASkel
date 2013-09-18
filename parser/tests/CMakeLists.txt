@@ -10,3 +10,6 @@ endforeach()
 
 add_executable( spefbasic spefbasic.cpp )
 add_test( spefbasic spefbasic )
+if (MSVC)
+  set_target_properties( spefbasic PROPERTIES COMPILE_FLAGS "/EHa" )
+endif()

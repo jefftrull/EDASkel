@@ -14,7 +14,6 @@ using namespace EDASkel::SpefParse;
 
 using boost::spirit::qi::phrase_parse;
 
-typedef boost::spirit::istream_iterator SpefIter;
 spefparser<SpefIter> spefParser;
 spefskipper<SpefIter> spefSkipper;
 
