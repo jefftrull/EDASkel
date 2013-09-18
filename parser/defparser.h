@@ -45,8 +45,7 @@ template <typename Lexer>
 struct DefTokens : boost::spirit::lex::lexer<Lexer>
 {
   DefTokens()
-    : orient_("F?[NSEW]"),
-      history_("^HISTORY[^;]*;"),
+    : history_("^HISTORY[^;]*;"),
       double_("-?[0-9]+\\.[0-9]+"),
       int_("-?[0-9]+")
   {
@@ -70,7 +69,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
     // some identifiers (esp instance names) may be as complex as:
     // letter followed by letters, numbers, underscore, hyphen, square brackets, slashes (hierarchy)
     // with potentially embedded, quoted bracketed numbers, and optionally a final unquoted bracketed number
-    ident_ = "[a-zA-Z]([a-zA-Z0-9_/]|-|(\\\\\\[[0-9+]\\\\\\]))*(\\[[0-9]+\\])?";
+    nonkwd_ = "[a-zA-Z]([a-zA-Z0-9_/]|-|(\\\\\\[[0-9+]\\\\\\]))*(\\[[0-9]+\\])?";
     
     this->self +=
       // history is highest priority - may contain keywords!
@@ -108,9 +107,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
       | lex::string("VIAS", T_VIAS)
       | lex::string("PLACED", T_PLACED)
       | lex::string("FIXED", T_FIXED)
-      // BOZO orient looks like an identifier.
-      | orient_
-      | ident_
+      | nonkwd_
       | double_ | int_
       | '+' | '-' | '(' | ')' | ';'
       ;
@@ -129,7 +126,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
   // attribute-less tokens are all done above by tokenid per hkaiser recommendation
 
   // string attribute tokens (different kinds of identifiers, mostly)
-  boost::spirit::lex::token_def<std::string> ident_, orient_, history_;
+  boost::spirit::lex::token_def<std::string> nonkwd_, history_;
   // numbers
   boost::spirit::lex::token_def<double> double_;
   boost::spirit::lex::token_def<int> int_;
@@ -178,15 +175,18 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
 
     point %= '(' >> tok.int_ >> tok.int_ >> ')' ;       // points are parenthesized pairs, no comma
 
-    plcinfo %= '+' >> ((token(T_FIXED) > point > tok.orient_) |
-                       (token(T_PLACED) > point > tok.orient_)) ;    // location and orientation
+    orient %= tok.nonkwd_[_pass = ((_1 == "N")  || (_1 == "S") ||  (_1 == "E")  || (_1 == "W") ||
+                                   (_1 == "FN") || (_1 == "FS") || (_1 == "FE") || (_1 == "FW"))] ;
+
+    plcinfo %= '+' >> ((token(T_FIXED) > point > orient) |
+                       (token(T_PLACED) > point > orient)) ;    // location and orientation
 
     weight %= '+' >> raw_token(T_WEIGHT) > tok.int_ ;
 
     source = '+' >> raw_token(T_SOURCE) > (raw_token(T_DIST) | raw_token(T_NETLIST) | raw_token(T_USER) | raw_token(T_TIMING)) ;
 
     // components required instance name and celltype; optional any (or none) of placement and weight, in any order:
-    comp = ( '-' > tok.ident_[at_c<0>(_val) = _1] > tok.ident_[at_c<1>(_val) = _1] >
+    comp = ( '-' > tok.nonkwd_[at_c<0>(_val) = _1] > tok.nonkwd_[at_c<1>(_val) = _1] >
              (plcinfo[at_c<2>(_val) = _1] ^ omit[weight] ^ source ^ eps ) >
              ';' )[bind(comp_symtab.add, _1, _1)];  // turn symbol table add into "lazy" function
 
@@ -211,6 +211,9 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
 
   // points "( x y )" produces defpoint structs (see deftypes.h)
   boost::spirit::qi::rule<Iterator, defpoint()> point;
+
+  // orientation synthesizes a string
+  boost::spirit::qi::rule<Iterator, std::string()> orient;
 
   // optional placement info (placed vs. fixed, location, orientation)
   boost::spirit::qi::rule<Iterator, defplcinfo()> plcinfo;
@@ -243,12 +246,12 @@ struct net_parser : boost::spirit::qi::grammar<Iterator, defnet()>
     using boost::spirit::_a;
     using boost::spirit::_val;
     using boost::phoenix::at_c;
-    connection = '(' > tok.ident_[_a = _1] // component name
+    connection = '(' > tok.nonkwd_[_a = _1] // component name
                > eps[_pass = bind(static_cast<findfn_t>(&comp_symtab_t::find),
                                   comp_symtab, _a)]
-               > tok.ident_[at_c<0>(_val) = _a, at_c<1>(_val) = _1] > ')' ;
+               > tok.nonkwd_[at_c<0>(_val) = _a, at_c<1>(_val) = _1] > ')' ;
 
-    net = '-' > tok.ident_ > *connection > ';' ;
+    net = '-' > tok.nonkwd_ > *connection > ';' ;
   }
 
   boost::spirit::qi::rule<Iterator,
@@ -307,19 +310,21 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       // My copy of the LEF/DEF reference does not show this SITE command as valid for DEF yet my example data does...
       // The example data's syntax is very similar to that defined for ROW, so I'll combine them
       siterpt_stmt = raw_token(T_DO) > tok.int_ > raw_token(T_BY) > tok.int_ > -(raw_token(T_STEP) > tok.int_ > tok.int_) ;
-      rowsite_stmt = ((raw_token(T_ROW) > tok.ident_) | raw_token(T_SITE)) > tok.ident_ > tok.int_ > tok.int_ > tok.orient_ >
+      orient %= tok.nonkwd_[_pass = ((_1 == "N")  || (_1 == "S") ||  (_1 == "E")  || (_1 == "W") ||
+                                     (_1 == "FN") || (_1 == "FS") || (_1 == "FE") || (_1 == "FW"))] ;
+      rowsite_stmt = ((raw_token(T_ROW) > tok.nonkwd_) | raw_token(T_SITE)) > tok.nonkwd_ > tok.int_ > tok.int_ > orient >
 	             -siterpt_stmt > ';' ;
 
       dbu = raw_token(T_UNITS) > raw_token(T_DISTANCE) > raw_token(T_MICRONS) > tok.int_ > ';' ;
 
       // This parser only handles components and a couple of misc. statements
       // here's a catchall parser to discard all other data
-      tracks_stmt = raw_token(T_TRACKS) >> *(tok.ident_ | raw_token(T_DO) | raw_token(T_STEP) | tok.int_) > ';' ;
-      gcellgrid_stmt = raw_token(T_GCELLGRID) > *(tok.ident_ | raw_token(T_DO) | raw_token(T_STEP) | tok.int_) > ';' ;
+      tracks_stmt = raw_token(T_TRACKS) >> *(tok.nonkwd_ | raw_token(T_DO) | raw_token(T_STEP) | tok.int_) > ';' ;
+      gcellgrid_stmt = raw_token(T_GCELLGRID) > *(tok.nonkwd_ | raw_token(T_DO) | raw_token(T_STEP) | tok.int_) > ';' ;
 
       unparsed = vias_section | specialnets_section | pins_section | tracks_stmt | gcellgrid_stmt | history_stmt ;
 
-      def_file = raw_token(T_DESIGN) > tok.ident_[at_c<0>(_val) = _1] > ';' >
+      def_file = raw_token(T_DESIGN) > tok.nonkwd_[at_c<0>(_val) = _1] > ';' >
                  *(version_stmt[at_c<1>(_val) = _1] |
 		   diearea_stmt[at_c<2>(_val) = _1] |
 		   dbu[at_c<3>(_val) = _1] |
@@ -370,6 +375,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
   typedef boost::spirit::qi::rule<Iterator, std::string()> StringRule;
 
   // Site (or named row) statement
+  boost::spirit::qi::rule<Iterator, std::string()> orient;
   boost::spirit::qi::rule<Iterator, siterepeat()> siterpt_stmt;
   boost::spirit::qi::rule<Iterator, rowsite()> rowsite_stmt;
 
