@@ -47,11 +47,11 @@ typedef vector<double> state_type;
 struct rlc_tank {
   double r_, l_, c_;
   double vin_;
-  Matrix2d coeff_;
-  Matrix<double, 2, 1> input_;
+  MatrixXd coeff_;
+  MatrixXd input_;
 
-  Matrix<double, 2, 3> Lred_;   // (regularized/reduced) state variable to output mapping
-  Matrix<double, 3, 1> Dred_;   // regularized input to output mapping
+  MatrixXd Lred_;   // (regularized/reduced) state variable to output mapping
+  MatrixXd Dred_;   // regularized input to output mapping
 
   rlc_tank(double r, double l, double c, double vin) : r_(r), l_(l), c_(c), vin_(vin) {
     // state variables are:
