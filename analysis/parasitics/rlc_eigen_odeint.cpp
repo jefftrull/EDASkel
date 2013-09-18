@@ -210,7 +210,7 @@ int main() {
 
 
   // initial state: all voltages and currents 0
-  state_type x({0.0, 0.0});
+  state_type x(2, 0.0);
 
   vector<state_type> state_history;
   vector<double>     times;

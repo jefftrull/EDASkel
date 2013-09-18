@@ -4,6 +4,7 @@
 // Jeff Trull 2013-06-04
 
 #include <vector>
+#include <numeric>
 using namespace std;
 #include <boost/numeric/odeint.hpp>
 using namespace boost::numeric;
@@ -416,9 +417,9 @@ int main() {
                      push_back_state_and_time( state_history, times ) );
 
   // generate observable (output) values by applying output transform matrix to each state
-  auto output_translator = ckt.output();
+  auto const output_translator = ckt.output();
   transform(state_history.begin(), state_history.end(), back_inserter(outputs),
-            [output_translator]
+            [&output_translator]
             (const state_type& state) -> state_type {
               // access vector state data through an Eigen map so we can multiply
               Map<const Matrix<double, signal_coupling::q, 1> > statevec(state.data());
