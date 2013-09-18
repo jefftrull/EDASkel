@@ -47,11 +47,11 @@ typedef vector<double> state_type;
 struct signal_coupling {
   static const size_t states = 10;
 
-  Matrix<double, states, states> coeff_;
-  Matrix<double, states, 2> input_;
+  MatrixXd coeff_;
+  MatrixXd input_;
 
-  Matrix<double, states, 3> Lred_;   // (regularized/reduced) state variable to output mapping
-  Matrix<double, 3, 2> Dred_;   // regularized input to output mapping
+  MatrixXd Lred_;            // (regularized/reduced) state variable to output mapping
+  MatrixXd Dred_;            // regularized input to output mapping
 
   double agg_r1_, agg_c1_;   // aggressor first stage pi model (prior to coupling point)
   double agg_r2_, agg_c2_;   // aggressor second stage pi model (after coupling point)
