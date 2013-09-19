@@ -127,16 +127,16 @@ BOOST_AUTO_TEST_CASE ( site_basic ) {
   BOOST_CHECK_EQUAL( result.diearea.ur.y, 200000 );
   BOOST_REQUIRE_EQUAL( result.rows.size(), 1 );
   BOOST_CHECK( !result.rows[0].rowname );
-  BOOST_CHECK_EQUAL( result.rows[0].body.sitename, "CORE1" );
-  BOOST_CHECK_EQUAL( result.rows[0].body.origx, 10 );
-  BOOST_CHECK_EQUAL( result.rows[0].body.origy, 20 );
-  BOOST_CHECK_EQUAL( result.rows[0].body.orient, "N" );
-  BOOST_REQUIRE( result.rows[0].body.repeat );
-  BOOST_CHECK_EQUAL( result.rows[0].body.repeat->xrepeat, 200 );
-  BOOST_CHECK_EQUAL( result.rows[0].body.repeat->yrepeat, 1 );
-  BOOST_REQUIRE( result.rows[0].body.repeat->step );
-  BOOST_CHECK_EQUAL( result.rows[0].body.repeat->step->first, 100 );
-  BOOST_CHECK_EQUAL( result.rows[0].body.repeat->step->second, 500 );
+  BOOST_CHECK_EQUAL( result.rows[0].sitename, "CORE1" );
+  BOOST_CHECK_EQUAL( result.rows[0].origx, 10 );
+  BOOST_CHECK_EQUAL( result.rows[0].origy, 20 );
+  BOOST_CHECK_EQUAL( result.rows[0].orient, "N" );
+  BOOST_REQUIRE( result.rows[0].repeat );
+  BOOST_CHECK_EQUAL( result.rows[0].repeat->xrepeat, 200 );
+  BOOST_CHECK_EQUAL( result.rows[0].repeat->yrepeat, 1 );
+  BOOST_REQUIRE( result.rows[0].repeat->step );
+  BOOST_CHECK_EQUAL( result.rows[0].repeat->step->first, 100 );
+  BOOST_CHECK_EQUAL( result.rows[0].repeat->step->second, 500 );
 }
 
 // BOZO when we eventually parse everything this won't be a very interesting test and probably should be removed,

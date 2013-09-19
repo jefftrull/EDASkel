@@ -209,11 +209,10 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
       // define some major elements
 
       // My copy of the LEF/DEF reference does not show this SITE command as valid for DEF yet my example data does...
-      // The example data's syntax is very similar to that defined for ROW, so I'll combine them
+      // The example data's syntax is very similar to that defined for ROW
       siterpt_stmt = dkwd("DO")[int_] > dkwd("BY")[int_] > -(dkwd("STEP")[int_ > int_]) ;
-      rowsite_body = ctype > int_ > int_ > orient > -siterpt_stmt > ';' ;
-      row = ctype > rowsite_body ;
-      site = rowsite_body[at_c<1>(_val) = _1] ;
+      row = ctype > ctype > int_ > int_ > orient > -siterpt_stmt > ';' ;
+      site = attr(boost::none) > ctype > int_ > int_ > orient > -siterpt_stmt > ';' ;
 
       dbu = dkwd("UNITS", 1)[dkwd("DISTANCE", 1)[dkwd("MICRONS", 1)[int_]]] > ';' ;
 
@@ -291,7 +290,6 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
   // Site (or named row) statement
   typename Rule<siterepeat()>::type siterpt_stmt;
   typename Rule<rowsite()>::type row, site;
-  typename Rule<rowsite_b()>::type rowsite_body;
 
   // storage for component names for ease of parse checking
   comp_symtab_t comp_symtab;

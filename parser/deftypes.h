@@ -62,17 +62,13 @@ struct siterepeat {
   boost::optional<IntPair> step;
 };
 
-struct rowsite_b {
+struct rowsite {
+  boost::optional<std::string> rowname;
   std::string sitename;
   int origx;
   int origy;
   std::string orient;
   boost::optional<siterepeat> repeat;
-};
-
-struct rowsite {
-  boost::optional<std::string> rowname;
-  rowsite_b body;
 };
 
 struct def {
@@ -128,18 +124,13 @@ BOOST_FUSION_ADAPT_STRUCT(
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
-  DefParse::rowsite_b,
+  DefParse::rowsite,
+  (boost::optional<std::string>, rowname)
   (std::string, sitename)
   (int, origx)
   (int, origy)
   (std::string, orient)
   (boost::optional<DefParse::siterepeat>, repeat)
-)
-
-BOOST_FUSION_ADAPT_STRUCT(
-  DefParse::rowsite,
-  (boost::optional<std::string>, rowname)
-  (DefParse::rowsite_b, body)
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
