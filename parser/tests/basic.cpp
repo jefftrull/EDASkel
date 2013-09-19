@@ -200,3 +200,8 @@ BOOST_AUTO_TEST_CASE( erroneous_connection ) {
   // two components, but one net refers to a nonexistent component
   parse_check_fail("DESIGN test ;\nCOMPONENTS 2;\n- X C ;\n- Y C ;\nEND COMPONENTS\nNETS 3 ;\n- ALPHA ( BOGUS P1 ) ( Y P2 ) ;\n- BETA ( Y SOMEPIN ) ;\n- GAMMA ;\nEND NETS\nEND DESIGN\n");
 }
+
+BOOST_AUTO_TEST_CASE( pinname_resembles_orientation ) {
+  def result;
+  parse_check("DESIGN test ;\nCOMPONENTS 2;\n- X C ;\n- Y C ;\nEND COMPONENTS\nNETS 3 ;\n- ALPHA ( X A ) ( Y S ) ;\n- BETA ;\n- GAMMA ;\nEND NETS\nEND DESIGN\n", result);
+}
