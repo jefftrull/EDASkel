@@ -54,7 +54,6 @@ struct defnet {
   std::vector<defconnection> connections;
 };
 
-
 // BOOST_FUSION_ADAPT_STRUCT is a macro and will be confused by this embedded comma unless:
 typedef std::pair<int, int> IntPair;
 struct siterepeat {

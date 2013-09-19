@@ -64,6 +64,7 @@ BOOST_AUTO_TEST_CASE( version_parse_simple ) {
 }
 
 BOOST_AUTO_TEST_CASE ( version_parse_nospace ) {
+  // should fail ("distinct" issue)
   parse_check_fail("DESIGN test ;\nVERSION1.211 ;\nEND DESIGN\n");
 
 }
@@ -116,12 +117,8 @@ BOOST_AUTO_TEST_CASE ( components_noplace ) {
 }  
 
 BOOST_AUTO_TEST_CASE ( components_parse_wrongcount ) {
-  std::stringstream testdef("DESIGN test ;\nCOMPONENTS 2 ;\n - I111 INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nEND DESIGN\n");
-  testdef.unsetf(std::ios::skipws);
-  LefDefIter beg = LefDefIter(testdef), end;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( !parse(it, lex_end, defParser) );
+  parse_check_fail("DESIGN test ;\nCOMPONENTS 2 ;\n - I111 INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nEND DESIGN\n");
+
 }
   
 BOOST_AUTO_TEST_CASE ( site_basic ) {
