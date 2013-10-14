@@ -292,6 +292,12 @@ struct signal_coupling {
         AprimetotheI = Aprime * AprimetotheI;
       }
       
+      // Also compare eigenvalues, which are evidently the reciprocals of the poles
+      // They are not guaranteed to be the same but should be "similar" (?)
+      assert(canLDLTDecompose(C));
+      auto coeffOld = C.ldlt().solve(-1.0*G);
+      std::cerr << "eigenvalues of original model are:\n" << EigenSolver<MatrixXd>(coeffOld).eigenvalues() << std::endl;
+      std::cerr << "eigenvalues of reduced model are:\n" << EigenSolver<decltype(coeff_)>(coeff_).eigenvalues() << std::endl;
   }
 
   void operator() (const state_type x, state_type& dxdt, double t) {
