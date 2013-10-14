@@ -48,9 +48,9 @@ typedef vector<double> state_type;
 struct signal_coupling {
   static const size_t q = 6; // desired number of state variables. 10 is the "natural" count.
 
-  MatrixXd coeff_;           // reduced system state evolution
-  MatrixXd input_;           // inputs (agg/vic) to reduced system state
-  MatrixXd output_;          // reduced system state to chosen outputs
+  Matrix<double, q, q> coeff_;           // reduced system state evolution
+  Matrix<double, q, 2> input_;           // inputs (agg/vic) to reduced system state
+  Matrix<double, 4, q> output_;          // reduced system state to chosen outputs
 
   double agg_r1_, agg_c1_;   // aggressor first stage pi model (prior to coupling point)
   double agg_r2_, agg_c2_;   // aggressor second stage pi model (after coupling point)
@@ -252,8 +252,8 @@ struct signal_coupling {
       }
 
       // Step 7: Compute the C and G matrices in the new state variables using X
-      MatrixXd Cprime = Xfinal.transpose() * C * Xfinal;
-      MatrixXd Gprime = Xfinal.transpose() * G * Xfinal;
+      Matrix<double, q, q> Cprime = Xfinal.transpose() * C * Xfinal;
+      Matrix<double, q, q> Gprime = Xfinal.transpose() * G * Xfinal;
       auto     Bprime = Xfinal.transpose() * B;
 
       // PRIMA done.  Next step: Regularize inputs (see RLC example for more detail)
