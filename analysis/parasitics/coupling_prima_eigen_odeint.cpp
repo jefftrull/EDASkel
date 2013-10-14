@@ -9,7 +9,20 @@ using namespace std;
 #include <boost/numeric/odeint.hpp>
 using namespace boost::numeric;
 #include <Eigen/Dense>
+#include <Eigen/Eigenvalues>
 using namespace Eigen;
+ 
+// Utility functions for working with Eigen
+template<class M>
+bool canLDLTDecompose(const M& m) {
+   // m must be positive or negative semidefinite, which means its eigenvalues
+   // must all be real-valued, and either all non-positive or all non-negative.
+   // Use the magic of Eigen reductions to implement:
+   auto eigenvalues = EigenSolver<M>(m).eigenvalues();
+   return (eigenvalues.array().imag() == 0.0).all() &&   // all real
+      ((eigenvalues.array().real() >= 0.0).all() ||      // non-negative
+       (eigenvalues.array().real() <= 0.0).all());       // or non-positive
+}
 
 // Functions for implementing MNA with an Eigen matrix
 template<typename M, typename Float>
@@ -257,6 +270,7 @@ struct signal_coupling {
       auto     Bprime = Xfinal.transpose() * B;
 
       // PRIMA done.  Next step: Regularize inputs (see RLC example for more detail)
+      assert(canLDLTDecompose(Cprime));
       coeff_ = Cprime.ldlt().solve(-1.0 * Gprime);   // state evolution
       input_ = Cprime.ldlt().solve(Bprime);          // from inputs to state variables
       Matrix<double, Dynamic, 4> Lprime = Xfinal.transpose() * L;
