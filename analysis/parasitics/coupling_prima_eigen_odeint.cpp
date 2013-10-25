@@ -278,9 +278,10 @@ struct signal_coupling {
 
       // Compare block moments between original and reduced model
       // Prima claims to produce the same moments up to floor(q/N)
-      Matrix<double, 14, 14> A = C.fullPivHouseholderQr().solve(-1.0 * G);
-      Matrix<double, q, q> Aprime = coeff_;
-      Matrix<double, q, 2> Rprime = Gprime.fullPivHouseholderQr().solve(Bprime);
+      Matrix<double, 14, 14> A = G.fullPivHouseholderQr().solve(C);
+      auto GprimeQR = Gprime.fullPivHouseholderQr();
+      Matrix<double, q, q> Aprime = GprimeQR.solve(Cprime);
+      Matrix<double, q, 2> Rprime = GprimeQR.solve(Bprime);
       Matrix<double, 14, 14> AtotheI = Matrix<double, 14, 14>::Identity();
       Matrix<double, q, q> AprimetotheI = Matrix<double, q, q>::Identity();
       for (size_t i = 0; i < (q/N); ++i) {
@@ -294,10 +295,8 @@ struct signal_coupling {
       
       // Also compare eigenvalues, which are evidently the reciprocals of the poles
       // They are not guaranteed to be the same but should be "similar" (?)
-      assert(canLDLTDecompose(C));
-      auto coeffOld = C.ldlt().solve(-1.0*G);
-      std::cerr << "eigenvalues of original model are:\n" << EigenSolver<MatrixXd>(coeffOld).eigenvalues() << std::endl;
-      std::cerr << "eigenvalues of reduced model are:\n" << EigenSolver<decltype(coeff_)>(coeff_).eigenvalues() << std::endl;
+      std::cerr << "eigenvalues of original model are:\n" << EigenSolver<MatrixXd>(A).eigenvalues() << std::endl;
+      std::cerr << "eigenvalues of reduced model are:\n" << EigenSolver<decltype(Aprime)>(Aprime).eigenvalues() << std::endl;
   }
 
   void operator() (const state_type x, state_type& dxdt, double t) {
