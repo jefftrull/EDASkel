@@ -59,7 +59,8 @@ void stamp_i(M& matrix, std::size_t vnodeno, std::size_t istateno)
 typedef vector<double> state_type;
 
 struct signal_coupling {
-  static const size_t q = 6; // desired number of state variables. 10 is the "natural" count.
+  static const size_t q = 6; // desired number of state variables.
+                             // 12 is the "natural" count (1 per circuit node)
 
   Matrix<double, q, q> coeff_;           // reduced system state evolution
   Matrix<double, q, 2> input_;           // inputs (agg/vic) to reduced system state
@@ -144,14 +145,14 @@ struct signal_coupling {
       stamp(C, 11, vic_cl_);
 
       // add an additional pair of equations for the independent sources
-      // aggressor and victim driver source currents will be nodes 8 and 9
+      // aggressor and victim driver source currents will be nodes 12 and 13
       stamp_i(G, 0, 12);
       stamp_i(G, 6, 13);
 
       // PRIMA
       // This is a famous model reduction technique invented around 1997/8 at CMU
       // I am generally following the treatment in Odabasioglu, IEEE TCAD, August 1998
-      // They base their work on the prior Block Arnoldi algorithm, for a helpful
+      // They base their work on the prior Block Arnoldi algorithm, a helpful
       // explanation of which you can find in their 6th citation:
       // D. L. Boley, “Krylov space methods on state-space control models”
       
@@ -213,12 +214,12 @@ struct signal_coupling {
       const size_t N = 4; // number of ports.  But for us, two are in, two out.  Hm...
       size_t n = (q % N) ? (q/N + 1) : (q/N);
 
-      // Step 5: Block Arnoldi (see Boyer for detailed explanation)
+      // Step 5: Block Arnoldi (see Boley for detailed explanation)
       for (size_t k = 1; k <= n; ++k)
       {
          // because X[] will vary in number of columns, so will Xk[]
          vector<Matrix<double, 14, Dynamic>,
-                aligned_allocator<Matrix<double, 14, Dynamic> > > Xk(n+1);  // note to self: the size seems wrong (too large)
+                aligned_allocator<Matrix<double, 14, Dynamic> > > Xk(k+1);
 
          // set V = C * X[k-1]
          auto V = C * X[k-1];
