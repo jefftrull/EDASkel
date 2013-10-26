@@ -59,12 +59,18 @@ void stamp_i(M& matrix, std::size_t vnodeno, std::size_t istateno)
 typedef vector<double> state_type;
 
 struct signal_coupling {
-  static const size_t q = 6; // desired number of state variables.
+  static const size_t q = 8; // desired number of state variables in the reduced system
                              // 12 is the "natural" count (1 per circuit node)
+  static const size_t N = 3; // port count (one per input/output: two drivers and the victim rcvr)
 
-  Matrix<double, q, q> coeff_;           // reduced system state evolution
-  Matrix<double, q, 2> input_;           // inputs (agg/vic) to reduced system state
-  Matrix<double, 4, q> output_;          // reduced system state to chosen outputs
+  // final system for simulation: 
+  Matrix<double, q+1, q+1> coeff_;        // reduced system state evolution
+  Matrix<double, q+1, 2> input_;          // inputs (agg/vic) to reduced system state
+  Matrix<double, 1, q+1> output_;         // reduced system state to chosen outputs
+
+  // original MNA matrices: 12 circuit nodes, 3 independent sources
+  typedef Matrix<double, 15, Dynamic> Matrix15dX;
+  Matrix15dX Xfinal;
 
   double agg_r1_, agg_c1_;   // aggressor first stage pi model (prior to coupling point)
   double agg_r2_, agg_c2_;   // aggressor second stage pi model (after coupling point)
@@ -105,8 +111,8 @@ struct signal_coupling {
       // of V, giving us the desired format for odeint.
 
       // apply values via "stamp"
-      typedef Matrix<double, 14, 14> Matrix14d;
-      Matrix14d C = Matrix14d::Zero(), G = Matrix14d::Zero();
+      typedef Matrix<double, 15, 15> Matrix15d;
+      Matrix15d C = Matrix15d::Zero(), G = Matrix15d::Zero();
 
       stamp(G, 0, 1, 1/agg_imp_);   // driver impedances
       stamp(G, 6, 7, 1/vic_imp_);
@@ -148,6 +154,7 @@ struct signal_coupling {
       // aggressor and victim driver source currents will be nodes 12 and 13
       stamp_i(G, 0, 12);
       stamp_i(G, 6, 13);
+      stamp_i(G, 11, 14);           // victim receiver "driver" (we won't use it) current
 
       // PRIMA
       // This is a famous model reduction technique invented around 1997/8 at CMU
@@ -156,70 +163,62 @@ struct signal_coupling {
       // explanation of which you can find in their 6th citation:
       // D. L. Boley, “Krylov space methods on state-space control models”
       
-      // Aiming for q state variables, a significant reduction from 10...
+      // Aiming for q state variables, a significant reduction from 15...
 
       // Step 1: create B and L (input and output) matrices
 
-      // We have two inputs, so u(t) is 2x1 and B is 14x2
-      Matrix<double, 14, 2> B; B << 0, 0
-                                  , 0, 0
-                                  , 0, 0
-                                  , 0, 0
-                                  , 0, 0
-                                  , 0, 0
-                                  , 0, 0
-                                  , 0, 0
-                                  , 0, 0
-                                  , 0, 0
-                                  , 0, 0
-                                  , 0, 0
-                                  , -1, 0     // insert Vagg = V0
-                                  , 0, -1 ;   // insert Vvic = V6
+      // In the interest of following the PRIMA paper as closely as possible, we will
+      // have three generic "ports" that are theoretically attached to voltage sources.
+      // In fact two of these will be driven through drivers, and the last will be attached
+      // to a load (the victim receiver).  But for PRIMA, they are all I/O (voltage in, current out)
 
-      // Four outputs, for viewing and performing measurements
-      Matrix<double, 14, 4> L; L << 0, 0, 0, 0
-                                  , 1, 0, 0, 0    // extract V1 (aggressor driver output)
-                                  , 0, 0, 0, 0
-                                  , 0, 0, 0, 0
-                                  , 0, 0, 0, 0
-                                  , 0, 0, 0, 1    // extract V5 (aggressor receiver)
-                                  , 0, 0, 0, 0
-                                  , 0, 0, 0, 0
-                                  , 0, 1, 0, 0    // extract v8 (victim coupling node)
-                                  , 0, 0, 0, 0
-                                  , 0, 0, 0, 0
-                                  , 0, 0, 1, 0    // extract v11 (victim rcvr)
-                                  , 0, 0, 0, 0
-                                  , 0, 0, 0, 0 ;
+      // connecting inputs
+      Matrix<double, 15, N> B; B << 0, 0, 0
+                                  , 0, 0, 0
+                                  , 0, 0, 0
+                                  , 0, 0, 0
+                                  , 0, 0, 0
+                                  , 0, 0, 0
+                                  , 0, 0, 0
+                                  , 0, 0, 0
+                                  , 0, 0, 0
+                                  , 0, 0, 0
+                                  , 0, 0, 0
+                                  , 0, 0, 0
+                                  , -1, 0, 0   // insert Vagg = V0
+                                  , 0, -1, 0   // insert Vvic = V6
+                                  , 0, 0, -1 ; // insert Vvicrcv = V11
+
+      // And the same nodes are outputs:
+      Matrix<double, 15, N> L = -B;
                                   
       // Step 2: Solve GR = B for R
-      Matrix<double, 14, 2> R = G.fullPivHouseholderQr().solve(B);
+      Matrix<double, 15, N> R = G.fullPivHouseholderQr().solve(B);
 
       // set up types for various versions of "X" variables used in PRIMA
-      // matrices we are gathering will all be 14 rows tall but some unknown number
+      // matrices we are gathering will all be 15 rows tall but some unknown number
       // of columns, depending on how many bases we harvest from each Krylov matrix
-      typedef Matrix<double, 14, Dynamic> Matrix14dX;
+
       // we want to use these in std::vectors, which requires a special allocator
       // in order to be Eigen-compatible:
-      typedef aligned_allocator<Matrix14dX> Allocator14dX;
-      typedef vector<Matrix14dX, Allocator14dX> Matrix14dXList;
-      Matrix14dXList X;   // one entry per value of "k", gathered at the end into a single Xfinal
+      typedef aligned_allocator<Matrix15dX> Allocator15dX;
+      typedef vector<Matrix15dX, Allocator15dX> Matrix15dXList;
+      Matrix15dXList X;   // one entry per value of "k", gathered at the end into a single Xfinal
 
       // Step 3: Set X[0] to the orthonormal basis of R as determined by QR factorization
       auto rQR = R.fullPivHouseholderQr();
-      Matrix14dX rQ = rQR.matrixQ();    // gets 14x14 matrix, only part of which we need
+      Matrix15dX rQ = rQR.matrixQ();    // gets 15x15 matrix, only part of which we need
       X.push_back(rQ.leftCols(rQR.rank()));  // only use the basis part
 
       // Step 4: Set n = floor(q/N)+1 if q/N is not an integer, and q/N otherwise
-      const size_t N = 4; // number of ports.  But for us, two are in, two out.  Hm...
       size_t n = (q % N) ? (q/N + 1) : (q/N);
 
-      // Step 5: Block Arnoldi (see Boley for detailed explanation)
+      // Step 5: Block Arnoldi (see Boyer for detailed explanation)
       for (size_t k = 1; k <= n; ++k)
       {
          // because X[] will vary in number of columns, so will Xk[]
-         vector<Matrix<double, 14, Dynamic>,
-                aligned_allocator<Matrix<double, 14, Dynamic> > > Xk(k+1);
+         vector<Matrix<double, 15, Dynamic>,
+                aligned_allocator<Matrix<double, 15, Dynamic> > > Xk(k+1);
 
          // set V = C * X[k-1]
          auto V = C * X[k-1];
@@ -243,18 +242,21 @@ struct signal_coupling {
             X.push_back(Xk[k].normalized());
          } else {
             auto xkkQR = Xk[k].fullPivHouseholderQr();
-            Matrix14dX xkkQ = xkkQR.matrixQ();
+            Matrix15dX xkkQ = xkkQR.matrixQ();
             X.push_back(xkkQ.leftCols(xkkQR.rank()));
          }
+
+
       }
 
-      // Step 6: Set Xfinal to the concatenation of all those bases we calculated above,
+      // Step 6: Set Xfinal to the concatenation of X[0] to X[n-1],
       //         truncated to q columns
-      size_t cols = accumulate(X.begin(), X.end(), 0,
-                               [](size_t sum, Matrix14dX const& m) { return sum + m.cols(); });
+      // Note this implies we calculated X[n] unnecessarily... I'm not sure what to make of this
+      size_t cols = accumulate(X.begin(), X.end()-1, 0,
+                               [](size_t sum, Matrix15dX const& m) { return sum + m.cols(); });
       cols = std::min(q, cols);  // truncate to q
 
-      Matrix14dX Xfinal(14, cols);
+      Xfinal = Matrix15dX(15, cols);
       size_t col = 0;
       for (size_t k = 0; (k <= n) && (col < cols); ++k)
       {
@@ -266,24 +268,21 @@ struct signal_coupling {
       }
 
       // Step 7: Compute the C and G matrices in the new state variables using X
-      Matrix<double, q, q> Cprime = Xfinal.transpose() * C * Xfinal;
+      Matrix<double, q, q> Cprime = Xfinal.transpose() * C * Xfinal;  // TODO: look at SVD here
       Matrix<double, q, q> Gprime = Xfinal.transpose() * G * Xfinal;
-      auto     Bprime = Xfinal.transpose() * B;
+      Matrix<double, q, N> Bprime = Xfinal.transpose() * B;
+      Matrix<double, q, N> Lprime = Xfinal.transpose() * L;
 
-      // PRIMA done.  Next step: Regularize inputs (see RLC example for more detail)
-      assert(canLDLTDecompose(Cprime));
-      coeff_ = Cprime.ldlt().solve(-1.0 * Gprime);   // state evolution
-      input_ = Cprime.ldlt().solve(Bprime);          // from inputs to state variables
-      Matrix<double, Dynamic, 4> Lprime = Xfinal.transpose() * L;
-      output_ = Lprime.transpose();                  // from state to outputs
+      // evaluate results
 
       // Compare block moments between original and reduced model
       // Prima claims to produce the same moments up to floor(q/N)
-      Matrix<double, 14, 14> A = G.fullPivHouseholderQr().solve(C);
+      Matrix<double, 15, 15> A = G.fullPivHouseholderQr().solve(C);
       auto GprimeQR = Gprime.fullPivHouseholderQr();
       Matrix<double, q, q> Aprime = GprimeQR.solve(Cprime);
-      Matrix<double, q, 2> Rprime = GprimeQR.solve(Bprime);
-      Matrix<double, 14, 14> AtotheI = Matrix<double, 14, 14>::Identity();
+      Matrix<double, q, N> Rprime = GprimeQR.solve(Bprime);
+      Matrix<double, 15, 15> AtotheI = Matrix<double, 15, 15>::Identity();
+
       Matrix<double, q, q> AprimetotheI = Matrix<double, q, q>::Identity();
       for (size_t i = 0; i < (q/N); ++i) {
         std::cerr << "moment " << i << " of original model is:" << std::endl;
@@ -298,6 +297,117 @@ struct signal_coupling {
       // They are not guaranteed to be the same but should be "similar" (?)
       std::cerr << "eigenvalues of original model are:\n" << EigenSolver<MatrixXd>(A).eigenvalues() << std::endl;
       std::cerr << "eigenvalues of reduced model are:\n" << EigenSolver<decltype(Aprime)>(Aprime).eigenvalues() << std::endl;
+
+      // PRIMA done.  Next step: Construct "Direct Stamp" reduced realization
+      // The system equation (see "(50)" in the paper) hooks up the ports of
+      // the reduced network to the remainder of the system for simulation
+      // Fortunately there is no remainder for us as we have presented
+      // the entire thing to PRIMA.  However, we will still need to turn the
+      // victim receiver load (treated by PRIMA like all ports: as a voltage source)
+      // into a plain circuit node so nothing flows out of the system and we
+      // can simply observe the output.
+
+      // state variables in our direct system are:
+      // 0, 1, 2: node voltages for the two drivers and the victim receiver
+      //          (two are directly driven while one will "float")
+      // 3, 4: source currents for the two drivers
+      // 5: "source current" for the last "driver" - always 0 as this is a receiver
+      // 6.. : reduced system internal state variables (of quantity q)
+
+      // equations for our direct system will be:
+      // 2 equations to connect nodes 0 and 1 to the driver voltages
+      // 1 equation connecting the victim receiver current to a small load
+      // 3 equations connecting the reduced state to the current "outputs"
+      // q equations for the normal reduced state evolution (will use state vars 0-2
+      // for the input excitation)
+      typedef Matrix<double, 6+q, 6+q> direct_eqn_matrix_t;
+      direct_eqn_matrix_t Gdirect = direct_eqn_matrix_t::Zero();   // multiplies state vector
+      direct_eqn_matrix_t Cdirect = direct_eqn_matrix_t::Zero();   // multiplies 1st derivative of state
+      Matrix<double, 6+q, 2> Bdirect;
+      Bdirect.block<2, 2>(0, 0) = -Matrix<double, 2, 2>::Identity();  // connects sources to nodes
+      Matrix<double, 6+q, 1> Ldirect = Matrix<double, 6+q, 1>::Zero();
+      Ldirect(2, 0) = 1;              // prima port 2 voltage is the sole output
+
+      // Generate equations of the form Cdirect*(d(state)/dt) = -Gdirect*state + Bdirect*input;
+
+      // hook up independent sources in first two rows: connects inputs to Vagg/Vvic via Bdirect
+      Gdirect.block<2, 2>(0, 0) = -Matrix<double, 2, 2>::Identity(); 
+
+      // Fix an issue where the generation of the reduced model for simulation encounters
+      // a singularity in the G22 matrix.  Probably a hack.
+      Gdirect(2, 5) = 1; Cdirect(2, 2) = 1e-15;  // exposed cap at end of wire, formerly driven by voltage source
+
+      // connect reduced state to currents (line 3 of "(50)")
+      Gdirect.block<3, 3>(3, 3) = Matrix<double, 3, 3>::Identity();  // extract source currents
+      Gdirect.block<3, q>(3, 6) = -Lprime.transpose();
+
+      // connect reduced system  (line 4 of "(50)")
+
+      auto Gprime_inv_x_Bprime = GprimeQR.solve(Bprime);
+      auto Gprime_inv_x_Cprime = GprimeQR.solve(Cprime);
+
+      Gdirect.block<q, 3>(6, 0) = Gprime_inv_x_Bprime;
+      Gdirect.block<q, q>(6, 6) = Matrix<double, q, q>::Identity();
+      Cdirect.block<q, q>(6, 6) = Gprime_inv_x_Cprime;
+      
+      // Direct Stamp realization constructed
+
+      // now use the techniques described in Su (Proc 15th ASP-DAC, 2002) to reduce
+      // this set of equations so the state variable derivatives have coefficients
+      // Otherwise we cannot integrate to get the time domain result...
+
+      // Use Eigen reductions to find zero rows
+      auto zero_rows = (Cdirect.array() == 0.0).rowwise().all();   // per row "all zeros"
+      std::size_t zero_count = zero_rows.count();
+      std::size_t nonzero_count = 6+q - zero_count;
+
+      direct_eqn_matrix_t permut = direct_eqn_matrix_t::Identity();   // null permutation to start
+      std::size_t i, j;
+      for (i = 0, j=(6+q-1); i < j;) {
+        // loop invariant: rows > j are all zero; rows < i are not
+        while ((i < 6+q) && !zero_rows(i)) ++i;
+        while ((j > 0) && zero_rows(j)) --j;
+        if (i < j) {
+          // exchange rows i and j via the permutation vector
+          permut(i, i) = 0; permut(j, j) = 0;
+          permut(i, j) = 1; permut(j, i) = 1;
+          ++i; --j;
+        }
+      }
+
+      // 2. Apply permutation to MNA matrices
+      direct_eqn_matrix_t CdirectP = permut * Cdirect * permut;       // permute rows and columns
+      direct_eqn_matrix_t GdirectP = permut * Gdirect * permut;
+      Matrix<double, 6+q, 2> BdirectP = permut * Bdirect;    // permute only rows
+      Matrix<double, 6+q, 1> LdirectP = permut * Ldirect;
+      
+      // 3. Produce reduced equations following Su (Proc. 15th ASP-DAC, 2002)
+
+      auto G11 = GdirectP.topLeftCorner(nonzero_count, nonzero_count);
+      auto G12 = GdirectP.topRightCorner(nonzero_count, zero_count);
+      MatrixXd G21 = GdirectP.bottomLeftCorner(zero_count, nonzero_count);
+      MatrixXd G22 = GdirectP.bottomRightCorner(zero_count, zero_count);
+
+      auto L1 = LdirectP.topRows(nonzero_count);
+      auto L2 = LdirectP.bottomRows(zero_count);
+
+      auto B1 = BdirectP.topRows(nonzero_count);
+      auto B2 = BdirectP.bottomRows(zero_count);
+
+      MatrixXd Cred = CdirectP.topLeftCorner(nonzero_count, nonzero_count);
+      auto G22QR = G22.fullPivLu();
+      MatrixXd G22invG21 = G22QR.solve(G21);
+      auto G22invB2 = G22QR.solve(B2);
+      auto Gred = G11 - G12 * G22invG21;
+
+      output_ = (L1.transpose() - L2.transpose() * G22invG21);  // simplify?
+      auto Bred = B1 - G12 * G22invB2;
+      // assuming no "D" (direct input to output) transformation needed - we can calculate it if required
+
+      // 4. Solve to produce a pair of matrices we can use to calculation dX/dt
+      auto CredQR = Cred.fullPivHouseholderQr();
+      coeff_ = CredQR.solve(-1.0 * Gred);  // state evolution
+      input_ = CredQR.solve(Bred);         // input -> state
   }
 
   void operator() (const state_type x, state_type& dxdt, double t) {
@@ -338,17 +448,20 @@ struct signal_coupling {
       }
     }
         
-    Map<const Matrix<double, q, 1> > xvec(x.data());  // turn state vector into Eigen matrix
-    Matrix<double, 2, 1> u; u << Vagg, Vvic;          // input excitation
+    Map<const Matrix<double, q+1, 1> > xvec(x.data());   // turn state vector into Eigen matrix
 
-    Map<Matrix<double, q, 1> > result(dxdt.data());
+    // Input excitation:  the independent variables calculated above
+    Matrix<double, 2, 1> u; u << Vagg, Vvic;
+
+    Map<Matrix<double, q+1, 1> > result(dxdt.data());
     result = coeff_ * xvec + input_ * u;              // sets dxdt via reference
 
   }
 
-  Matrix<double, 4, q> output() const
+  Matrix<double, 1, q+1> output() const
   {
-    return output_;
+     // supply a matrix that can be used to extract the single output from the current state
+     return output_;
   }
 
 };
@@ -427,7 +540,7 @@ int main() {
 		      coupling_c, v);
 
   // initial state: all low
-  state_type x(signal_coupling::q, 0.0);
+  state_type x(signal_coupling::q+1, 0.0);
 
   vector<state_type> state_history;
   vector<state_type> outputs;
@@ -442,23 +555,20 @@ int main() {
             [&output_translator]
             (const state_type& state) -> state_type {
               // access vector state data through an Eigen map so we can multiply
-              Map<const Matrix<double, signal_coupling::q, 1> > statevec(state.data());
-              state_type ovec(4);   // result
-              Map<Matrix<double, 4, 1> > outputvec(ovec.data(), 4, 1);   // also needs a Map
+               Map<const Matrix<double, signal_coupling::q+1, 1> > statevec(state.data());
+              state_type ovec(1);   // result
+              Map<Matrix<double, 1, 1> > outputvec(ovec.data(), 1, 1);   // also needs a Map
               outputvec = output_translator * statevec;  // multiply into vector via Map
               return ovec;
             });
 
   for (size_t i = 0; i < times.size(); ++i) {
-    // format for gnuplot.  We are remembering the output voltages
-    // time, vagg, vcoup, vvic (vagg_rcv omitted)
-    cout << times[i] << " " << outputs[i][0] << " " << outputs[i][1] << " " << outputs[i][2] << endl;
+    // format for gnuplot.  We are remembering the time and vvic only
+     cout << times[i] << " " << outputs[i][0] << endl;
   }
 
   // find the highest voltage on the victim (which is supposed to be low)
-  cerr << "max victim excursion is: " << max_voltage(outputs, 2) << endl;
-
-  cerr << "driver delay is: " << delay(times, outputs, v/2.0, 0, 3, RiseRise) << endl;
+  cerr << "max victim excursion is: " << max_voltage(outputs, 0) << endl;
 
   return 0;
 
