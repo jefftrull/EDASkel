@@ -72,33 +72,36 @@ struct signal_coupling {
   typedef Matrix<double, 15, Dynamic> Matrix15dX;
   Matrix15dX Xfinal;
 
-  double agg_r1_, agg_c1_;   // aggressor first stage pi model (prior to coupling point)
-  double agg_r2_, agg_c2_;   // aggressor second stage pi model (after coupling point)
-  double agg_cl_;            // aggressor final load cap
-  double agg_slew_;          // aggressor slew rate (V/s)
-  double agg_imp_;           // aggressor driver impedance (placed after voltage source)
-  double agg_start_;         // aggressor driver start time (the *center* of the ramp!)
+  // waveform control
+  double agg_slew_, agg_start_;
+  double vic_slew_, vic_start_;
+  double v_;
 
-  double vic_r1_, vic_c1_;   // victim first stage pi model (prior to coupling point)
-  double vic_r2_, vic_c2_;   // victim second stage pi model (after coupling point)
-  double vic_cl_;            // victim final load cap
-  double vic_slew_;          // victim input slew rate (V/s)
-  double vic_imp_;           // victim driver impedance
-  double vic_start_;         // victim driver start time
+  signal_coupling(
+    double agg_r1,             // aggressor first stage pi model (prior to coupling point)
+    double agg_c1,
+    double agg_r2,             // aggressor second stage pi model (after coupling point)
+    double agg_c2,
+    double agg_cl,             // aggressor final load cap
+    double agg_slew,           // aggressor slew rate (V/s)
+    double agg_imp,            // aggressor driver impedance (placed after voltage source)
+    double agg_start,          // aggressor driver start time (the *center* of the ramp!)
 
-  double coup_c_;            // coupling capacitance placed at central point
-  double v_;                 // power supply (and thus max) voltage
+    double vic_r1,             // victim first stage pi model (prior to coupling point)
+    double vic_c1,
+    double vic_r2,             // victim second stage pi model (after coupling point)
+    double vic_c2,
+    double vic_cl,             // victim final load cap
+    double vic_slew,           // victim input slew rate (V/s)
+    double vic_imp,            // victim driver impedance
+    double vic_start,          // victim driver start time
 
-  signal_coupling(double agg_r1, double agg_c1, double agg_r2, double agg_c2,
-		  double agg_cl, double agg_slew, double agg_imp, double agg_start,
-		  double vic_r1, double vic_c1, double vic_r2, double vic_c2,
-		  double vic_cl, double vic_slew, double vic_imp, double vic_start,
-		  double coup_c, double v) :
-    agg_r1_(agg_r1), agg_c1_(agg_c1), agg_r2_(agg_r2), agg_c2_(agg_c2),
-    agg_cl_(agg_cl), agg_slew_(agg_slew), agg_imp_(agg_imp), agg_start_(agg_start),
-    vic_r1_(vic_r1), vic_c1_(vic_c1), vic_r2_(vic_r2), vic_c2_(vic_c2),
-    vic_cl_(vic_cl), vic_slew_(vic_slew), vic_imp_(vic_imp), vic_start_(vic_start),
-    coup_c_(coup_c), v_(v) {
+    double coup_c,             // coupling capacitance placed at central point
+    double v                   // power supply (and thus max) voltage
+    ) :
+    agg_slew_(agg_slew), agg_start_(agg_start),
+    vic_slew_(vic_slew), vic_start_(vic_start),
+    v_(v) {
       // Use Eigen to construct the matrix we will use to calculate the dV/dt values.
 
       // Formerly I wrote out KCL by hand for every node in the circuit, then solved
@@ -114,41 +117,41 @@ struct signal_coupling {
       typedef Matrix<double, 15, 15> Matrix15d;
       Matrix15d C = Matrix15d::Zero(), G = Matrix15d::Zero();
 
-      stamp(G, 0, 1, 1/agg_imp_);   // driver impedances
-      stamp(G, 6, 7, 1/vic_imp_);
+      stamp(G, 0, 1, 1/agg_imp);   // driver impedances
+      stamp(G, 6, 7, 1/vic_imp);
 
-      stamp(C, 1, agg_c1_ / 4.0);   // beginning of first stage pi model
-      stamp(C, 7, vic_c1_ / 4.0);
-      stamp(G, 1, 2, 2/agg_r1_);    // first stage pi resistance
-      stamp(G, 7, 8, 2/vic_r1_);
-      stamp(C, 2, agg_c1_ / 4.0);   // end of first stage pi model
-      stamp(C, 8, vic_c1_ / 4.0);
+      stamp(C, 1, agg_c1 / 4.0);   // beginning of first stage pi model
+      stamp(C, 7, vic_c1 / 4.0);
+      stamp(G, 1, 2, 2/agg_r1);    // first stage pi resistance
+      stamp(G, 7, 8, 2/vic_r1);
+      stamp(C, 2, agg_c1 / 4.0);   // end of first stage pi model
+      stamp(C, 8, vic_c1 / 4.0);
 
-      stamp(C, 2, agg_c1_ / 4.0);   // beginning of second stage pi model
-      stamp(C, 8, vic_c1_ / 4.0);
-      stamp(G, 2, 3, 2/agg_r1_);    // second stage pi resistance
-      stamp(G, 8, 9, 2/vic_r1_);
-      stamp(C, 3, agg_c1_ / 4.0);   // end of second stage pi model
-      stamp(C, 9, vic_c1_ / 4.0);
+      stamp(C, 2, agg_c1 / 4.0);   // beginning of second stage pi model
+      stamp(C, 8, vic_c1 / 4.0);
+      stamp(G, 2, 3, 2/agg_r1);    // second stage pi resistance
+      stamp(G, 8, 9, 2/vic_r1);
+      stamp(C, 3, agg_c1 / 4.0);   // end of second stage pi model
+      stamp(C, 9, vic_c1 / 4.0);
 
-      stamp(C, 3, 9, coup_c_);      // coupling capacitance between traces
+      stamp(C, 3, 9, coup_c);      // coupling capacitance between traces
 
-      stamp(C, 3, agg_c2_ / 4.0);   // beginning of third stage pi model
-      stamp(C, 9, vic_c2_ / 4.0);
-      stamp(G, 3, 4, 2/agg_r2_);    // third stage pi resistance
-      stamp(G, 9, 10, 2/vic_r2_);
-      stamp(C, 4, agg_c2_ / 4.0);   // end of third stage pi model
-      stamp(C, 10, vic_c2_ / 4.0);
+      stamp(C, 3, agg_c2 / 4.0);   // beginning of third stage pi model
+      stamp(C, 9, vic_c2 / 4.0);
+      stamp(G, 3, 4, 2/agg_r2);    // third stage pi resistance
+      stamp(G, 9, 10, 2/vic_r2);
+      stamp(C, 4, agg_c2 / 4.0);   // end of third stage pi model
+      stamp(C, 10, vic_c2 / 4.0);
 
-      stamp(C, 4, agg_c2_ / 4.0);   // beginning of fourth stage pi model
-      stamp(C, 10, vic_c2_ / 4.0);
-      stamp(G, 4, 5, 2/agg_r2_);    // fourth stage pi resistance
-      stamp(G, 10, 11, 2/vic_r2_);
-      stamp(C, 5, agg_c2_ / 4.0);   // end of fourth stage pi model
-      stamp(C, 11, vic_c2_ / 4.0);
+      stamp(C, 4, agg_c2 / 4.0);   // beginning of fourth stage pi model
+      stamp(C, 10, vic_c2 / 4.0);
+      stamp(G, 4, 5, 2/agg_r2);    // fourth stage pi resistance
+      stamp(G, 10, 11, 2/vic_r2);
+      stamp(C, 5, agg_c2 / 4.0);   // end of fourth stage pi model
+      stamp(C, 11, vic_c2 / 4.0);
 
-      stamp(C, 5, agg_cl_);
-      stamp(C, 11, vic_cl_);
+      stamp(C, 5, agg_cl);
+      stamp(C, 11, vic_cl);
 
       // add an additional pair of equations for the independent sources
       // aggressor and victim driver source currents will be nodes 12 and 13
