@@ -12,6 +12,8 @@ using namespace boost::numeric;
 #include <Eigen/Eigenvalues>
 using namespace Eigen;
  
+#include "analysis/mna.hpp"
+
 // Utility functions for working with Eigen
 template<class M>
 bool canLDLTDecompose(const M& m) {
@@ -22,38 +24,6 @@ bool canLDLTDecompose(const M& m) {
    return (eigenvalues.array().imag() == 0.0).all() &&   // all real
       ((eigenvalues.array().real() >= 0.0).all() ||      // non-negative
        (eigenvalues.array().real() <= 0.0).all());       // or non-positive
-}
-
-// Functions for implementing MNA with an Eigen matrix
-template<typename M, typename Float>
-void stamp(M& matrix, std::size_t i, std::size_t j, Float g)
-{
-   // General stamp: conductance at [i,i] and [j,j],
-   // -conductance at [i,j] and [j,i], summed with existing values
-
-   matrix(i, i) += g;
-   matrix(j, j) += g;
-   matrix(i, j) -= g;
-   matrix(j, i) -= g;
-
-}
-
-// for when the other end of the device is at GND
-template<typename M, typename Float>
-void stamp(M& matrix, std::size_t i, Float g)
-{
-   matrix(i, i) += g;
-}
-
-// for voltage sources (inputs)
-template<typename M>
-void stamp_i(M& matrix, std::size_t vnodeno, std::size_t istateno)
-{
-   // just basically marks the connection between the inductor (or voltage source)
-   // and the voltage, because unlike capacitance, both are state variables.
-
-   matrix(vnodeno, istateno) = 1;   // current is taken *into* inductor or vsource
-   matrix(istateno, vnodeno) = -1;
 }
 
 typedef vector<double> state_type;
@@ -117,6 +87,7 @@ struct signal_coupling {
       typedef Matrix<double, 15, 15> Matrix15d;
       Matrix15d C = Matrix15d::Zero(), G = Matrix15d::Zero();
 
+      using namespace EDASkel::analysis::mna;
       stamp(G, 0, 1, 1/agg_imp);   // driver impedances
       stamp(G, 6, 7, 1/vic_imp);
 
@@ -355,62 +326,17 @@ struct signal_coupling {
       
       // Direct Stamp realization constructed
 
-      // now use the techniques described in Su (Proc 15th ASP-DAC, 2002) to reduce
-      // this set of equations so the state variable derivatives have coefficients
-      // Otherwise we cannot integrate to get the time domain result...
+      // reduce matrices to standard form so we can perform numeric integration
+      MatrixXd Gred, Cred;
+      Matrix<double, Dynamic, 2> Bred;
+      Matrix<double, Dynamic, 1> Lred;
+      std::tie(Gred, Cred, Bred, Lred) = regularize(Gdirect, Cdirect, Bdirect, Ldirect);
 
-      // Use Eigen reductions to find zero rows
-      auto zero_rows = (Cdirect.array() == 0.0).rowwise().all();   // per row "all zeros"
-      std::size_t zero_count = zero_rows.count();
-      std::size_t nonzero_count = 6+q - zero_count;
-
-      direct_eqn_matrix_t permut = direct_eqn_matrix_t::Identity();   // null permutation to start
-      std::size_t i, j;
-      for (i = 0, j=(6+q-1); i < j;) {
-        // loop invariant: rows > j are all zero; rows < i are not
-        while ((i < 6+q) && !zero_rows(i)) ++i;
-        while ((j > 0) && zero_rows(j)) --j;
-        if (i < j) {
-          // exchange rows i and j via the permutation vector
-          permut(i, i) = 0; permut(j, j) = 0;
-          permut(i, j) = 1; permut(j, i) = 1;
-          ++i; --j;
-        }
-      }
-
-      // 2. Apply permutation to MNA matrices
-      direct_eqn_matrix_t CdirectP = permut * Cdirect * permut;       // permute rows and columns
-      direct_eqn_matrix_t GdirectP = permut * Gdirect * permut;
-      Matrix<double, 6+q, 2> BdirectP = permut * Bdirect;    // permute only rows
-      Matrix<double, 6+q, 1> LdirectP = permut * Ldirect;
-      
-      // 3. Produce reduced equations following Su (Proc. 15th ASP-DAC, 2002)
-
-      auto G11 = GdirectP.topLeftCorner(nonzero_count, nonzero_count);
-      auto G12 = GdirectP.topRightCorner(nonzero_count, zero_count);
-      MatrixXd G21 = GdirectP.bottomLeftCorner(zero_count, nonzero_count);
-      MatrixXd G22 = GdirectP.bottomRightCorner(zero_count, zero_count);
-
-      auto L1 = LdirectP.topRows(nonzero_count);
-      auto L2 = LdirectP.bottomRows(zero_count);
-
-      auto B1 = BdirectP.topRows(nonzero_count);
-      auto B2 = BdirectP.bottomRows(zero_count);
-
-      MatrixXd Cred = CdirectP.topLeftCorner(nonzero_count, nonzero_count);
-      auto G22QR = G22.fullPivLu();
-      MatrixXd G22invG21 = G22QR.solve(G21);
-      auto G22invB2 = G22QR.solve(B2);
-      auto Gred = G11 - G12 * G22invG21;
-
-      output_ = (L1.transpose() - L2.transpose() * G22invG21);  // simplify?
-      auto Bred = B1 - G12 * G22invB2;
-      // assuming no "D" (direct input to output) transformation needed - we can calculate it if required
-
-      // 4. Solve to produce a pair of matrices we can use to calculation dX/dt
+      // Solve to produce a pair of matrices we can use to calculate dX/dt
       auto CredQR = Cred.fullPivHouseholderQr();
       coeff_ = CredQR.solve(-1.0 * Gred);  // state evolution
       input_ = CredQR.solve(Bred);         // input -> state
+      output_ = Lred.transpose();          // state -> output
   }
 
   void operator() (const state_type x, state_type& dxdt, double t) {

@@ -5,7 +5,7 @@ endforeach()
 
 find_package( Eigen3 )
 if( EIGEN3_FOUND )
-  include_directories( ${EIGEN3_INCLUDE_DIR} )
+  include_directories( ${EIGEN3_INCLUDE_DIR} ${CMAKE_SOURCE_DIR} )
   foreach( fname coupling_eigen_odeint rlc_eigen_odeint coupling_prima_eigen_odeint )
     add_executable( ${fname} ${fname}.cpp )
   endforeach()

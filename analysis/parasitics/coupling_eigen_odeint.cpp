@@ -9,38 +9,7 @@ using namespace boost::numeric;
 #include <Eigen/Dense>
 using namespace Eigen;
 
-// Functions for implementing MNA with an Eigen matrix
-template<typename M, typename Float>
-void stamp(M& matrix, std::size_t i, std::size_t j, Float g)
-{
-   // General stamp: conductance at [i,i] and [j,j],
-   // -conductance at [i,j] and [j,i], summed with existing values
-
-   matrix(i, i) += g;
-   matrix(j, j) += g;
-   matrix(i, j) -= g;
-   matrix(j, i) -= g;
-
-}
-
-// for when the other end of the device is at GND
-template<typename M, typename Float>
-void stamp(M& matrix, std::size_t i, Float g)
-{
-   matrix(i, i) += g;
-}
-
-// for voltage sources (inputs)
-template<typename M>
-void stamp_i(M& matrix, std::size_t vnodeno, std::size_t istateno)
-{
-   // just basically marks the connection between the inductor (or voltage source)
-   // and the voltage, because unlike capacitance, both are state variables.
-   // Doing this brings in the V = LdI/dt equations:
-
-   matrix(vnodeno, istateno) = 1;   // current is taken *into* inductor or vsource
-   matrix(istateno, vnodeno) = -1;
-}
+#include "analysis/mna.hpp"
 
 typedef vector<double> state_type;
 
@@ -95,6 +64,7 @@ struct signal_coupling {
       typedef Matrix<double, 14, 14> Matrix14d;
       Matrix14d C = Matrix14d::Zero(), G = Matrix14d::Zero();
 
+      using namespace EDASkel::analysis::mna;
       stamp(G, 0, 1, 1/agg_imp_);   // driver impedances
       stamp(G, 6, 7, 1/vic_imp_);
 
@@ -178,57 +148,11 @@ struct signal_coupling {
       // eliminating the input voltage and current).
       // See comments in rlc_eigen_odeint.cpp
 
-      // 1. Create a permutation of the state vector variables so those with
-      //    non-zero rows in C are clustered at the top
+      MatrixXd Cred, Gred;
+      Matrix<double, Dynamic, 2> Bred;
+      std::tie(Gred, Cred, Bred, Lred_) = regularize(G, C, B, L);
 
-      // Use Eigen reductions to find zero rows
-      auto zero_rows = (C.array() == 0.0).rowwise().all();   // per row "all zeros"
-
-      Matrix14d permut = Matrix14d::Identity();   // null permutation to start
-      std::size_t i, j;
-      for (i = 0, j=13; i < j;) {
-        // loop invariant: rows > j are all zero; rows < i are not
-        while ((i < 14) && !zero_rows(i)) ++i;
-        while ((j > 0) && zero_rows(j)) --j;
-        if (i < j) {
-          // exchange rows i and j via the permutation vector
-          permut(i, i) = 0; permut(j, j) = 0;
-          permut(i, j) = 1; permut(j, i) = 1;
-          ++i; --j;
-        }
-      }
-
-      // 2. Apply permutation to MNA matrices
-      Matrix14d Cprime = permut * C * permut;       // permute rows and columns
-      Matrix14d Gprime = permut * G * permut;
-      Matrix<double, 14, 2> Bprime = permut * B;    // permute only rows
-      Matrix<double, 14, 3> Lprime = permut * L;
-      
-      // 3. Produce reduced equations following Su (Proc. 15th ASP-DAC, 2002)
-      std::size_t zero_count = zero_rows.count();
-      std::size_t nonzero_count = 14 - zero_count;
-
-      auto G11 = Gprime.topLeftCorner(nonzero_count, nonzero_count);
-      auto G12 = Gprime.topRightCorner(nonzero_count, zero_count);
-      auto G21 = Gprime.bottomLeftCorner(zero_count, nonzero_count);
-      auto G22 = Gprime.bottomRightCorner(zero_count, zero_count);
-
-      auto L1 = Lprime.topRows(nonzero_count);
-      auto L2 = Lprime.bottomRows(zero_count);
-
-      auto B1 = Bprime.topRows(nonzero_count);
-      auto B2 = Bprime.bottomRows(zero_count);
-
-      auto Cred = Cprime.topLeftCorner(nonzero_count, nonzero_count);
-      auto G22inv = G22.inverse();   // this is the most expensive thing we will do
-      auto Gred = G11 - G12 * G22inv * G21;
-      // our L, per PRIMA, is the transpose of the one described in Su
-      Lred_ = (L1.transpose() - L2.transpose() * G22inv * G21).transpose();  // simplify?
-      auto Bred = B1 - G12 * G22inv * B2;
-      // we had no "D" (direct input to output) originally but it can happen
-      Dred_ = L2.transpose() * G22inv * B2;
-
-      // 4. Solve to produce a pair of matrices we can use to calculation dX/dt
+      // Solve to produce a pair of matrices we can use to calculate dX/dt
       coeff_ = Cred.ldlt().solve(-1.0 * Gred);  // state evolution
       input_ = Cred.ldlt().solve(Bred);         // input -> state
   }
