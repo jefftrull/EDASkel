@@ -3,8 +3,6 @@
 #define BOOST_TEST_MODULE basic SPEF tests
 #include <boost/test/included/unit_test.hpp>
 
-#define BOOST_SPIRIT_DEBUG 1
-
 #include "../spefparser.hpp"
 #include <string>
 #include <iostream>
@@ -45,5 +43,23 @@ BOOST_AUTO_TEST_CASE( design_name ) {
    parse_check_fail("// no initial SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"SomewhatLessGood\"\n");
    parse_check_fail("SPEF\n// initial comment\n*SPEF \"IEEE 1481-1998\"\n// look, no design name here\n");
    parse_check_fail("SPEF\n// some comment\n// missing standard string\n*DESIGN \"BadDesign\"\n// some other comment\n");
+
+}
+
+BOOST_AUTO_TEST_CASE( time_units ) {
+
+   spef result;
+   parse_check("SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n*T_UNIT 1.0 PS\n", result);
+   BOOST_CHECK_EQUAL( (quantity<si::time, double>(1e-12 * si::seconds)), result.t_unit );
+   parse_check("SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n*T_UNIT 1.0 NS\n", result);
+   BOOST_CHECK_EQUAL( (quantity<si::time, double>(1e-9 * si::seconds)), result.t_unit );
+   parse_check("SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n*T_UNIT 1.0 US\n", result);
+   BOOST_CHECK_EQUAL( (quantity<si::time, double>(1e-6 * si::seconds)), result.t_unit );
+   parse_check("SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n*T_UNIT 1.0 MS\n", result);
+   BOOST_CHECK_EQUAL( (quantity<si::time, double>(1e-3 * si::seconds)), result.t_unit );
+
+   parse_check_fail("SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n*T_UNIT 1 QS\n");  // a fake unit prefix
+   parse_check_fail("SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n*X_UNIT 1 PS\n");  // no such thing as an "X" unit
+   parse_check_fail("SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n*T_UNIT 1 PF\n");  // time but I've given capacitance
 
 }
