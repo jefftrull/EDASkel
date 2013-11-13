@@ -21,6 +21,7 @@
 
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
+#include <boost/spirit/include/phoenix_fusion.hpp>
 
 #include <boost/spirit/repository/include/qi_kwd.hpp>
 #include <boost/spirit/repository/include/qi_keywords.hpp>
