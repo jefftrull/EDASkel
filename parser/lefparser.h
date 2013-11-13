@@ -23,6 +23,7 @@
 
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
+#include <boost/spirit/include/phoenix_fusion.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include "leftypes.h"
@@ -132,7 +133,7 @@ struct LefTokens : boost::spirit::lex::lexer<Lexer>
 struct error_info_impl
 {
   // required by phoenix::function; gives signature
-  template <typename, typename>
+  template <typename Signature>
   struct result
   {
     typedef std::string type;

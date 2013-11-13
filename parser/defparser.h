@@ -21,6 +21,7 @@
 
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
+#include <boost/spirit/include/phoenix_fusion.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include "deftypes.h"
@@ -137,7 +138,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
 struct error_info_impl
 {
   // required by phoenix::function; gives signature
-  template <typename, typename>
+  template <typename Signature>
   struct result
   {
     typedef std::string type;
@@ -246,9 +247,10 @@ struct net_parser : boost::spirit::qi::grammar<Iterator, defnet()>
     using boost::spirit::_a;
     using boost::spirit::_val;
     using boost::phoenix::at_c;
+    namespace phx = boost::phoenix;
     connection = '(' > tok.nonkwd_[_a = _1] // component name
-               > eps[_pass = bind(static_cast<findfn_t>(&comp_symtab_t::find),
-                                  comp_symtab, _a)]
+               > eps[_pass = phx::bind(static_cast<findfn_t>(&comp_symtab_t::find),
+                                       phx::cref(comp_symtab), _a)]
                > tok.nonkwd_[at_c<0>(_val) = _a, at_c<1>(_val) = _1] > ')' ;
 
     net = '-' > tok.nonkwd_ > *connection > ';' ;
