@@ -16,13 +16,16 @@
 namespace EDASkel {
   namespace SpefParse {
     using namespace boost::units;
-    typedef quantity<si::time, double> time_units_t;
+    typedef quantity<si::time, double>        time_units_t;
+    typedef quantity<si::resistance, double>  resistance_units_t;
+    typedef quantity<si::capacitance, double> capacitance_units_t;
     struct spef {
       std::string standard;          // i.e. IEEE 1481-1998 - the only one we support for now
       std::string name;
       boost::posix_time::ptime date; // a date *and* time, actually
-      time_units_t t_unit;     // multiplier for all duration values
-
+      time_units_t        t_unit;     // multiplier for all duration values
+      resistance_units_t  r_unit;     // and for resistance
+      capacitance_units_t c_unit;     // and capacitance
     };
   }
 }
@@ -31,7 +34,9 @@ BOOST_FUSION_ADAPT_STRUCT(
   EDASkel::SpefParse::spef,
   (std::string, standard)
   (std::string, name)
-  (EDASkel::SpefParse::time_units_t, t_unit)
+  (EDASkel::SpefParse::time_units_t,        t_unit)
+  (EDASkel::SpefParse::resistance_units_t,  r_unit)
+  (EDASkel::SpefParse::capacitance_units_t, c_unit)
 )
 
 #endif // PARSER_SPEFTYPES_H

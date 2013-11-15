@@ -50,26 +50,38 @@ namespace EDASkel {
         using boost::spirit::_a;
         using boost::spirit::_val;
 
-        eng_prefix.add("M", 1E-3)("U", 1E-6)("N", 1E-9)("P", 1E-12);
+        eng_prefixes.add("K", 1E3)("M", 1E-3)("U", 1E-6)("N", 1E-9)("P", 1E-12)("F", 1E-15);
+        eng_prefix = lexeme[eng_prefixes] | (eps >> attr(1.0)) ;  // defaults to 1
 
         design_name = omit[lexeme["*DESIGN"]] >> '"' >> no_skip[*(char_ - '"')] >> '"' ;
         standard    = omit[lexeme["*SPEF"]] >> '"' >> no_skip[*(char_ - '"')] >> '"' ;
         t_unit      = omit[lexeme["*T_UNIT"]] >>
                       double_[_a = _1] >>
-                      lexeme[eng_prefix[_val = _a * _1 * val(si::seconds)] >> 'S'] ;
+                      eng_prefix[_val = _a * _1 * val(si::seconds)] >> 'S' ;
+        r_unit      = omit[lexeme["*R_UNIT"]] >>
+                      double_[_a = _1] >>
+                      eng_prefix[_val = _a * _1 * val(si::ohms)] >> "OHM" ;
+        c_unit      = omit[lexeme["*C_UNIT"]] >>
+                      double_[_a = _1] >>
+                      eng_prefix[_val = _a * _1 * val(si::farads)] >> 'F' ;
 
         spef_file = omit[lexeme["SPEF"]] >> standard >> design_name   // TODO: any order?
-                                         >> t_unit ;
+                                         >> t_unit >> r_unit >> c_unit;
 
         spef_file.name("SPEF top level");
         design_name.name("DESIGN name");
         standard.name("SPEF standard version");
         t_unit.name("time unit declaration");
+        r_unit.name("resistance unit declaration");
+        c_unit.name("capacitance unit declaration");
 
         BOOST_SPIRIT_DEBUG_NODE(spef_file);
         BOOST_SPIRIT_DEBUG_NODE(design_name);
         BOOST_SPIRIT_DEBUG_NODE(standard);
+        BOOST_SPIRIT_DEBUG_NODE(eng_prefix);
         BOOST_SPIRIT_DEBUG_NODE(t_unit);
+        BOOST_SPIRIT_DEBUG_NODE(r_unit);
+        BOOST_SPIRIT_DEBUG_NODE(c_unit);
 
         on_error<fail>(spef_file, std::cerr << val("Error! Expecting ")
                                             << boost::spirit::_4
@@ -89,9 +101,17 @@ namespace EDASkel {
 
       typename Rule<spef()>::type spef_file;
       typename Rule<std::string()>::type design_name, standard;
-      boost::spirit::qi::symbols<char, double> eng_prefix;
-      typename boost::spirit::qi::rule<Iterator, quantity<si::time, double>(), skipper_t,
-                                       boost::spirit::locals<double> > t_unit;
+      boost::spirit::qi::symbols<char, double> eng_prefixes;
+      typename Rule<double()>::type eng_prefix;
+
+      template <typename Quantity>
+      struct unit_rule {
+        typedef typename boost::spirit::qi::rule<Iterator, quantity<Quantity, double>(), skipper_t,
+                                        boost::spirit::locals<double> > type;
+      };
+      typename unit_rule<si::time>::type        t_unit;
+      typename unit_rule<si::resistance>::type  r_unit;
+      typename unit_rule<si::capacitance>::type c_unit;
     };
   }  // namespace SpefParse
 } // namespace EDASkel
