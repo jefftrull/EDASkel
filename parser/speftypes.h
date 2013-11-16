@@ -15,6 +15,9 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+#ifndef PARSER_SPEFTYPES_H
+#define PARSER_SPEFTYPES_H
+
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 
 #include <boost/units/systems/si/time.hpp>
@@ -26,9 +29,6 @@
 #include <string>
 
 #include <boost/fusion/include/adapt_struct.hpp>
-
-#ifndef PARSER_SPEFTYPES_H
-#define PARSER_SPEFTYPES_H
 
 namespace EDASkel {
   namespace SpefParse {
