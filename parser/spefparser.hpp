@@ -70,6 +70,11 @@ namespace EDASkel {
 
         design_name = omit[lexeme["*DESIGN"]] >> '"' >> no_skip[*(char_ - '"')] >> '"' ;
         standard    = omit[lexeme["*SPEF"]] >> '"' >> no_skip[*(char_ - '"')] >> '"' ;
+
+        divider     = omit[lexeme["*DIVIDER"]] >> char_ ;
+        delimiter   = omit[lexeme["*DELIMITER"]] >> char_ ;
+        bus_delimiter = omit[lexeme["*BUS_DELIMITER"]] >> char_ >> char_ ;
+
         t_unit      = omit[lexeme["*T_UNIT"]] >>
                       double_[_a = _1] >>
                       eng_prefix[_val = _a * _1 * val(si::seconds)] >> 'S' ;
@@ -84,6 +89,7 @@ namespace EDASkel {
                       eng_prefix[_val = _a * _1 * val(si::henrys)] >> (lit("HENRY") | 'H') ;
 
         spef_file = omit[lexeme["SPEF"]] >> standard >> design_name   // TODO: any order?
+                                         >> omit[divider] >> omit[delimiter] >> omit[bus_delimiter]
                                          >> t_unit >> c_unit >> r_unit >> l_unit;
 
         spef_file.name("SPEF top level");
@@ -122,6 +128,9 @@ namespace EDASkel {
       typename Rule<std::string()>::type design_name, standard;
       boost::spirit::qi::symbols<char, double> eng_prefixes;
       typename Rule<double()>::type eng_prefix;
+
+      typename Rule<char()>::type divider, delimiter;
+      typename Rule<std::pair<char, char> >::type bus_delimiter;
 
       template <typename Quantity>
       struct unit_rule {

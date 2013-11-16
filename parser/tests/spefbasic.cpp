@@ -58,6 +58,8 @@ BOOST_AUTO_TEST_CASE( design_name ) {
    spef result;
    std::string units("*T_UNIT 1 PS\n*C_UNIT 1 PF\n*R_UNIT 1 KOHM\n*L_UNIT 1 HENRY\n");
    std::string preamble("SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n");
+   preamble += "*DIVIDER /\n*DELIMITER :\n*BUS_DELIMITER [ ]\n";
+
    parse_check(preamble + "// some other comment\n" + units, result);
    BOOST_CHECK_EQUAL( "GreatDesign", result.name );
    BOOST_CHECK_EQUAL( "IEEE 1481-1998", result.standard );
@@ -72,6 +74,7 @@ BOOST_AUTO_TEST_CASE( units ) {
 
    spef result;
    std::string preamble("SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n");
+   preamble += "*DIVIDER /\n*DELIMITER :\n*BUS_DELIMITER [ ]\n";
    parse_check(preamble + "*T_UNIT 1 PS\n*C_UNIT 1 PF\n*R_UNIT 1 KOHM\n*L_UNIT 1 HENRY\n", result);
    BOOST_CHECK_EQUAL( (quantity<si::time, double>(1e-12 * si::seconds)), result.t_unit );
    BOOST_CHECK_EQUAL( (quantity<si::resistance, double>(1e3 * si::ohms)), result.r_unit );
