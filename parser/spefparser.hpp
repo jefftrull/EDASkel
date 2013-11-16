@@ -58,22 +58,26 @@ namespace EDASkel {
         t_unit      = omit[lexeme["*T_UNIT"]] >>
                       double_[_a = _1] >>
                       eng_prefix[_val = _a * _1 * val(si::seconds)] >> 'S' ;
-        r_unit      = omit[lexeme["*R_UNIT"]] >>
-                      double_[_a = _1] >>
-                      eng_prefix[_val = _a * _1 * val(si::ohms)] >> "OHM" ;
         c_unit      = omit[lexeme["*C_UNIT"]] >>
                       double_[_a = _1] >>
                       eng_prefix[_val = _a * _1 * val(si::farads)] >> 'F' ;
+        r_unit      = omit[lexeme["*R_UNIT"]] >>
+                      double_[_a = _1] >>
+                      eng_prefix[_val = _a * _1 * val(si::ohms)] >> "OHM" ;
+        l_unit      = omit[lexeme["*L_UNIT"]] >>
+                      double_[_a = _1] >>
+                      eng_prefix[_val = _a * _1 * val(si::henrys)] >> (lit("HENRY") | 'H') ;
 
         spef_file = omit[lexeme["SPEF"]] >> standard >> design_name   // TODO: any order?
-                                         >> t_unit >> r_unit >> c_unit;
+                                         >> t_unit >> c_unit >> r_unit >> l_unit;
 
         spef_file.name("SPEF top level");
         design_name.name("DESIGN name");
         standard.name("SPEF standard version");
         t_unit.name("time unit declaration");
-        r_unit.name("resistance unit declaration");
         c_unit.name("capacitance unit declaration");
+        r_unit.name("resistance unit declaration");
+        l_unit.name("inductance unit declaration");
 
         BOOST_SPIRIT_DEBUG_NODE(spef_file);
         BOOST_SPIRIT_DEBUG_NODE(design_name);
@@ -112,6 +116,7 @@ namespace EDASkel {
       typename unit_rule<si::time>::type        t_unit;
       typename unit_rule<si::resistance>::type  r_unit;
       typename unit_rule<si::capacitance>::type c_unit;
+      typename unit_rule<si::inductance>::type  l_unit;
     };
   }  // namespace SpefParse
 } // namespace EDASkel

@@ -22,6 +22,11 @@ void parse_check(std::string const& str, spef& result) {
   SpefIter beg(testspef), end;
   BOOST_CHECK( phrase_parse(beg, end, spefParser, spefSkipper, result) );  // we should match
   BOOST_CHECK( (beg == end) );                        // we should consume all input
+  if (beg != end) {
+     std::cerr << "excess input: ";
+     std::copy(beg, end, std::ostream_iterator<char>(std::cerr, ""));
+     std::cerr << std::endl;
+  }
 }
 
 
@@ -36,7 +41,7 @@ void parse_check_fail(std::string const& str) {
 BOOST_AUTO_TEST_CASE( design_name ) {
 
    spef result;
-   std::string units("*T_UNIT 1 PS\n*R_UNIT 1KOHM\n*C_UNIT 1PF\n");
+   std::string units("*T_UNIT 1 PS\n*C_UNIT 1 PF\n*R_UNIT 1 KOHM\n*L_UNIT 1 HENRY\n");
    std::string preamble("SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n");
    parse_check(preamble + "// some other comment\n" + units, result);
    BOOST_CHECK_EQUAL( "GreatDesign", result.name );
@@ -52,29 +57,34 @@ BOOST_AUTO_TEST_CASE( units ) {
 
    spef result;
    std::string preamble("SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n");
-   parse_check(preamble + "*T_UNIT 1.0 PS\n*R_UNIT 1.0 KOHM\n*C_UNIT 1.0 PF\n", result);
+   parse_check(preamble + "*T_UNIT 1 PS\n*C_UNIT 1 PF\n*R_UNIT 1 KOHM\n*L_UNIT 1 HENRY\n", result);
    BOOST_CHECK_EQUAL( (quantity<si::time, double>(1e-12 * si::seconds)), result.t_unit );
    BOOST_CHECK_EQUAL( (quantity<si::resistance, double>(1e3 * si::ohms)), result.r_unit );
    BOOST_CHECK_EQUAL( (quantity<si::capacitance, double>(1e-12 * si::farads)), result.c_unit );
+   BOOST_CHECK_EQUAL( (quantity<si::inductance, double>(1 * si::henrys)), result.l_unit );
 
-   parse_check(preamble + "*T_UNIT 1.0 NS\n*R_UNIT 1.0 KOHM\n*C_UNIT 1.0 FF\n", result);
+   parse_check(preamble + "*T_UNIT 1 NS\n*C_UNIT 1 FF\n*R_UNIT 1 KOHM\n*L_UNIT 1 UH\n", result);
    BOOST_CHECK_EQUAL( (quantity<si::time, double>(1e-9 * si::seconds)), result.t_unit );
    BOOST_CHECK_EQUAL( (quantity<si::resistance, double>(1e3 * si::ohms)), result.r_unit );
    BOOST_CHECK_EQUAL( (quantity<si::capacitance, double>(1e-15 * si::farads)), result.c_unit );
+   BOOST_CHECK_EQUAL( (quantity<si::inductance, double>(1e-6 * si::henrys)), result.l_unit );
 
-   parse_check(preamble + "*T_UNIT 1.0 US\n*R_UNIT 1.0 OHM\n*C_UNIT 1.0 PF\n", result);
+   parse_check(preamble + "*T_UNIT 1 US\n*C_UNIT 1 PF\n*R_UNIT 1 OHM\n*L_UNIT 1 HENRY\n", result);
    BOOST_CHECK_EQUAL( (quantity<si::time, double>(1e-6 * si::seconds)), result.t_unit );
    BOOST_CHECK_EQUAL( (quantity<si::resistance, double>(1 * si::ohms)), result.r_unit );
 
-   parse_check(preamble + "*T_UNIT 1.0 MS\n*R_UNIT 1.0 KOHM\n*C_UNIT 2.0 PF\n", result);
+   parse_check(preamble + "*T_UNIT 1 MS\n*C_UNIT 2.0 PF\n*R_UNIT 1.0 KOHM\n*L_UNIT 1 HENRY\n", result);
    BOOST_CHECK_EQUAL( (quantity<si::time, double>(1e-3 * si::seconds)), result.t_unit );
    BOOST_CHECK_EQUAL( (quantity<si::capacitance, double>(2e-12 * si::farads)), result.c_unit );
 
-   parse_check_fail(preamble + "*T_UNIT 1 QS\n");  // a fake unit prefix
-   parse_check_fail(preamble + "*X_UNIT 1 PS\n");  // no such thing as an "X" unit
-   parse_check_fail(preamble + "*T_UNIT 1 PF\n");  // time but I've given capacitance
+   std::string crl("*C_UNIT 2.0 PF\n*R_UNIT 1.0 KOHM\n*L_UNIT 1 HENRY\n");
+   parse_check_fail(preamble + "*T_UNIT 1 QS\n" + crl);  // a fake unit prefix
+   parse_check_fail(preamble + "*X_UNIT 1 PS\n" + crl);  // no such thing as an "X" unit
+   parse_check_fail(preamble + "*T_UNIT 1 PF\n" + crl);  // time but I've given capacitance
 
    // quantity and unit mismatches
-   parse_check_fail(preamble + "*T_UNIT 1.0 PS\n*R_UNIT 1.0 FF\n*C_UNIT 1.0 PF\n");
-   parse_check_fail(preamble + "*T_UNIT 1.0 PS\n*R_UNIT 1.0 KOHM\n*C_UNIT 1.0 OHM\n");
+   parse_check_fail(preamble + "*T_UNIT 1.0 PS\n*C_UNIT 1.0 PF\n*R_UNIT 1.0 FF\n*L_UNIT 1 HENRY\n");
+   parse_check_fail(preamble + "*T_UNIT 1.0 PS\n*C_UNIT 1.0 OHM\n*R_UNIT 1.0 KOHM\n*L_UNIT 1 HENRY\n");
+
+   // TODO: test for missing spaces? Not presently checked.
 }
