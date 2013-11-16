@@ -53,16 +53,20 @@ void parse_check_fail(std::string const& str) {
   BOOST_CHECK( !phrase_parse(beg, end, spefParser, spefSkipper, result) );  // we should NOT match
 }
 
-BOOST_AUTO_TEST_CASE( design_name ) {
+BOOST_AUTO_TEST_CASE( header ) {
 
    spef result;
    std::string units("*T_UNIT 1 PS\n*C_UNIT 1 PF\n*R_UNIT 1 KOHM\n*L_UNIT 1 HENRY\n");
    std::string preamble("SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n");
+   preamble += "*DATE \"Fri Aug 29 02:14:00 1997\"\n*VENDOR \"MegaEDA\"\n*PROGRAM \"Ozymandius Extractor\"\n*VERSION \"0.99\"\n";
    preamble += "*DIVIDER /\n*DELIMITER :\n*BUS_DELIMITER [ ]\n";
 
    parse_check(preamble + "// some other comment\n" + units, result);
    BOOST_CHECK_EQUAL( "GreatDesign", result.name );
    BOOST_CHECK_EQUAL( "IEEE 1481-1998", result.standard );
+   BOOST_CHECK_EQUAL( "MegaEDA", result.vendor );
+   BOOST_CHECK_EQUAL( "Ozymandius Extractor", result.program );
+   BOOST_CHECK_EQUAL( "0.99", result.version );
 
    parse_check_fail("// no initial SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"SomewhatLessGood\"\n" + units);
    parse_check_fail("SPEF\n// initial comment\n*SPEF \"IEEE 1481-1998\"\n// look, no design name here\n" + units);
@@ -74,6 +78,7 @@ BOOST_AUTO_TEST_CASE( units ) {
 
    spef result;
    std::string preamble("SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n");
+   preamble += "*DATE \"Fri Aug 29 02:14:00 1997\"\n*VENDOR \"MegaEDA\"\n*PROGRAM \"Ozymandius Extractor\"\n*VERSION \"0.99\"\n";
    preamble += "*DIVIDER /\n*DELIMITER :\n*BUS_DELIMITER [ ]\n";
    parse_check(preamble + "*T_UNIT 1 PS\n*C_UNIT 1 PF\n*R_UNIT 1 KOHM\n*L_UNIT 1 HENRY\n", result);
    BOOST_CHECK_EQUAL( (quantity<si::time, double>(1e-12 * si::seconds)), result.t_unit );
