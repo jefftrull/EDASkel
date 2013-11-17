@@ -29,19 +29,22 @@
 #include <string>
 
 #include <boost/fusion/include/adapt_struct.hpp>
+#include <boost/fusion/include/std_pair.hpp>
 
 namespace EDASkel {
   namespace SpefParse {
     using namespace boost::units;
-    typedef quantity<si::time, double>        time_units_t;
-    typedef quantity<si::resistance, double>  resistance_units_t;
-    typedef quantity<si::capacitance, double> capacitance_units_t;
-    typedef quantity<si::inductance, double>  inductance_units_t;
+    typedef quantity<si::time, double>         time_units_t;
+    typedef quantity<si::resistance, double>   resistance_units_t;
+    typedef quantity<si::capacitance, double>  capacitance_units_t;
+    typedef quantity<si::inductance, double>   inductance_units_t;
+    typedef std::map<std::string, std::string> design_flow_map_t;
     struct spef {
       std::string standard;          // i.e. IEEE 1481-1998 - the only one we support for now
       std::string name;
       boost::posix_time::ptime date; // a date *and* time, actually
-      std::string vendor, program, version;
+      std::string         vendor, program, version;
+      design_flow_map_t   design_flow;
       time_units_t        t_unit;     // multiplier for all duration values
       capacitance_units_t c_unit;     // capacitance
       resistance_units_t  r_unit;     // and for resistance
@@ -52,11 +55,12 @@ namespace EDASkel {
 
 BOOST_FUSION_ADAPT_STRUCT(
   EDASkel::SpefParse::spef,
-  (std::string, standard)
-  (std::string, name)
-  (std::string, vendor)
-  (std::string, program)
-  (std::string, version)
+  (std::string,                             standard)
+  (std::string,                             name)
+  (std::string,                             vendor)
+  (std::string,                             program)
+  (std::string,                             version)
+  (EDASkel::SpefParse::design_flow_map_t,   design_flow)
   (EDASkel::SpefParse::time_units_t,        t_unit)
   (EDASkel::SpefParse::capacitance_units_t, c_unit)
   (EDASkel::SpefParse::resistance_units_t,  r_unit)

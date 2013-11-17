@@ -65,9 +65,6 @@ namespace EDASkel {
         using boost::spirit::_a;
         using boost::spirit::_val;
 
-        eng_prefixes.add("K", 1E3)("M", 1E-3)("U", 1E-6)("N", 1E-9)("P", 1E-12)("F", 1E-15);
-        eng_prefix = lexeme[eng_prefixes] | (eps >> attr(1.0)) ;  // defaults to 1
-
         quoted_string = '"' >> no_skip[*(char_ - '"')] >> '"' ;
         standard    = omit[lexeme["*SPEF"]] >> quoted_string ;
         design_name = omit[lexeme["*DESIGN"]] >> quoted_string ;
@@ -75,11 +72,17 @@ namespace EDASkel {
         vendor      = omit[lexeme["*VENDOR"]] >> quoted_string ;
         program     = omit[lexeme["*PROGRAM"]] >> quoted_string ;
         version     = omit[lexeme["*VERSION"]] >> quoted_string ;
-        
+
+        nonspace_str = lexeme[+(char_ - '"' - ' ')];
+        design_flow_entry = '"' >> nonspace_str >> (no_skip[" " >> nonspace_str] | attr("")) >> '"' ;
+        design_flow = omit[lexeme["*DESIGN_FLOW"]] >> *design_flow_entry ;
 
         divider     = omit[lexeme["*DIVIDER"]] >> char_ ;
         delimiter   = omit[lexeme["*DELIMITER"]] >> char_ ;
         bus_delimiter = omit[lexeme["*BUS_DELIMITER"]] >> char_ >> char_ ;
+
+        eng_prefixes.add("K", 1E3)("M", 1E-3)("U", 1E-6)("N", 1E-9)("P", 1E-12)("F", 1E-15);
+        eng_prefix = lexeme[eng_prefixes] | attr(1.0) ;  // defaults to 1
 
         t_unit      = omit[lexeme["*T_UNIT"]] >>
                       double_[_a = _1] >>
@@ -96,6 +99,7 @@ namespace EDASkel {
 
         spef_file = omit[lexeme["SPEF"]] >> standard >> design_name   // TODO: any order?
                                          >> omit[datestr] >> vendor >> program >> version
+                                         >> design_flow
                                          >> omit[divider] >> omit[delimiter] >> omit[bus_delimiter]
                                          >> t_unit >> c_unit >> r_unit >> l_unit;
 
@@ -106,6 +110,7 @@ namespace EDASkel {
         vendor.name("Vendor");
         program.name("Program");
         version.name("Version");
+        design_flow.name("Design Flow");
 
         t_unit.name("time unit declaration");
         c_unit.name("capacitance unit declaration");
@@ -119,6 +124,9 @@ namespace EDASkel {
         BOOST_SPIRIT_DEBUG_NODE(vendor);
         BOOST_SPIRIT_DEBUG_NODE(program);
         BOOST_SPIRIT_DEBUG_NODE(version);
+        BOOST_SPIRIT_DEBUG_NODE(design_flow);
+        BOOST_SPIRIT_DEBUG_NODE(design_flow_entry);
+        BOOST_SPIRIT_DEBUG_NODE(nonspace_str);
         BOOST_SPIRIT_DEBUG_NODE(eng_prefix);
         BOOST_SPIRIT_DEBUG_NODE(t_unit);
         BOOST_SPIRIT_DEBUG_NODE(r_unit);
@@ -144,6 +152,12 @@ namespace EDASkel {
 
       typename Rule<std::string()>::type quoted_string;
       typename Rule<std::string()>:: type design_name, standard, datestr, vendor, program, version;
+
+      typename boost::spirit::qi::rule<Iterator, std::string()> nonspace_str;
+      typedef std::pair<std::string, std::string> design_flow_entry_t;
+      typename Rule<design_flow_entry_t()>::type design_flow_entry;
+      typedef std::map<std::string, std::string> design_flow_map_t;
+      typename Rule<design_flow_map_t()>::type design_flow;
 
       boost::spirit::qi::symbols<char, double> eng_prefixes;
       typename Rule<double()>::type eng_prefix;
