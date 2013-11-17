@@ -18,10 +18,10 @@
 #ifndef PARSER_SPEF_HPP
 #define PARSER_SPEF_HPP
 
+#include "speftypes.h"
+
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
-
-#include "speftypes.h"
 
 namespace EDASkel {
   namespace SpefParse {
@@ -97,11 +97,16 @@ namespace EDASkel {
                       double_[_a = _1] >>
                       eng_prefix[_val = _a * _1 * val(si::henrys)] >> (lit("HENRY") | 'H') ;
 
+        netname = lexeme[+char_("a-zA-Z0-9[]/:_")];
+        name_map_entry = '*' >> uint_ >> netname ;
+        name_map = omit[lexeme["*NAME_MAP"]] >> *name_map_entry ;
+
         spef_file = omit[lexeme["SPEF"]] >> standard >> design_name   // TODO: any order?
                                          >> omit[datestr] >> vendor >> program >> version
                                          >> design_flow
                                          >> omit[divider] >> omit[delimiter] >> omit[bus_delimiter]
-                                         >> t_unit >> c_unit >> r_unit >> l_unit;
+                                         >> t_unit >> c_unit >> r_unit >> l_unit
+                                         >> -name_map ;
 
         spef_file.name("SPEF top level");
         standard.name("SPEF standard version");
@@ -131,6 +136,8 @@ namespace EDASkel {
         BOOST_SPIRIT_DEBUG_NODE(t_unit);
         BOOST_SPIRIT_DEBUG_NODE(r_unit);
         BOOST_SPIRIT_DEBUG_NODE(c_unit);
+        BOOST_SPIRIT_DEBUG_NODE(name_map_entry);
+        BOOST_SPIRIT_DEBUG_NODE(name_map);
 
         on_error<fail>(spef_file, std::cerr << val("Error! Expecting ")
                                             << boost::spirit::_4
@@ -156,7 +163,6 @@ namespace EDASkel {
       typename boost::spirit::qi::rule<Iterator, std::string()> nonspace_str;
       typedef std::pair<std::string, std::string> design_flow_entry_t;
       typename Rule<design_flow_entry_t()>::type design_flow_entry;
-      typedef std::map<std::string, std::string> design_flow_map_t;
       typename Rule<design_flow_map_t()>::type design_flow;
 
       boost::spirit::qi::symbols<char, double> eng_prefixes;
@@ -174,6 +180,11 @@ namespace EDASkel {
       typename unit_rule<si::resistance>::type  r_unit;
       typename unit_rule<si::capacitance>::type c_unit;
       typename unit_rule<si::inductance>::type  l_unit;
+
+      typename boost::spirit::qi::rule<Iterator, std::string()> netname;
+      typedef std::pair<name_map_index_t, std::string> name_map_entry_t;
+      typename Rule<name_map_entry_t()>::type name_map_entry;
+      typename Rule<name_map_t()>::type name_map;
     };
   }  // namespace SpefParse
 } // namespace EDASkel

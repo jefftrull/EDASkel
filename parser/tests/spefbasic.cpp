@@ -37,11 +37,6 @@ void parse_check(std::string const& str, spef& result) {
   SpefIter beg(testspef), end;
   BOOST_CHECK( phrase_parse(beg, end, spefParser, spefSkipper, result) );  // we should match
   BOOST_CHECK( (beg == end) );                        // we should consume all input
-  if (beg != end) {
-     std::cerr << "excess input: ";
-     std::copy(beg, end, std::ostream_iterator<char>(std::cerr, ""));
-     std::cerr << std::endl;
-  }
 }
 
 
@@ -116,4 +111,25 @@ BOOST_AUTO_TEST_CASE( units ) {
    parse_check_fail(preamble + "*T_UNIT 1.0 PS\n*C_UNIT 1.0 OHM\n*R_UNIT 1.0 KOHM\n*L_UNIT 1 HENRY\n");
 
    // TODO: test for missing spaces? Not presently checked.
+}
+
+BOOST_AUTO_TEST_CASE( name_map ) {
+
+   spef result;
+   std::string units("*T_UNIT 1 PS\n*C_UNIT 1 PF\n*R_UNIT 1 KOHM\n*L_UNIT 1 HENRY\n");
+   std::string preamble("SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n");
+   preamble += "*DATE \"Fri Aug 29 02:14:00 1997\"\n*VENDOR \"MegaEDA\"\n";
+   preamble += "*PROGRAM \"Ozymandius Extractor\"\n*VERSION \"0.99\"\n";
+   std::string empty_flow("*DESIGN_FLOW\n");
+   std::string delimiters("*DIVIDER /\n*DELIMITER :\n*BUS_DELIMITER [ ]\n");
+
+   parse_check(preamble + empty_flow + delimiters + units, result);
+   BOOST_CHECK_EQUAL( 0, result.name_map.size() );
+
+   std::string simple_name_map("*NAME_MAP\n*5 MOD1/BLK2/CellA[21]\n*10 top_lvl99\n");
+   parse_check(preamble + empty_flow + delimiters + units + simple_name_map, result);
+   BOOST_CHECK_EQUAL( 2, result.name_map.size() );
+   BOOST_CHECK_EQUAL( "MOD1/BLK2/CellA[21]", result.name_map.at(5) );
+   BOOST_CHECK_EQUAL( "top_lvl99", result.name_map.at(10) );
+
 }
