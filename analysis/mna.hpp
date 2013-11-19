@@ -19,7 +19,7 @@
 #define EDASKEL_ANALYSIS_MNA_HPP
 
 #include <Eigen/Dense>
-#include <Eigen/Eigenvalues>
+#include <Eigen/Sparse>
 
 namespace EDASkel { namespace analysis { namespace mna {
 
@@ -54,6 +54,38 @@ void stamp_i(M& matrix, std::size_t vnodeno, std::size_t istateno)
    matrix(vnodeno, istateno) = 1;   // current is taken *into* inductor or vsource
    matrix(istateno, vnodeno) = -1;
 }
+
+// Overloads for when the goal is to create an Eigen SparseMatrix
+// In this case we build up lists of (row, col, value) triplets to be set all at once
+template<typename Float>
+void stamp(typename std::vector<Eigen::Triplet<Float> >& tlist,
+           std::size_t i, std::size_t j, Float g)
+{
+   // General stamp: conductance at [i,i] and [j,j],
+   // -conductance at [i,j] and [j,i]
+   // Eigen takes care of summing these for us
+   tlist.emplace_back(i, i, g);
+   tlist.emplace_back(j, j, g);
+   tlist.emplace_back(i, j, -g);
+   tlist.emplace_back(j, i, -g);
+
+}
+
+template<typename Float>
+void stamp(typename std::vector<Eigen::Triplet<Float> >& tlist,
+           std::size_t i, Float g)
+{
+   tlist.emplace_back(i, i, g);
+}
+
+template<typename Float>
+void stamp_i(typename std::vector<Eigen::Triplet<Float> >& tlist,
+             std::size_t vnodeno, std::size_t istateno)
+{
+   tlist.emplace_back(vnodeno, istateno, 1);
+   tlist.emplace_back(istateno, vnodeno, -1);
+}
+
 
 // take a circuit's linear system description in G, C, B, L form and compress it so
 // the resulting C array is non-singular.  Operation depends on runtime data, so

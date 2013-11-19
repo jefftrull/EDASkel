@@ -13,6 +13,7 @@ using namespace boost::numeric;
 using namespace Eigen;
  
 #include "analysis/mna.hpp"
+#include <Eigen/SparseQR>
 
 // Utility functions for working with Eigen
 template<class M>
@@ -84,51 +85,53 @@ struct signal_coupling {
       // of V, giving us the desired format for odeint.
 
       // apply values via "stamp"
-      typedef Matrix<double, 15, 15> Matrix15d;
-      Matrix15d C = Matrix15d::Zero(), G = Matrix15d::Zero();
+      std::vector<Eigen::Triplet<double> > Centries, Gentries;
 
       using namespace EDASkel::analysis::mna;
-      stamp(G, 0, 1, 1/agg_imp);   // driver impedances
-      stamp(G, 6, 7, 1/vic_imp);
+      stamp(Gentries, 0, 1, 1/agg_imp);   // driver impedances
+      stamp(Gentries, 6, 7, 1/vic_imp);
 
-      stamp(C, 1, agg_c1 / 4.0);   // beginning of first stage pi model
-      stamp(C, 7, vic_c1 / 4.0);
-      stamp(G, 1, 2, 2/agg_r1);    // first stage pi resistance
-      stamp(G, 7, 8, 2/vic_r1);
-      stamp(C, 2, agg_c1 / 4.0);   // end of first stage pi model
-      stamp(C, 8, vic_c1 / 4.0);
+      stamp(Centries, 1, agg_c1 / 4.0);   // beginning of first stage pi model
+      stamp(Centries, 7, vic_c1 / 4.0);
+      stamp(Gentries, 1, 2, 2/agg_r1);    // first stage pi resistance
+      stamp(Gentries, 7, 8, 2/vic_r1);
+      stamp(Centries, 2, agg_c1 / 4.0);   // end of first stage pi model
+      stamp(Centries, 8, vic_c1 / 4.0);
 
-      stamp(C, 2, agg_c1 / 4.0);   // beginning of second stage pi model
-      stamp(C, 8, vic_c1 / 4.0);
-      stamp(G, 2, 3, 2/agg_r1);    // second stage pi resistance
-      stamp(G, 8, 9, 2/vic_r1);
-      stamp(C, 3, agg_c1 / 4.0);   // end of second stage pi model
-      stamp(C, 9, vic_c1 / 4.0);
+      stamp(Centries, 2, agg_c1 / 4.0);   // beginning of second stage pi model
+      stamp(Centries, 8, vic_c1 / 4.0);
+      stamp(Gentries, 2, 3, 2/agg_r1);    // second stage pi resistance
+      stamp(Gentries, 8, 9, 2/vic_r1);
+      stamp(Centries, 3, agg_c1 / 4.0);   // end of second stage pi model
+      stamp(Centries, 9, vic_c1 / 4.0);
 
-      stamp(C, 3, 9, coup_c);      // coupling capacitance between traces
+      stamp(Centries, 3, 9, coup_c);      // coupling capacitance between traces
 
-      stamp(C, 3, agg_c2 / 4.0);   // beginning of third stage pi model
-      stamp(C, 9, vic_c2 / 4.0);
-      stamp(G, 3, 4, 2/agg_r2);    // third stage pi resistance
-      stamp(G, 9, 10, 2/vic_r2);
-      stamp(C, 4, agg_c2 / 4.0);   // end of third stage pi model
-      stamp(C, 10, vic_c2 / 4.0);
+      stamp(Centries, 3, agg_c2 / 4.0);   // beginning of third stage pi model
+      stamp(Centries, 9, vic_c2 / 4.0);
+      stamp(Gentries, 3, 4, 2/agg_r2);    // third stage pi resistance
+      stamp(Gentries, 9, 10, 2/vic_r2);
+      stamp(Centries, 4, agg_c2 / 4.0);   // end of third stage pi model
+      stamp(Centries, 10, vic_c2 / 4.0);
 
-      stamp(C, 4, agg_c2 / 4.0);   // beginning of fourth stage pi model
-      stamp(C, 10, vic_c2 / 4.0);
-      stamp(G, 4, 5, 2/agg_r2);    // fourth stage pi resistance
-      stamp(G, 10, 11, 2/vic_r2);
-      stamp(C, 5, agg_c2 / 4.0);   // end of fourth stage pi model
-      stamp(C, 11, vic_c2 / 4.0);
+      stamp(Centries, 4, agg_c2 / 4.0);   // beginning of fourth stage pi model
+      stamp(Centries, 10, vic_c2 / 4.0);
+      stamp(Gentries, 4, 5, 2/agg_r2);    // fourth stage pi resistance
+      stamp(Gentries, 10, 11, 2/vic_r2);
+      stamp(Centries, 5, agg_c2 / 4.0);   // end of fourth stage pi model
+      stamp(Centries, 11, vic_c2 / 4.0);
 
-      stamp(C, 5, agg_cl);
-      stamp(C, 11, vic_cl);
+      stamp(Centries, 5, agg_cl);
+      stamp(Centries, 11, vic_cl);
 
       // add an additional pair of equations for the independent sources
       // aggressor and victim driver source currents will be nodes 12 and 13
-      stamp_i(G, 0, 12);
-      stamp_i(G, 6, 13);
-      stamp_i(G, 11, 14);           // victim receiver "driver" (we won't use it) current
+      stamp_i(Gentries, 0, 12);
+      stamp_i(Gentries, 6, 13);
+      stamp_i(Gentries, 11, 14);           // victim receiver "driver" (we won't use it) current
+
+      Eigen::SparseMatrix<double> C(15, 15); C.setFromTriplets(Centries.begin(), Centries.end());
+      Eigen::SparseMatrix<double> G(15, 15); G.setFromTriplets(Gentries.begin(), Gentries.end());
 
       // PRIMA
       // This is a famous model reduction technique invented around 1997/8 at CMU
@@ -167,7 +170,14 @@ struct signal_coupling {
       Matrix<double, 15, N> L = -B;
                                   
       // Step 2: Solve GR = B for R
-      Matrix<double, 15, N> R = G.fullPivHouseholderQr().solve(B);
+      SparseQR<SparseMatrix<double>, COLAMDOrdering<int> > G_QR(G);
+      assert(G_QR.info() == Success);
+      SparseMatrix<double> Bsparse = B.sparseView();
+      // warning: in debug builds this triggers an assertion failure due to an Eigen bug
+      // see https://forum.kde.org/viewtopic.php?f=74&t=117474
+      // You can get a fixed version from Mercurial 3.2 or "default" branch
+      SparseMatrix<double> R = G_QR.solve(Bsparse);
+      assert(G_QR.info() == Success);
 
       // set up types for various versions of "X" variables used in PRIMA
       // matrices we are gathering will all be 15 rows tall but some unknown number
@@ -180,9 +190,11 @@ struct signal_coupling {
       Matrix15dXList X;   // one entry per value of "k", gathered at the end into a single Xfinal
 
       // Step 3: Set X[0] to the orthonormal basis of R as determined by QR factorization
-      auto rQR = R.fullPivHouseholderQr();
-      Matrix15dX rQ = rQR.matrixQ();    // gets 15x15 matrix, only part of which we need
-      X.push_back(rQ.leftCols(rQR.rank()));  // only use the basis part
+      SparseQR<SparseMatrix<double>, COLAMDOrdering<int> > R_QR(R);
+      assert(R_QR.info() == Success);
+      SparseMatrix<double> rQ;
+      rQ = R_QR.matrixQ();
+      X.push_back(Matrix15dX(rQ.leftCols(R_QR.rank())));
 
       // Step 4: Set n = floor(q/N)+1 if q/N is not an integer, and q/N otherwise
       size_t n = (q % N) ? (q/N + 1) : (q/N);
@@ -198,7 +210,7 @@ struct signal_coupling {
          auto V = C * X[k-1];
 
          // solve G*X[k][0] = V for X[k][0]
-         Xk[0] = G.fullPivHouseholderQr().solve(V);
+         Xk[0] = G_QR.solve(V);
 
          for (size_t j = 1; j <= k; ++j)
          {
@@ -251,11 +263,11 @@ struct signal_coupling {
 
       // Compare block moments between original and reduced model
       // Prima claims to produce the same moments up to floor(q/N)
-      Matrix<double, 15, 15> A = G.fullPivHouseholderQr().solve(C);
+      SparseMatrix<double> A = G_QR.solve(C);
       auto GprimeQR = Gprime.fullPivHouseholderQr();
       Matrix<double, q, q> Aprime = GprimeQR.solve(Cprime);
       Matrix<double, q, N> Rprime = GprimeQR.solve(Bprime);
-      Matrix<double, 15, 15> AtotheI = Matrix<double, 15, 15>::Identity();
+      SparseMatrix<double> AtotheI(15, 15); AtotheI.setIdentity();
 
       Matrix<double, q, q> AprimetotheI = Matrix<double, q, q>::Identity();
       for (size_t i = 0; i < (q/N); ++i) {
