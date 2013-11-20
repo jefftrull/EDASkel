@@ -29,7 +29,6 @@
 #include <boost/units/systems/si/io.hpp>
 
 #include <string>
-#include <unordered_map>
 
 #include <boost/fusion/include/adapt_struct.hpp>
 #include <boost/fusion/include/std_pair.hpp>
@@ -43,7 +42,6 @@ namespace EDASkel {
     typedef quantity<si::inductance, double>   inductance_units_t;
     typedef std::map<std::string, std::string> design_flow_map_t;
     typedef unsigned name_map_index_t;
-    typedef std::unordered_map<name_map_index_t, std::string> name_map_t;
     struct spef {
       std::string standard;          // i.e. IEEE 1481-1998 - the only one we support for now
       std::string name;
@@ -54,7 +52,6 @@ namespace EDASkel {
       capacitance_units_t c_unit;     // capacitance
       resistance_units_t  r_unit;     // and for resistance
       inductance_units_t  l_unit;     // and inductance
-      name_map_t          name_map;
     };
   }
 }
@@ -71,7 +68,6 @@ BOOST_FUSION_ADAPT_STRUCT(
   (EDASkel::SpefParse::capacitance_units_t, c_unit)
   (EDASkel::SpefParse::resistance_units_t,  r_unit)
   (EDASkel::SpefParse::inductance_units_t,  l_unit)
-  (EDASkel::SpefParse::name_map_t,          name_map)
 )
 
 #endif // PARSER_SPEFTYPES_H

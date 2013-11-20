@@ -123,13 +123,18 @@ BOOST_AUTO_TEST_CASE( name_map ) {
    std::string empty_flow("*DESIGN_FLOW\n");
    std::string delimiters("*DIVIDER /\n*DELIMITER :\n*BUS_DELIMITER [ ]\n");
 
-   parse_check(preamble + empty_flow + delimiters + units, result);
-   BOOST_CHECK_EQUAL( 0, result.name_map.size() );
+   std::string no_map = preamble + empty_flow + delimiters + units ;
+   parse_check(no_map, result);
 
-   std::string simple_name_map("*NAME_MAP\n*5 MOD1/BLK2/CellA[21]\n*10 top_lvl99\n");
-   parse_check(preamble + empty_flow + delimiters + units + simple_name_map, result);
-   BOOST_CHECK_EQUAL( 2, result.name_map.size() );
-   BOOST_CHECK_EQUAL( "MOD1/BLK2/CellA[21]", result.name_map.at(5) );
-   BOOST_CHECK_EQUAL( "top_lvl99", result.name_map.at(10) );
+   std::stringstream testspef(no_map + "*NAME_MAP\n*5 MOD1/BLK2/CellA[21]\n*10 top_lvl99\n");
+   testspef.unsetf(std::ios::skipws);
+   SpefIter beg(testspef), end;
+   BOOST_CHECK( phrase_parse(beg, end, spefParser, spefSkipper, result) );
+   BOOST_CHECK( (beg == end) );
+
+   BOOST_REQUIRE( spefParser.name_map_symtab.find("5") );
+   BOOST_CHECK_EQUAL( "MOD1/BLK2/CellA[21]", *spefParser.name_map_symtab.find("5"));
+   BOOST_REQUIRE( spefParser.name_map_symtab.find("10") );
+   BOOST_CHECK_EQUAL( "top_lvl99", *spefParser.name_map_symtab.find("10") );
 
 }

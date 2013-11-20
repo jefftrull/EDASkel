@@ -61,7 +61,9 @@ namespace EDASkel {
         using namespace boost::spirit::qi;
         using boost::phoenix::val;
         using boost::phoenix::construct;
+        using boost::phoenix::bind;
         using boost::spirit::_1;
+        using boost::spirit::_2;
         using boost::spirit::_a;
         using boost::spirit::_val;
 
@@ -98,7 +100,7 @@ namespace EDASkel {
                       eng_prefix[_val = _a * _1 * val(si::henrys)] >> (lit("HENRY") | 'H') ;
 
         netname = lexeme[+char_("a-zA-Z0-9[]/:_")];
-        name_map_entry = '*' >> uint_ >> netname ;
+        name_map_entry = ('*' >> lexeme[+ascii::digit] >> netname)[boost::phoenix::bind(name_map_symtab.add, _1, _2)];
         name_map = omit[lexeme["*NAME_MAP"]] >> *name_map_entry ;
 
         spef_file = omit[lexeme["SPEF"]] >> standard >> design_name   // TODO: any order?
@@ -154,6 +156,7 @@ namespace EDASkel {
       {
         typedef boost::spirit::qi::rule<Iterator, Signature, skipper_t> type;
       };
+      typedef boost::spirit::qi::rule<Iterator, skipper_t> no_attr_rule_t;
 
       typename Rule<spef()>::type spef_file;
 
@@ -182,9 +185,8 @@ namespace EDASkel {
       typename unit_rule<si::inductance>::type  l_unit;
 
       typename boost::spirit::qi::rule<Iterator, std::string()> netname;
-      typedef std::pair<name_map_index_t, std::string> name_map_entry_t;
-      typename Rule<name_map_entry_t()>::type name_map_entry;
-      typename Rule<name_map_t()>::type name_map;
+      no_attr_rule_t name_map_entry, name_map;   // semantic actions create symtab entries
+      boost::spirit::qi::symbols<char, std::string> name_map_symtab;
     };
   }  // namespace SpefParse
 } // namespace EDASkel
