@@ -27,7 +27,18 @@ using namespace EDASkel::SpefParse;
 
 using boost::spirit::qi::phrase_parse;
 
-spefparser<SpefIter> spefParser;
+struct Visitor {
+  typedef size_t net_token_value_t;
+  net_token_value_t name_map_entry(std::string n) {
+    net_token_value_t id = names.size();
+    names.push_back(n);
+    return id;
+  }
+  std::vector<std::string> names;
+};
+
+Visitor spefVisitor;
+spefparser<SpefIter, Visitor> spefParser(spefVisitor);
 spefskipper<SpefIter> spefSkipper;
 
 // boilerplate parsing code
@@ -129,12 +140,12 @@ BOOST_AUTO_TEST_CASE( name_map ) {
    std::stringstream testspef(no_map + "*NAME_MAP\n*5 MOD1/BLK2/CellA[21]\n*10 top_lvl99\n");
    testspef.unsetf(std::ios::skipws);
    SpefIter beg(testspef), end;
+   spefVisitor.names.clear();
    BOOST_CHECK( phrase_parse(beg, end, spefParser, spefSkipper, result) );
    BOOST_CHECK( (beg == end) );
 
-   BOOST_REQUIRE( spefParser.name_map_symtab.find("5") );
-   BOOST_CHECK_EQUAL( "MOD1/BLK2/CellA[21]", *spefParser.name_map_symtab.find("5"));
-   BOOST_REQUIRE( spefParser.name_map_symtab.find("10") );
-   BOOST_CHECK_EQUAL( "top_lvl99", *spefParser.name_map_symtab.find("10") );
+   BOOST_REQUIRE_EQUAL( 2, spefVisitor.names.size() );
+   BOOST_CHECK_EQUAL( "MOD1/BLK2/CellA[21]", spefVisitor.names[0] );
+   BOOST_CHECK_EQUAL( "top_lvl99", spefVisitor.names[1] );
 
 }

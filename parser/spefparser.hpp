@@ -51,17 +51,19 @@ namespace EDASkel {
     // storage for node number aliases
     typedef std::map<std::size_t, std::string> alias_map_t;
 
-    template<typename Iterator>
+    template<typename Iterator, typename SpefVisitor>
     struct spefparser : boost::spirit::qi::grammar<Iterator,
                                                    spef(),
                                                    spefskipper<Iterator> >
     {
-      spefparser() : spefparser::base_type(spef_file)
+      typedef typename SpefVisitor::net_token_value_t net_token_value_t;
+
+      spefparser(SpefVisitor& v) : spefparser::base_type(spef_file), visitor_(v)
       {
         using namespace boost::spirit::qi;
+        namespace phx = boost::phoenix;
         using boost::phoenix::val;
         using boost::phoenix::construct;
-        using boost::phoenix::bind;
         using boost::spirit::_1;
         using boost::spirit::_2;
         using boost::spirit::_a;
@@ -100,7 +102,9 @@ namespace EDASkel {
                       eng_prefix[_val = _a * _1 * val(si::henrys)] >> (lit("HENRY") | 'H') ;
 
         netname = lexeme[+char_("a-zA-Z0-9[]/:_")];
-        name_map_entry = ('*' >> lexeme[+ascii::digit] >> netname)[boost::phoenix::bind(name_map_symtab.add, _1, _2)];
+        name_map_entry = ('*' >> lexeme[+ascii::digit] >> netname)[
+           phx::bind(name_map_symtab.add, _1,
+                     phx::bind(&SpefVisitor::name_map_entry, phx::ref(visitor_), _2))] ;
         name_map = omit[lexeme["*NAME_MAP"]] >> *name_map_entry ;
 
         spef_file = omit[lexeme["SPEF"]] >> standard >> design_name   // TODO: any order?
@@ -150,6 +154,8 @@ namespace EDASkel {
 
       }
       
+    private:
+
       typedef spefskipper<Iterator> skipper_t;
       template<typename Signature>
       struct Rule
@@ -186,7 +192,10 @@ namespace EDASkel {
 
       typename boost::spirit::qi::rule<Iterator, std::string()> netname;
       no_attr_rule_t name_map_entry, name_map;   // semantic actions create symtab entries
-      boost::spirit::qi::symbols<char, std::string> name_map_symtab;
+      boost::spirit::qi::symbols<char, net_token_value_t> name_map_symtab;
+
+      SpefVisitor & visitor_;      // user-defined object that responds to data
+
     };
   }  // namespace SpefParse
 } // namespace EDASkel
