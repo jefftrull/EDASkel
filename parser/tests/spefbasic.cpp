@@ -1,5 +1,5 @@
 // Basic tests for the SPEF parser
-// Copyright (C) 2010 Jeffrey Elliot Trull <edaskel@att.net>
+// Copyright (C) 2013 Jeffrey Elliot Trull <edaskel@att.net>
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
