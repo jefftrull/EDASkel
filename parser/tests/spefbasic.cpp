@@ -39,9 +39,14 @@ struct Visitor {
     ports.emplace_back(net, dir);
   }
 
+  void net_definition(net_token_value_t net, double lumpc) {
+    lumped_caps.emplace(net, lumpc);
+  }
+
   std::vector<std::string> names;
   typedef std::pair<net_token_value_t, char> port_t;
   std::vector<port_t> ports;
+  std::map<net_token_value_t, double> lumped_caps;
 };
 
 // without this we would have to make std::pair<size_t, char> iostream-able
@@ -185,4 +190,29 @@ BOOST_AUTO_TEST_CASE( ports ) {
   BOOST_CHECK_EQUAL( (std::make_pair<size_t, char>(1, 'O')), spefVisitor.ports[1] );
   BOOST_CHECK_EQUAL( (std::make_pair<size_t, char>(2, 'B')), spefVisitor.ports[2] );
    
+}
+
+BOOST_AUTO_TEST_CASE( nets ) {
+
+  spef result;
+  std::string name_map("*NAME_MAP\n*1 A/B/C\n*2 x1_12\n*3 z22[8]\n");
+  std::string nets_minimal("*D_NET *2 0.0011\n*END\n");
+
+  Visitor spefVisitorMin;
+  parse_check(spefData::header + name_map + nets_minimal, spefVisitorMin, result);
+  BOOST_REQUIRE_EQUAL( 1, spefVisitorMin.lumped_caps.size() );
+  BOOST_CHECK_CLOSE( 0.0011, spefVisitorMin.lumped_caps.at(1), 0.000001 );
+
+  Visitor spefVisitor;
+  std::string nets_unimplemented_features("*D_NET *1 29.33\n"
+                                          "*CONN\n"
+                                          "*CAP\n1 *2:2 99.21\n2 *3:1 0.88\n"
+                                          "*RES\n1 *1:1 *1:2 9.8765\n"
+                                          "*END\n");
+
+  parse_check(spefData::header + name_map + nets_unimplemented_features,
+              spefVisitor, result);
+  BOOST_REQUIRE_EQUAL( 1, spefVisitor.lumped_caps.size() );
+  BOOST_CHECK_CLOSE( 29.33, spefVisitor.lumped_caps.at(0), 0.000001 );
+
 }

@@ -115,12 +115,17 @@ namespace EDASkel {
                             phx::bind(&SpefVisitor::port_definition, phx::ref(visitor_), _1, _2)] ;
         ports = lexeme["*PORTS"] >> *port_def;
 
+        net_def = (lit("*D_NET") >> '*' >> name_map_symtab >> double_ >> *(char_ - "*END") >> "*END")[
+          phx::bind(&SpefVisitor::net_definition, phx::ref(visitor_), _1, _2)] ;
+
+        nets = *net_def ;
+
         spef_file = omit[lexeme["SPEF"]] >> standard >> design_name   // TODO: any order?
                                          >> omit[datestr] >> vendor >> program >> version
                                          >> design_flow
                                          >> omit[divider] >> omit[delimiter] >> omit[bus_delimiter]
                                          >> t_unit >> c_unit >> r_unit >> l_unit
-                                         >> -name_map >> -ports ;
+                                         >> -name_map >> -ports >> nets;
 
         spef_file.name("SPEF top level");
         standard.name("SPEF standard version");
@@ -138,6 +143,8 @@ namespace EDASkel {
 
         port_def.name("Port Definition");
         ports.name("Port List");
+        net_def.name("Net Definition");
+        nets.name("Net List");
 
         BOOST_SPIRIT_DEBUG_NODE(spef_file);
         BOOST_SPIRIT_DEBUG_NODE(standard);
@@ -157,6 +164,8 @@ namespace EDASkel {
         BOOST_SPIRIT_DEBUG_NODE(name_map);
         BOOST_SPIRIT_DEBUG_NODE(port_def);
         BOOST_SPIRIT_DEBUG_NODE(ports);
+        BOOST_SPIRIT_DEBUG_NODE(net_def);
+        BOOST_SPIRIT_DEBUG_NODE(nets);
 
         on_error<fail>(spef_file, std::cerr << val("Error! Expecting ")
                                             << boost::spirit::_4
@@ -208,6 +217,7 @@ namespace EDASkel {
       boost::spirit::qi::symbols<char, net_token_value_t> name_map_symtab;
 
       no_attr_rule_t port_def, ports;
+      no_attr_rule_t net_def, nets;
 
       SpefVisitor & visitor_;      // user-defined object that responds to data
 
