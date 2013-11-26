@@ -107,12 +107,20 @@ namespace EDASkel {
                      phx::bind(&SpefVisitor::name_map_entry, phx::ref(visitor_), _2))] ;
         name_map = omit[lexeme["*NAME_MAP"]] >> *name_map_entry ;
 
+        port_def = (lexeme['*' >> name_map_symtab] >> char_("IOB") >>
+                    // stuff I don't understand yet
+                    *omit[("*C" >> lexeme[double_] >> lexeme[double_]) |
+                          ("*L" >> double_) |
+                          ("*S" >> double_ >> double_)])[
+                            phx::bind(&SpefVisitor::port_definition, phx::ref(visitor_), _1, _2)] ;
+        ports = lexeme["*PORTS"] >> *port_def;
+
         spef_file = omit[lexeme["SPEF"]] >> standard >> design_name   // TODO: any order?
                                          >> omit[datestr] >> vendor >> program >> version
                                          >> design_flow
                                          >> omit[divider] >> omit[delimiter] >> omit[bus_delimiter]
                                          >> t_unit >> c_unit >> r_unit >> l_unit
-                                         >> -name_map ;
+                                         >> -name_map >> -ports ;
 
         spef_file.name("SPEF top level");
         standard.name("SPEF standard version");
@@ -127,6 +135,9 @@ namespace EDASkel {
         c_unit.name("capacitance unit declaration");
         r_unit.name("resistance unit declaration");
         l_unit.name("inductance unit declaration");
+
+        port_def.name("Port Definition");
+        ports.name("Port List");
 
         BOOST_SPIRIT_DEBUG_NODE(spef_file);
         BOOST_SPIRIT_DEBUG_NODE(standard);
@@ -144,6 +155,8 @@ namespace EDASkel {
         BOOST_SPIRIT_DEBUG_NODE(c_unit);
         BOOST_SPIRIT_DEBUG_NODE(name_map_entry);
         BOOST_SPIRIT_DEBUG_NODE(name_map);
+        BOOST_SPIRIT_DEBUG_NODE(port_def);
+        BOOST_SPIRIT_DEBUG_NODE(ports);
 
         on_error<fail>(spef_file, std::cerr << val("Error! Expecting ")
                                             << boost::spirit::_4
@@ -193,6 +206,8 @@ namespace EDASkel {
       typename boost::spirit::qi::rule<Iterator, std::string()> netname;
       no_attr_rule_t name_map_entry, name_map;   // semantic actions create symtab entries
       boost::spirit::qi::symbols<char, net_token_value_t> name_map_symtab;
+
+      no_attr_rule_t port_def, ports;
 
       SpefVisitor & visitor_;      // user-defined object that responds to data
 

@@ -32,10 +32,19 @@ struct Visitor {
   net_token_value_t name_map_entry(std::string n) {
     net_token_value_t id = names.size();
     names.push_back(n);
-    return id;
+    return id;   // just the offset within the name map, for now
   }
+  typedef std::pair<net_token_value_t, char> port_t;
+  void port_definition(net_token_value_t net, char dir) {
+    ports.emplace_back(net, dir);
+  }
+
   std::vector<std::string> names;
+  std::vector<port_t> ports;
 };
+
+// without this we would have to make std::pair<size_t, char> iostream-able
+BOOST_TEST_DONT_PRINT_LOG_VALUE(Visitor::port_t);
 
 Visitor spefVisitor;
 spefparser<SpefIter, Visitor> spefParser(spefVisitor);
@@ -148,4 +157,41 @@ BOOST_AUTO_TEST_CASE( name_map ) {
    BOOST_CHECK_EQUAL( "MOD1/BLK2/CellA[21]", spefVisitor.names[0] );
    BOOST_CHECK_EQUAL( "top_lvl99", spefVisitor.names[1] );
 
+}
+
+BOOST_AUTO_TEST_CASE( ports ) {
+
+   spef result;
+   std::string units("*T_UNIT 1 PS\n*C_UNIT 1 PF\n*R_UNIT 1 KOHM\n*L_UNIT 1 HENRY\n");
+   std::string preamble("SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n");
+   preamble += "*DATE \"Fri Aug 29 02:14:00 1997\"\n*VENDOR \"MegaEDA\"\n";
+   preamble += "*PROGRAM \"Ozymandius Extractor\"\n*VERSION \"0.99\"\n";
+   std::string empty_flow("*DESIGN_FLOW\n");
+   std::string delimiters("*DIVIDER /\n*DELIMITER :\n*BUS_DELIMITER [ ]\n");
+   std::string name_map("*NAME_MAP\n*1 A/B/C\n*2 x1_12\n*3 z22[8]\n");
+
+   std::string no_ports = preamble + empty_flow + delimiters + units + name_map;
+   std::stringstream testspef(no_ports);
+   testspef.unsetf(std::ios::skipws);
+   SpefIter beg(testspef), end;
+   spefVisitor.names.clear();
+   BOOST_CHECK( phrase_parse(beg, end, spefParser, spefSkipper, result) );
+   BOOST_CHECK( (beg == end) );
+   BOOST_CHECK_EQUAL( 0, spefVisitor.ports.size() );
+
+   // parse again, this time supplying some ports
+   std::stringstream with_ports(no_ports + "*PORTS\n" +
+                                "*1 I *C 3.6 0\n" +
+                                "*2 O *C 88.99 123.2\n" +
+                                "*3 B *L 0.00 *S 0.0 0.0\n");
+   with_ports.unsetf(std::ios::skipws);
+   beg = SpefIter(with_ports);
+   spefVisitor.names.clear();
+   BOOST_CHECK( phrase_parse(beg, end, spefParser, spefSkipper, result) );
+   BOOST_CHECK( (beg == end) );
+   BOOST_REQUIRE_EQUAL( 3, spefVisitor.ports.size() );
+   BOOST_CHECK_EQUAL( (std::make_pair<size_t, char>(0, 'I')), spefVisitor.ports[0] );
+   BOOST_CHECK_EQUAL( (std::make_pair<size_t, char>(1, 'O')), spefVisitor.ports[1] );
+   BOOST_CHECK_EQUAL( (std::make_pair<size_t, char>(2, 'B')), spefVisitor.ports[2] );
+   
 }
