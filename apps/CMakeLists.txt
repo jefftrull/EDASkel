@@ -14,3 +14,5 @@ add_executable( sv simple_viewer.cpp ${DS_MOC_SRC} ${DV_MOC_SRC})
 qt5_use_modules( sv Widgets )
 
 target_link_libraries( sv lefdef ${Boost_LIBRARIES} )
+
+add_executable( spef load_spef.cpp )

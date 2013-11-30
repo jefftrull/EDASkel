@@ -1,0 +1,82 @@
+// A simple SPEF loader
+// Copyright (C) 2013 Jeffrey Elliot Trull <edaskel@att.net>
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+// 
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+// 
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+#include <iostream>
+#include <fstream>
+
+#define BOOST_SPIRIT_USE_PHOENIX_V3
+#define BOOST_SPIRIT_DEBUG
+#include "../parser/spefparser.hpp"
+
+struct Visitor {
+  typedef size_t net_token_value_t;
+  net_token_value_t name_map_entry(std::string n) {
+    net_token_value_t id = names.size();
+    names.push_back(n);
+    return id;   // just the offset within the name map, for now
+  }
+
+  void port_definition(net_token_value_t net, char dir) {
+  }
+
+  void net_definition(net_token_value_t net, double lumpc) {
+    lumped_caps.emplace(net, lumpc);
+  }
+
+  std::vector<std::string> names;
+  std::map<net_token_value_t, double> lumped_caps;
+};
+
+
+int main(int argc, char **argv) {
+   using namespace std;
+   if (argc < 1) {
+      cerr << "usage: load_spef filename" << endl;
+      return 1;
+   }
+   ifstream spefin(argv[1]);
+   if (!spefin.is_open()) {
+      cerr << "Failed to open SPEF file " << argv[1] << endl;
+      return 1;
+   }
+   spefin.unsetf(ios::skipws);
+
+   using namespace EDASkel::SpefParse;
+   using boost::spirit::qi::phrase_parse;
+
+   Visitor spefVisitor;
+   spefparser<SpefIter, Visitor> spefParser(spefVisitor);
+   spefskipper<SpefIter> spefSkipper;
+   SpefIter beg(spefin), end;
+
+   if (!phrase_parse(beg, end, spefParser, spefSkipper)) {
+      cerr << "parsing failed" << endl;
+      return 1;
+   }
+   if (beg != end) {
+     cerr << "not all input processed.  Extra input: |";
+     std::copy(beg, end, ostream_iterator<char>(cerr, ""));
+     cerr << "|" << endl;
+      return 1;
+   }
+
+   cout << "Total capacitance per net (from lumped cap information):" << endl;
+   for (auto lc : spefVisitor.lumped_caps) {
+      cout << lc.second << " " << spefVisitor.names.at(lc.first) << endl;
+   }
+
+}
