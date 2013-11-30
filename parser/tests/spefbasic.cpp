@@ -83,9 +83,10 @@ void parse_check_fail(std::string const& str) {
 }
 
 namespace spefData {
-  std::string preamble("SPEF\n*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n"
-                       "*DATE \"Fri Aug 29 02:14:00 1997\"\n*VENDOR \"MegaEDA\"\n"
-                       "*PROGRAM \"Ozymandius Extractor\"\n*VERSION \"0.99\"\n");
+  std::string preamble_no_magic("*SPEF \"IEEE 1481-1998\"\n*DESIGN \"GreatDesign\"\n"
+                                "*DATE \"Fri Aug 29 02:14:00 1997\"\n*VENDOR \"MegaEDA\"\n"
+                                "*PROGRAM \"Ozymandius Extractor\"\n*VERSION \"0.99\"\n");
+  std::string preamble("SPEF\n" + preamble_no_magic);
   std::string empty_flow("*DESIGN_FLOW\n");
   std::string delimiters("*DIVIDER /\n*DELIMITER :\n*BUS_DELIMITER [ ]\n");
   std::string units("*T_UNIT 1 PS\n*C_UNIT 1 PF\n*R_UNIT 1 KOHM\n*L_UNIT 1 HENRY\n");
@@ -105,6 +106,9 @@ BOOST_AUTO_TEST_CASE( header ) {
   BOOST_CHECK_EQUAL( "Ozymandius Extractor", result.program );
   BOOST_CHECK_EQUAL( "0.99", result.version );
   BOOST_CHECK(       result.design_flow.empty() );
+
+  // verify we can omit the initial "SPEF"
+  parse_check(preamble_no_magic + "// some other comment\n" + empty_flow + delimiters + spefData::units, result);
 
   std::string more_interesting_flow("*DESIGN_FLOW \"ALPHA BETA_GAMMA\" \"DELTA\"\n");
   parse_check(preamble + more_interesting_flow + delimiters + units, result);

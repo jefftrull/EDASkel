@@ -120,12 +120,12 @@ namespace EDASkel {
 
         nets = *net_def ;
 
-        spef_file = omit[lexeme["SPEF"]] >> standard >> design_name   // TODO: any order?
-                                         >> omit[datestr] >> vendor >> program >> version
-                                         >> design_flow
-                                         >> omit[divider] >> omit[delimiter] >> omit[bus_delimiter]
-                                         >> t_unit >> c_unit >> r_unit >> l_unit
-                                         >> -name_map >> -ports >> nets;
+        spef_file = -omit[lexeme["SPEF"]] >> standard >> design_name   // TODO: any order?
+                                          >> omit[datestr] >> vendor >> program >> version
+                                          >> design_flow
+                                          >> omit[divider] >> omit[delimiter] >> omit[bus_delimiter]
+                                          >> t_unit >> c_unit >> r_unit >> l_unit
+                                          >> -name_map >> -ports >> nets;
 
         spef_file.name("SPEF top level");
         standard.name("SPEF standard version");
