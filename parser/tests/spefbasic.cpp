@@ -1,5 +1,5 @@
 // Basic tests for the SPEF parser
-// Copyright (C) 2013 Jeffrey Elliot Trull <edaskel@att.net>
+// Copyright (C) 2010 Jeffrey Elliot Trull <edaskel@att.net>
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -168,6 +168,14 @@ BOOST_AUTO_TEST_CASE( name_map ) {
   BOOST_REQUIRE_EQUAL( 2, spefVisitor.names.size() );
   BOOST_CHECK_EQUAL( "MOD1/BLK2/CellA[21]", spefVisitor.names[0] );
   BOOST_CHECK_EQUAL( "top_lvl99", spefVisitor.names[1] );
+
+  // check quoted delimiters
+  Visitor spefVisitor2;
+  parse_check(no_map + "*NAME_MAP\n*5 MOD1/BLK2/CellA\\[21\\]\n*10 top_lvl99\n",
+              spefVisitor2, result);
+  BOOST_REQUIRE_EQUAL( 2, spefVisitor2.names.size() );
+  BOOST_CHECK_EQUAL( "MOD1/BLK2/CellA[21]", spefVisitor2.names[0] );
+  BOOST_CHECK_EQUAL( "top_lvl99", spefVisitor2.names[1] );
 
 }
 

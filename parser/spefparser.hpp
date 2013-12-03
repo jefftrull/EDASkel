@@ -101,7 +101,7 @@ namespace EDASkel {
                       double_[_a = _1] >>
                       eng_prefix[_val = _a * _1 * val(si::henrys)] >> (lit("HENRY") | 'H') ;
 
-        netname = lexeme[+char_("a-zA-Z0-9[]/:_")];
+        netname = lexeme[+(char_("a-zA-Z0-9[]/:_") | ('\\' >> char_("[]/")))];
         name_map_entry = ('*' >> lexeme[+ascii::digit] >> netname)[
            phx::bind(name_map_symtab.add, _1,
                      phx::bind(&SpefVisitor::name_map_entry, phx::ref(visitor_), _2))] ;
