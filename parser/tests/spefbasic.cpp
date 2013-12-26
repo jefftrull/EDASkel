@@ -1,5 +1,5 @@
 // Basic tests for the SPEF parser
-// Copyright (C) 2010 Jeffrey Elliot Trull <edaskel@att.net>
+// Copyright (C) 2013 Jeffrey Elliot Trull <edaskel@att.net>
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -28,25 +28,43 @@ using namespace EDASkel::SpefParse;
 using boost::spirit::qi::phrase_parse;
 
 struct Visitor {
-  typedef size_t net_token_value_t;
-  net_token_value_t name_map_entry(std::string n) {
-    net_token_value_t id = names.size();
+  typedef size_t name_token_value_t;
+  name_token_value_t name_map_entry(std::string n) {
+    name_token_value_t id = names.size();
     names.push_back(n);
     return id;   // just the offset within the name map, for now
   }
 
-  void port_definition(net_token_value_t net, char dir) {
+  void port_definition(name_token_value_t net, char dir) {
     ports.emplace_back(net, dir);
   }
 
-  void net_definition(net_token_value_t net, double lumpc) {
+  void net_definition(name_token_value_t net, double lumpc) {
     lumped_caps.emplace(net, lumpc);
   }
 
+  void net_port_connection(name_token_value_t net, name_token_value_t port) {
+    if (port_connections.find(net) == port_connections.end()) {
+      port_connections.insert(std::make_pair(net, std::vector<name_token_value_t>()));
+    }
+    port_connections[net].push_back(port);
+  }
+
+  void net_inst_connection(name_token_value_t net, name_token_value_t inst, std::string const& pin) {
+    if (inst_connections.find(net) == inst_connections.end()) {
+      inst_connections.insert(std::make_pair(net, std::vector<inst_connection_t>()));
+    }
+    inst_connections[net].push_back(std::make_pair(inst, pin));
+  }
+
   std::vector<std::string> names;
-  typedef std::pair<net_token_value_t, char> port_t;
+  typedef std::pair<name_token_value_t, char> port_t;
   std::vector<port_t> ports;
-  std::map<net_token_value_t, double> lumped_caps;
+  std::map<name_token_value_t, double> lumped_caps;
+  typedef std::pair<name_token_value_t, std::string> inst_connection_t;
+  std::map<name_token_value_t, std::vector<inst_connection_t> > inst_connections;
+  std::map<name_token_value_t, std::vector<name_token_value_t> > port_connections;
+
 };
 
 // without this we would have to make std::pair<size_t, char> iostream-able
@@ -62,6 +80,7 @@ void parse_check(std::string const& str, Visitor& spefVisitor, spef& result) {
   SpefIter beg(testspef), end;
   BOOST_CHECK( phrase_parse(beg, end, spefParser, spefSkipper, result) );  // we should match
   BOOST_CHECK( (beg == end) );                        // we should consume all input
+
 }
 
 // for checks not needing data from the visitor
@@ -208,16 +227,25 @@ BOOST_AUTO_TEST_CASE( nets ) {
 
   spef result;
   std::string name_map("*NAME_MAP\n*1 A/B/C\n*2 x1_12\n*3 z22[8]\n");
-  std::string nets_minimal("*D_NET *2 0.0011\n*END\n");
+  std::string nets_minimal("*D_NET *2 0.0011\n*CONN\n*P *2 I\n*I *1:S I\n*END\n");
 
   Visitor spefVisitorMin;
   parse_check(spefData::header + name_map + nets_minimal, spefVisitorMin, result);
   BOOST_REQUIRE_EQUAL( 1, spefVisitorMin.lumped_caps.size() );
   BOOST_CHECK_CLOSE( 0.0011, spefVisitorMin.lumped_caps.at(1), 0.000001 );
+  BOOST_REQUIRE_EQUAL( 1, spefVisitorMin.inst_connections.size() );
+  // key of first entry is the name of the net
+  Visitor::name_token_value_t firstNet = spefVisitorMin.inst_connections.begin()->first;
+  BOOST_CHECK_EQUAL( "x1_12", spefVisitorMin.names[firstNet] );
+  // get first entry of vector associated with the first key.
+  // The first value of that pair is the name of the instance
+  Visitor::name_token_value_t firstInst = spefVisitorMin.inst_connections.begin()->second.begin()->first;
+  BOOST_CHECK_EQUAL( "A/B/C", spefVisitorMin.names[firstInst] );
+  // The second value of that pair is the name of the pin
+  BOOST_CHECK_EQUAL( "S", spefVisitorMin.inst_connections.begin()->second.begin()->second);
 
   Visitor spefVisitor;
   std::string nets_unimplemented_features("*D_NET *1 29.33\n"
-                                          "*CONN\n"
                                           "*CAP\n1 *2:2 99.21\n2 *3:1 0.88\n"
                                           "*RES\n1 *1:1 *1:2 9.8765\n"
                                           "*END\n");

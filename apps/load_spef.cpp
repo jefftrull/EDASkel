@@ -18,27 +18,31 @@
 #include <iostream>
 #include <fstream>
 
+// SPEF parser
 #define BOOST_SPIRIT_USE_PHOENIX_V3
-#define BOOST_SPIRIT_DEBUG
 #include "../parser/spefparser.hpp"
 
 struct Visitor {
-  typedef size_t net_token_value_t;
-  net_token_value_t name_map_entry(std::string n) {
-    net_token_value_t id = names.size();
+  typedef size_t name_token_value_t;
+  name_token_value_t name_map_entry(std::string n) {
+    name_token_value_t id = names.size();
     names.push_back(n);
     return id;   // just the offset within the name map, for now
   }
 
-  void port_definition(net_token_value_t net, char dir) {
+  void port_definition(name_token_value_t net, char dir) {
   }
 
-  void net_definition(net_token_value_t net, double lumpc) {
+  void net_definition(name_token_value_t net, double lumpc) {
     lumped_caps.emplace(net, lumpc);
   }
 
+  void net_port_connection(name_token_value_t net, name_token_value_t port) {}
+
+  void net_inst_connection(name_token_value_t net, name_token_value_t inst, std::string const& pin) {}
+
   std::vector<std::string> names;
-  std::map<net_token_value_t, double> lumped_caps;
+  std::map<name_token_value_t, double> lumped_caps;
 };
 
 

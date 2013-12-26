@@ -56,7 +56,7 @@ namespace EDASkel {
                                                    spef(),
                                                    spefskipper<Iterator> >
     {
-      typedef typename SpefVisitor::net_token_value_t net_token_value_t;
+      typedef typename SpefVisitor::name_token_value_t name_token_value_t;
 
       spefparser(SpefVisitor& v) : spefparser::base_type(spef_file), visitor_(v)
       {
@@ -115,8 +115,21 @@ namespace EDASkel {
                             phx::bind(&SpefVisitor::port_definition, phx::ref(visitor_), _1, _2)] ;
         ports = lexeme["*PORTS"] >> *port_def;
 
-        net_def = (lit("*D_NET") >> '*' >> name_map_symtab >> double_ >> *(char_ - "*END") >> "*END")[
-          phx::bind(&SpefVisitor::net_definition, phx::ref(visitor_), _1, _2)] ;
+        connection = '*' >> ((lit('P') >> '*' >> name_map_symtab)[
+                               phx::bind(&SpefVisitor::net_port_connection, phx::ref(visitor_), _r1, _1)] |
+                             (lit('I') >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]])[
+                               phx::bind(&SpefVisitor::net_inst_connection, phx::ref(visitor_), _r1, _1, _2)])
+                         >> char_("IOB")
+                         >> -(lit("*C") >> double_ >> double_)
+                         >> -(lit("*L") >> double_)
+                         >> -(lit("*D") >> lexeme[+ascii::alnum]) ;
+
+        net_def = (lit("*D_NET") >>
+                   ('*' >> name_map_symtab >> double_)[
+                     _a = _1,
+                     phx::bind(&SpefVisitor::net_definition, phx::ref(visitor_), _1, _2)] >>
+                   -("*CONN" >> *connection(_a)) >>
+                   *(char_ - "*END") >> "*END") ;
 
         nets = *net_def ;
 
@@ -214,10 +227,14 @@ namespace EDASkel {
 
       typename boost::spirit::qi::rule<Iterator, std::string()> netname;
       no_attr_rule_t name_map_entry, name_map;   // semantic actions create symtab entries
-      boost::spirit::qi::symbols<char, net_token_value_t> name_map_symtab;
+      boost::spirit::qi::symbols<char, name_token_value_t> name_map_symtab;
 
       no_attr_rule_t port_def, ports;
-      no_attr_rule_t net_def, nets;
+
+      boost::spirit::qi::rule<Iterator, skipper_t, void(name_token_value_t)> connection;
+      boost::spirit::qi::rule<Iterator, skipper_t,
+                              boost::spirit::locals<name_token_value_t> > net_def;
+      no_attr_rule_t nets;
 
       SpefVisitor & visitor_;      // user-defined object that responds to data
 
