@@ -57,6 +57,54 @@ struct Visitor {
     inst_connections[net].push_back(std::make_pair(inst, pin));
   }
 
+  void capacitor(name_token_value_t net, unsigned index,
+                 name_token_value_t net_or_inst1, std::string const& node_or_pin1,
+                 name_token_value_t net_or_inst2, std::string const& node_or_pin2,
+                 double value) {
+    using namespace std;
+
+    // record this data for test assertions
+    if (capacitors.find(net) == capacitors.end()) {
+      capacitors.insert(make_pair(net, connection_map_2pin_t()));
+    }
+    BOOST_REQUIRE(capacitors.at(net).find(index) == capacitors.at(net).end());  // should be new
+    capacitors.at(net).insert(make_pair(index,
+                                        component_2pin_t(make_pair(net_or_inst1, node_or_pin1),
+                                                         make_pair(net_or_inst2, node_or_pin2),
+                                                         value)));
+  }
+
+  void cgnd     (name_token_value_t net, unsigned index,
+                 name_token_value_t net_or_inst, std::string const& node_or_pin,
+                 double value) {
+    using namespace std;
+    if (gnd_lumped_caps.find(net) == gnd_lumped_caps.end()) {
+      gnd_lumped_caps.insert(make_pair(net, connection_map_t()));
+    }
+    // Only one use of each parasitic index, per net
+    BOOST_REQUIRE(gnd_lumped_caps.at(net).find(index) == gnd_lumped_caps.at(net).end());
+    gnd_lumped_caps.at(net).insert(make_pair(index,
+                                        component_t(make_pair(net_or_inst, node_or_pin),
+                                                    value)));
+  }
+
+  void resistor (name_token_value_t net, unsigned index,
+                 name_token_value_t net_or_inst1, std::string const& node_or_pin1,
+                 name_token_value_t net_or_inst2, std::string const& node_or_pin2,
+                 double value) {
+    using namespace std;
+    if (resistors.find(net) == resistors.end()) {
+      resistors.insert(make_pair(net, connection_map_2pin_t()));
+    }
+    BOOST_REQUIRE(resistors.at(net).find(index) == resistors.at(net).end());  // should be new
+    resistors.at(net).insert(make_pair(index,
+                                        component_2pin_t(make_pair(net_or_inst1, node_or_pin1),
+                                                         make_pair(net_or_inst2, node_or_pin2),
+                                                         value)));
+  }
+
+  // data stored in a manner convenient for testing.  Not efficient for apps...
+
   std::vector<std::string> names;
   typedef std::pair<name_token_value_t, char> port_t;
   std::vector<port_t> ports;
@@ -64,6 +112,28 @@ struct Visitor {
   typedef std::pair<name_token_value_t, std::string> inst_connection_t;
   std::map<name_token_value_t, std::vector<inst_connection_t> > inst_connections;
   std::map<name_token_value_t, std::vector<name_token_value_t> > port_connections;
+
+  typedef std::pair<name_token_value_t, std::string> connection_t;
+  struct component_2pin_t {
+    connection_t conn1;
+    connection_t conn2;
+    double value;
+    component_2pin_t(connection_t c1, connection_t c2, double v)
+      : conn1(c1), conn2(c2), value(v) {}
+  };
+  struct component_t {
+    connection_t conn;
+    double value;
+    component_t(connection_t c, double v)
+      : conn(c), value(v) {}
+  };
+
+  typedef std::map<unsigned, component_t> connection_map_t;
+  typedef std::map<unsigned, component_2pin_t> connection_map_2pin_t;
+  typedef std::map<name_token_value_t, connection_map_t> net_connections_t;
+  typedef std::map<name_token_value_t, connection_map_2pin_t> net_2pin_connections_t;
+  net_connections_t gnd_lumped_caps;
+  net_2pin_connections_t resistors, capacitors;
 
 };
 
@@ -254,5 +324,224 @@ BOOST_AUTO_TEST_CASE( nets ) {
               spefVisitor, result);
   BOOST_REQUIRE_EQUAL( 1, spefVisitor.lumped_caps.size() );
   BOOST_CHECK_CLOSE( 29.33, spefVisitor.lumped_caps.at(0), 0.000001 );
+
+}
+
+BOOST_AUTO_TEST_CASE( simple_circuit ) {
+  // construct a simple circuit consisting of two inputs connected to a nand,
+  // followed by an inverter connected to an output, with parasitics in between
+  std::string name_map("*NAME_MAP\n"
+                       "*1 I1\n"
+                       "*2 I2\n"
+                       "*3 O_X\n"   // nand2 output
+                       "*4 O\n"     // circuit output port
+                       "*5 U1\n"    // nand2
+                       "*6 U2\n");  // output inverter
+
+  std::string ports("*PORTS\n"
+                    "*1 I\n"
+                    "*2 I\n"
+                    "*4 O\n");
+
+  std::string i1_net("*D_NET *1 0\n" // fake lumped C
+                     "*CONN\n"
+                     "*P *1 I\n"
+                     "*I *5:A I\n"
+                     "*CAP\n"            // 2 pi model connects input to pin
+                     "1 *1:1 0.1\n"      // first cap of first pi model
+                     "2 *1:2 0.2\n"      // middle two pi model caps
+                     "3 *1:2 *2:2 0.1\n" // coupling cap between inputs
+                     "4 *5:A 0.1\n"      // final pi model final cap
+                     "*RES\n"
+                     "1 *1:1 *1:2 100\n"
+                     "2 *1:2 *5:A 100\n"
+                     "*END\n");
+
+  std::string i2_net("*D_NET *2 0\n"     // fake lumped C
+                     "*CONN\n"
+                     "*P *2 I\n"
+                     "*I *5:B I\n"
+                     "*CAP\n"            // identical to I1 net
+                     "1 *2:1 0.1\n"
+                     "2 *2:2 0.2\n"
+                     "3 *2:2 *1:2 0.1\n"
+                     "4 *5:B 0.1\n"
+                     "*RES\n"
+                     "1 *2:1 *2:2 100\n"
+                     "2 *2:2 *5:B 100\n"
+                     "*END\n");
+
+  std::string ox_net("*D_NET *3 0.2\n"   // lumped C reflecting wire only(?)
+                     "*CONN\n"
+                     "*I *5:Z O\n"
+                     "*I *6:A I\n"
+                     "*CAP\n"
+                     "1 *5:Z 0.1\n"      // a single pi model
+                     "2 *6:A 0.1\n"
+                     "*RES\n"
+                     "1 *5:Z *6:A 100\n"
+                     "*END\n");
+
+  std::string o_net("*D_NET *4 0\n"
+                     "*CONN\n"
+                     "*P *4 O\n"
+                     "*I *6:Z O\n"
+                     "*CAP\n"          
+                     "1 *6:Z 0.1\n"      // a simple lumped C
+                     "*END\n");
+
+  spef result;
+  Visitor spefVisitor;
+  parse_check(spefData::header + name_map + i1_net + i2_net + ox_net + o_net,
+              spefVisitor, result);
+
+  // check coupling cap
+  BOOST_CHECK_EQUAL(2, spefVisitor.capacitors.size());  // only one net-to-net cap; it appears twice
+  // I1/I2 are the first two entries in the name map and so should be indexed that way:
+  BOOST_REQUIRE(spefVisitor.capacitors.find(0) != spefVisitor.capacitors.end());
+  BOOST_REQUIRE(spefVisitor.capacitors.find(1) != spefVisitor.capacitors.end());
+  // parasitic index for both is 3:
+  BOOST_REQUIRE(spefVisitor.capacitors.at(0).find(3) != spefVisitor.capacitors.at(0).end());
+  BOOST_REQUIRE(spefVisitor.capacitors.at(1).find(3) != spefVisitor.capacitors.at(1).end());
+  // check connections
+  // I1 first:
+  auto i1_conn = spefVisitor.capacitors.at(0).at(3);
+  BOOST_CHECK_EQUAL(0, i1_conn.conn1.first);         // "me" net
+  BOOST_CHECK_EQUAL("2", i1_conn.conn1.second);      // my node
+  BOOST_CHECK_EQUAL(1, i1_conn.conn2.first);         // other net
+  BOOST_CHECK_EQUAL("2", i1_conn.conn2.second);      // other node
+  BOOST_CHECK_EQUAL(0.1, i1_conn.value);
+  // then I2
+  auto i2_conn = spefVisitor.capacitors.at(1).at(3);
+  BOOST_CHECK_EQUAL(1, i2_conn.conn1.first);
+  BOOST_CHECK_EQUAL("2", i2_conn.conn1.second);
+  BOOST_CHECK_EQUAL(0, i2_conn.conn2.first);
+  BOOST_CHECK_EQUAL("2", i2_conn.conn2.second);
+  BOOST_CHECK_EQUAL(0.1, i2_conn.value);
+
+  // check grounded caps
+  BOOST_CHECK_EQUAL(4, spefVisitor.gnd_lumped_caps.size());  // 4 nets have cap to gnd
+
+  // I1 has 3 (beginning, intermediate (x2), and final, from pi models
+  BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.find(0) != spefVisitor.gnd_lumped_caps.end());
+  BOOST_CHECK_EQUAL(3, spefVisitor.gnd_lumped_caps.at(0).size());
+
+  BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.at(0).find(1) != spefVisitor.gnd_lumped_caps.at(0).end());
+  auto i1_c1 = spefVisitor.gnd_lumped_caps.at(0).at(1);
+  BOOST_CHECK_EQUAL(0, i1_c1.conn.first);
+  BOOST_CHECK_EQUAL("1", i1_c1.conn.second);
+  BOOST_CHECK_EQUAL(0.1, i1_c1.value);
+
+  BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.at(0).find(2) != spefVisitor.gnd_lumped_caps.at(0).end());
+  auto i1_c2 = spefVisitor.gnd_lumped_caps.at(0).at(2);
+  BOOST_CHECK_EQUAL(0, i1_c2.conn.first);
+  BOOST_CHECK_EQUAL("2", i1_c2.conn.second);
+  BOOST_CHECK_EQUAL(0.2, i1_c2.value);
+
+  // coupling cap is index 3, not present here
+  BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.at(0).find(4) != spefVisitor.gnd_lumped_caps.at(0).end());
+  auto i1_c3 = spefVisitor.gnd_lumped_caps.at(0).at(4);
+  BOOST_CHECK_EQUAL(4, i1_c3.conn.first);      // A pin of nand2
+  BOOST_CHECK_EQUAL("A", i1_c3.conn.second);
+  BOOST_CHECK_EQUAL(0.1, i1_c3.value);
+
+  // I2 is the same as I1
+  BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.find(1) != spefVisitor.gnd_lumped_caps.end());
+  BOOST_CHECK_EQUAL(3, spefVisitor.gnd_lumped_caps.at(1).size());
+
+  BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.at(1).find(1) != spefVisitor.gnd_lumped_caps.at(1).end());
+  auto i2_c1 = spefVisitor.gnd_lumped_caps.at(1).at(1);
+  BOOST_CHECK_EQUAL(1, i2_c1.conn.first);
+  BOOST_CHECK_EQUAL("1", i2_c1.conn.second);
+  BOOST_CHECK_EQUAL(0.1, i2_c1.value);
+
+  BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.at(1).find(2) != spefVisitor.gnd_lumped_caps.at(1).end());
+  auto i2_c2 = spefVisitor.gnd_lumped_caps.at(1).at(2);
+  BOOST_CHECK_EQUAL(1, i2_c2.conn.first);
+  BOOST_CHECK_EQUAL("2", i2_c2.conn.second);
+  BOOST_CHECK_EQUAL(0.2, i2_c2.value);
+
+  // coupling cap is index 3, not present here
+  BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.at(1).find(4) != spefVisitor.gnd_lumped_caps.at(1).end());
+  auto i2_c3 = spefVisitor.gnd_lumped_caps.at(1).at(4);
+  BOOST_CHECK_EQUAL(4, i2_c3.conn.first);      // B pin of nand2
+  BOOST_CHECK_EQUAL("B", i2_c3.conn.second);
+  BOOST_CHECK_EQUAL(0.1, i2_c3.value);
+
+  // O_X (nand2 output/inverter input)
+  BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.find(2) != spefVisitor.gnd_lumped_caps.end());
+  BOOST_CHECK_EQUAL(2, spefVisitor.gnd_lumped_caps.at(2).size());  // single pi model
+
+  // first lumped cap (first node of pi model)
+  BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.at(2).find(1) != spefVisitor.gnd_lumped_caps.at(2).end());
+  auto ox_c1 = spefVisitor.gnd_lumped_caps.at(2).at(1);
+  BOOST_CHECK_EQUAL(4, ox_c1.conn.first);      // Z pin of nand2
+  BOOST_CHECK_EQUAL("Z", ox_c1.conn.second);
+  BOOST_CHECK_EQUAL(0.1, ox_c1.value);
+
+  // second lumped cap (last node of pi model)
+  BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.at(2).find(2) != spefVisitor.gnd_lumped_caps.at(2).end());
+  auto ox_c2 = spefVisitor.gnd_lumped_caps.at(2).at(2);
+  BOOST_CHECK_EQUAL(5, ox_c2.conn.first);      // A pin of inverter
+  BOOST_CHECK_EQUAL("A", ox_c2.conn.second);
+  BOOST_CHECK_EQUAL(0.1, ox_c2.value);
+
+  // lumped cap at inverter output
+  BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.find(3) != spefVisitor.gnd_lumped_caps.end());
+  BOOST_CHECK_EQUAL(1, spefVisitor.gnd_lumped_caps.at(3).size());
+
+  BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.at(3).find(1) != spefVisitor.gnd_lumped_caps.at(3).end());
+  auto o_c = spefVisitor.gnd_lumped_caps.at(3).at(1);
+  BOOST_CHECK_EQUAL(5, o_c.conn.first);      // Z pin of inverter
+  BOOST_CHECK_EQUAL("Z", o_c.conn.second);
+  BOOST_CHECK_EQUAL(0.1, o_c.value);
+
+  // Now the resistors
+  // They are present in the first three nets but not the last
+  BOOST_CHECK_EQUAL(3, spefVisitor.resistors.size());
+
+  // I1
+  BOOST_REQUIRE(spefVisitor.resistors.find(0) != spefVisitor.resistors.end());
+  BOOST_REQUIRE(spefVisitor.resistors.at(0).find(1) != spefVisitor.resistors.at(0).end());
+  auto i1_r1 = spefVisitor.resistors.at(0).at(1);
+  BOOST_CHECK_EQUAL(0, i1_r1.conn1.first);    // net I1
+  BOOST_CHECK_EQUAL("1", i1_r1.conn1.second); // starts at node 1
+  BOOST_CHECK_EQUAL(0, i1_r1.conn2.first);    // net I1
+  BOOST_CHECK_EQUAL("2", i1_r1.conn2.second); // ends at node 2
+  BOOST_CHECK_EQUAL(100, i1_r1.value);        // 100 ohms
+  BOOST_REQUIRE(spefVisitor.resistors.at(0).find(2) != spefVisitor.resistors.at(0).end());
+  auto i1_r2 = spefVisitor.resistors.at(0).at(2);
+  BOOST_CHECK_EQUAL(0, i1_r2.conn1.first);    // net I1
+  BOOST_CHECK_EQUAL("2", i1_r2.conn1.second); // starts at node 2
+  BOOST_CHECK_EQUAL(4, i1_r2.conn2.first);    // instance U1
+  BOOST_CHECK_EQUAL("A", i1_r2.conn2.second); // ends at pin A
+  BOOST_CHECK_EQUAL(100, i1_r2.value);        // 100 ohms
+
+  // I2
+  BOOST_REQUIRE(spefVisitor.resistors.find(1) != spefVisitor.resistors.end());
+  BOOST_REQUIRE(spefVisitor.resistors.at(1).find(1) != spefVisitor.resistors.at(1).end());
+  auto i2_r1 = spefVisitor.resistors.at(1).at(1);
+  BOOST_CHECK_EQUAL(1, i2_r1.conn1.first);    // net I2
+  BOOST_CHECK_EQUAL("1", i2_r1.conn1.second); // starts at node 1
+  BOOST_CHECK_EQUAL(1, i2_r1.conn2.first);    // net I2
+  BOOST_CHECK_EQUAL("2", i2_r1.conn2.second); // ends at node 2
+  BOOST_CHECK_EQUAL(100, i2_r1.value);        // 100 ohms
+  BOOST_REQUIRE(spefVisitor.resistors.at(1).find(2) != spefVisitor.resistors.at(1).end());
+  auto i2_r2 = spefVisitor.resistors.at(1).at(2);
+  BOOST_CHECK_EQUAL(1, i2_r2.conn1.first);    // net I2
+  BOOST_CHECK_EQUAL("2", i2_r2.conn1.second); // starts at node 2
+  BOOST_CHECK_EQUAL(4, i2_r2.conn2.first);    // instance U1
+  BOOST_CHECK_EQUAL("B", i2_r2.conn2.second); // ends at pin B
+  BOOST_CHECK_EQUAL(100, i2_r2.value);        // 100 ohms
+
+  // O_X
+  BOOST_REQUIRE(spefVisitor.resistors.find(1) != spefVisitor.resistors.end());
+  BOOST_REQUIRE(spefVisitor.resistors.at(2).find(1) != spefVisitor.resistors.at(2).end());
+  auto ox_r = spefVisitor.resistors.at(2).at(1);
+  BOOST_CHECK_EQUAL(4, ox_r.conn1.first);     // U1 pin Z
+  BOOST_CHECK_EQUAL("Z", ox_r.conn1.second);
+  BOOST_CHECK_EQUAL(5, ox_r.conn2.first);     // to U2 pin A
+  BOOST_CHECK_EQUAL("A", ox_r.conn2.second);
+  BOOST_CHECK_EQUAL(100, ox_r.value);
 
 }

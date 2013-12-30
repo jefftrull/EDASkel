@@ -66,6 +66,10 @@ namespace EDASkel {
         using boost::phoenix::construct;
         using boost::spirit::_1;
         using boost::spirit::_2;
+        using boost::spirit::_3;
+        using boost::spirit::_4;
+        using boost::spirit::_5;
+        using boost::spirit::_6;
         using boost::spirit::_a;
         using boost::spirit::_val;
 
@@ -124,12 +128,29 @@ namespace EDASkel {
                          >> -(lit("*L") >> double_)
                          >> -(lit("*D") >> lexeme[+ascii::alnum]) ;
 
-        net_def = (lit("*D_NET") >>
+        gndcapline = (uint_
+                      >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]]
+                      >> double_)[
+                        phx::bind(&SpefVisitor::cgnd, phx::ref(visitor_), _r1, _1, _2, _3, _4)];
+        capline = (uint_
+                   >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]]
+                   >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]]
+                   >> double_)[
+                     phx::bind(&SpefVisitor::capacitor, phx::ref(visitor_), _r1, _1, _2, _3, _4, _5, _6)];
+
+        resline = (uint_ >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]]
+                         >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]]
+                         >> double_)[
+                           phx::bind(&SpefVisitor::resistor, phx::ref(visitor_), _r1, _1, _2, _3, _4, _5, _6)];
+
+        net_def =  lit("*D_NET") >>
                    ('*' >> name_map_symtab >> double_)[
                      _a = _1,
                      phx::bind(&SpefVisitor::net_definition, phx::ref(visitor_), _1, _2)] >>
                    -("*CONN" >> *connection(_a)) >>
-                   *(char_ - "*END") >> "*END") ;
+                   -("*CAP" >> *(capline(_a) | gndcapline(_a))) >>
+                   -("*RES" >> *resline(_a)) >>
+                   "*END" ;
 
         nets = *net_def ;
 
@@ -159,6 +180,11 @@ namespace EDASkel {
         net_def.name("Net Definition");
         nets.name("Net List");
 
+        connection.name("net connection definition");
+        capline.name("capacitor definition");
+        gndcapline.name("grounded capacitor definition");
+        resline.name("resistor definition");
+
         BOOST_SPIRIT_DEBUG_NODE(spef_file);
         BOOST_SPIRIT_DEBUG_NODE(standard);
         BOOST_SPIRIT_DEBUG_NODE(design_name);
@@ -179,6 +205,10 @@ namespace EDASkel {
         BOOST_SPIRIT_DEBUG_NODE(ports);
         BOOST_SPIRIT_DEBUG_NODE(net_def);
         BOOST_SPIRIT_DEBUG_NODE(nets);
+        BOOST_SPIRIT_DEBUG_NODE(connection);
+        BOOST_SPIRIT_DEBUG_NODE(capline);
+        BOOST_SPIRIT_DEBUG_NODE(gndcapline);
+        BOOST_SPIRIT_DEBUG_NODE(resline);
 
         on_error<fail>(spef_file, std::cerr << val("Error! Expecting ")
                                             << boost::spirit::_4
@@ -231,7 +261,9 @@ namespace EDASkel {
 
       no_attr_rule_t port_def, ports;
 
-      boost::spirit::qi::rule<Iterator, skipper_t, void(name_token_value_t)> connection;
+      typedef boost::spirit::qi::rule<Iterator, skipper_t, void(name_token_value_t)>
+          no_attr_net_rule_t;
+      no_attr_net_rule_t connection, capline, gndcapline, resline;
       boost::spirit::qi::rule<Iterator, skipper_t,
                               boost::spirit::locals<name_token_value_t> > net_def;
       no_attr_rule_t nets;

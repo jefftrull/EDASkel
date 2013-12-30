@@ -41,6 +41,20 @@ struct Visitor {
 
   void net_inst_connection(name_token_value_t net, name_token_value_t inst, std::string const& pin) {}
 
+  void capacitor(name_token_value_t net, unsigned capnum,
+                 name_token_value_t net_or_inst1, std::string const& node_or_pin1,
+                 name_token_value_t net_or_inst2, std::string const& node_or_pin2,
+                 double value) {}
+
+  void cgnd     (name_token_value_t net, unsigned capnum,
+                 name_token_value_t net_or_inst, std::string const& node_or_pin,
+                 double value) {}
+
+  void resistor (name_token_value_t net, unsigned capnum,
+                 name_token_value_t net_or_inst1, std::string const& node_or_pin1,
+                 name_token_value_t net_or_inst2, std::string const& node_or_pin2,
+                 double value) {}
+
   std::vector<std::string> names;
   std::map<name_token_value_t, double> lumped_caps;
 };
