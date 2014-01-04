@@ -22,6 +22,8 @@
 #define BOOST_SPIRIT_USE_PHOENIX_V3
 #include "../parser/spefparser.hpp"
 
+using namespace boost::units;
+
 struct Visitor {
   typedef size_t name_token_value_t;
   name_token_value_t name_map_entry(std::string n) {
@@ -33,7 +35,8 @@ struct Visitor {
   void port_definition(name_token_value_t net, char dir) {
   }
 
-  void net_definition(name_token_value_t net, double lumpc) {
+  void net_definition(name_token_value_t net,
+                      quantity<si::capacitance, double> lumpc) {
     lumped_caps.emplace(net, lumpc);
   }
 
@@ -44,19 +47,19 @@ struct Visitor {
   void capacitor(name_token_value_t net, unsigned capnum,
                  name_token_value_t net_or_inst1, std::string const& node_or_pin1,
                  name_token_value_t net_or_inst2, std::string const& node_or_pin2,
-                 double value) {}
+                 quantity<si::capacitance, double> value) {}
 
   void cgnd     (name_token_value_t net, unsigned capnum,
                  name_token_value_t net_or_inst, std::string const& node_or_pin,
-                 double value) {}
+                 quantity<si::capacitance, double> value) {}
 
   void resistor (name_token_value_t net, unsigned capnum,
                  name_token_value_t net_or_inst1, std::string const& node_or_pin1,
                  name_token_value_t net_or_inst2, std::string const& node_or_pin2,
-                 double value) {}
+                 quantity<si::resistance, double> value) {}
 
   std::vector<std::string> names;
-  std::map<name_token_value_t, double> lumped_caps;
+  std::map<name_token_value_t, quantity<si::capacitance, double> > lumped_caps;
 };
 
 

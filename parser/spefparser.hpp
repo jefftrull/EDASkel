@@ -131,22 +131,27 @@ namespace EDASkel {
         gndcapline = (uint_
                       >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]]
                       >> double_)[
-                        phx::bind(&SpefVisitor::cgnd, phx::ref(visitor_), _r1, _1, _2, _3, _4)];
+                        phx::bind(&SpefVisitor::cgnd, phx::ref(visitor_),
+                                  _r1, _1, _2, _3, _4 * phx::cref(c_unit_value))];
+
         capline = (uint_
                    >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]]
                    >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]]
                    >> double_)[
-                     phx::bind(&SpefVisitor::capacitor, phx::ref(visitor_), _r1, _1, _2, _3, _4, _5, _6)];
+                     phx::bind(&SpefVisitor::capacitor, phx::ref(visitor_),
+                               _r1, _1, _2, _3, _4, _5, _6 * phx::cref(c_unit_value))];
 
         resline = (uint_ >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]]
                          >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]]
                          >> double_)[
-                           phx::bind(&SpefVisitor::resistor, phx::ref(visitor_), _r1, _1, _2, _3, _4, _5, _6)];
+                           phx::bind(&SpefVisitor::resistor, phx::ref(visitor_),
+                                     _r1, _1, _2, _3, _4, _5, _6 * phx::cref(r_unit_value))];
 
         net_def =  lit("*D_NET") >>
                    ('*' >> name_map_symtab >> double_)[
                      _a = _1,
-                     phx::bind(&SpefVisitor::net_definition, phx::ref(visitor_), _1, _2)] >>
+                     phx::bind(&SpefVisitor::net_definition, phx::ref(visitor_),
+                               _1, _2 * phx::cref(c_unit_value))] >>
                    -("*CONN" >> *connection(_a)) >>
                    -("*CAP" >> *(capline(_a) | gndcapline(_a))) >>
                    -("*RES" >> *resline(_a)) >>
@@ -154,12 +159,15 @@ namespace EDASkel {
 
         nets = *net_def ;
 
-        spef_file = -omit[lexeme["SPEF"]] >> standard >> design_name   // TODO: any order?
-                                          >> omit[datestr] >> vendor >> program >> version
-                                          >> design_flow
-                                          >> omit[divider] >> omit[delimiter] >> omit[bus_delimiter]
-                                          >> t_unit >> c_unit >> r_unit >> l_unit
-                                          >> -name_map >> -ports >> nets;
+        spef_file %= -omit[lexeme["SPEF"]] >> standard >> design_name   // TODO: any order?
+                                           >> omit[datestr] >> vendor >> program >> version
+                                           >> design_flow
+                                           >> omit[divider] >> omit[delimiter] >> omit[bus_delimiter]
+                                           >> t_unit
+                                           >> omit[c_unit[phx::ref(c_unit_value) = _1]]
+                                           >> omit[r_unit[phx::ref(r_unit_value) = _1]]
+                                           >> l_unit
+                                           >> -name_map >> -ports >> nets;
 
         spef_file.name("SPEF top level");
         standard.name("SPEF standard version");
@@ -252,7 +260,9 @@ namespace EDASkel {
       };
       typename unit_rule<si::time>::type        t_unit;
       typename unit_rule<si::resistance>::type  r_unit;
+      quantity<si::resistance, double>          r_unit_value;
       typename unit_rule<si::capacitance>::type c_unit;
+      quantity<si::capacitance, double>         c_unit_value;
       typename unit_rule<si::inductance>::type  l_unit;
 
       typename boost::spirit::qi::rule<Iterator, std::string()> netname;

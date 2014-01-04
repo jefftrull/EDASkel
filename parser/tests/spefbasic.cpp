@@ -39,8 +39,9 @@ struct Visitor {
     ports.emplace_back(net, dir);
   }
 
-  void net_definition(name_token_value_t net, double lumpc) {
-    lumped_caps.emplace(net, lumpc);
+  void net_definition(name_token_value_t net,
+                      quantity<si::capacitance, double> lumpc) {
+    total_caps.emplace(net, lumpc);
   }
 
   void net_port_connection(name_token_value_t net, name_token_value_t port) {
@@ -60,47 +61,48 @@ struct Visitor {
   void capacitor(name_token_value_t net, unsigned index,
                  name_token_value_t net_or_inst1, std::string const& node_or_pin1,
                  name_token_value_t net_or_inst2, std::string const& node_or_pin2,
-                 double value) {
+                 quantity<si::capacitance, double> value) {
     using namespace std;
 
     // record this data for test assertions
     if (capacitors.find(net) == capacitors.end()) {
-      capacitors.insert(make_pair(net, connection_map_2pin_t()));
+      capacitors.insert(make_pair(net, capacitance_map_t()));
     }
     BOOST_REQUIRE(capacitors.at(net).find(index) == capacitors.at(net).end());  // should be new
     capacitors.at(net).insert(make_pair(index,
-                                        component_2pin_t(make_pair(net_or_inst1, node_or_pin1),
-                                                         make_pair(net_or_inst2, node_or_pin2),
-                                                         value)));
+                                        capacitor_t(make_pair(net_or_inst1, node_or_pin1),
+                                                    make_pair(net_or_inst2, node_or_pin2),
+                                                    value)));
   }
 
   void cgnd     (name_token_value_t net, unsigned index,
                  name_token_value_t net_or_inst, std::string const& node_or_pin,
-                 double value) {
+                 quantity<si::capacitance, double> value) {
     using namespace std;
+
     if (gnd_lumped_caps.find(net) == gnd_lumped_caps.end()) {
-      gnd_lumped_caps.insert(make_pair(net, connection_map_t()));
+      gnd_lumped_caps.insert(make_pair(net, capacitance_gnd_map_t()));
     }
     // Only one use of each parasitic index, per net
     BOOST_REQUIRE(gnd_lumped_caps.at(net).find(index) == gnd_lumped_caps.at(net).end());
     gnd_lumped_caps.at(net).insert(make_pair(index,
-                                        component_t(make_pair(net_or_inst, node_or_pin),
-                                                    value)));
+                                             capacitor_gnd_t(make_pair(net_or_inst, node_or_pin),
+                                                             value)));
   }
 
   void resistor (name_token_value_t net, unsigned index,
                  name_token_value_t net_or_inst1, std::string const& node_or_pin1,
                  name_token_value_t net_or_inst2, std::string const& node_or_pin2,
-                 double value) {
+                 quantity<si::resistance, double> value) {
     using namespace std;
     if (resistors.find(net) == resistors.end()) {
-      resistors.insert(make_pair(net, connection_map_2pin_t()));
+      resistors.insert(make_pair(net, resistance_map_t()));
     }
     BOOST_REQUIRE(resistors.at(net).find(index) == resistors.at(net).end());  // should be new
     resistors.at(net).insert(make_pair(index,
-                                        component_2pin_t(make_pair(net_or_inst1, node_or_pin1),
-                                                         make_pair(net_or_inst2, node_or_pin2),
-                                                         value)));
+                                       resistor_t(make_pair(net_or_inst1, node_or_pin1),
+                                                  make_pair(net_or_inst2, node_or_pin2),
+                                                  value)));
   }
 
   // data stored in a manner convenient for testing.  Not efficient for apps...
@@ -108,32 +110,42 @@ struct Visitor {
   std::vector<std::string> names;
   typedef std::pair<name_token_value_t, char> port_t;
   std::vector<port_t> ports;
-  std::map<name_token_value_t, double> lumped_caps;
+  std::map<name_token_value_t, quantity<si::capacitance, double> > total_caps;
   typedef std::pair<name_token_value_t, std::string> inst_connection_t;
   std::map<name_token_value_t, std::vector<inst_connection_t> > inst_connections;
   std::map<name_token_value_t, std::vector<name_token_value_t> > port_connections;
 
   typedef std::pair<name_token_value_t, std::string> connection_t;
-  struct component_2pin_t {
+  struct resistor_t {
     connection_t conn1;
     connection_t conn2;
-    double value;
-    component_2pin_t(connection_t c1, connection_t c2, double v)
+    quantity<si::resistance, double> value;
+    resistor_t(connection_t c1, connection_t c2, quantity<si::resistance, double> v)
       : conn1(c1), conn2(c2), value(v) {}
   };
-  struct component_t {
+  struct capacitor_t {
+    connection_t conn1;
+    connection_t conn2;
+    quantity<si::capacitance, double> value;
+    capacitor_t(connection_t c1, connection_t c2, quantity<si::capacitance, double> v)
+      : conn1(c1), conn2(c2), value(v) {}
+  };
+  struct capacitor_gnd_t {
     connection_t conn;
-    double value;
-    component_t(connection_t c, double v)
+    quantity<si::capacitance, double> value;
+    capacitor_gnd_t(connection_t c, quantity<si::capacitance, double> v)
       : conn(c), value(v) {}
   };
 
-  typedef std::map<unsigned, component_t> connection_map_t;
-  typedef std::map<unsigned, component_2pin_t> connection_map_2pin_t;
-  typedef std::map<name_token_value_t, connection_map_t> net_connections_t;
-  typedef std::map<name_token_value_t, connection_map_2pin_t> net_2pin_connections_t;
-  net_connections_t gnd_lumped_caps;
-  net_2pin_connections_t resistors, capacitors;
+  typedef std::map<unsigned, capacitor_gnd_t> capacitance_gnd_map_t;
+  typedef std::map<unsigned, resistor_t>  resistance_map_t;
+  typedef std::map<unsigned, capacitor_t> capacitance_map_t;
+  typedef std::map<name_token_value_t, capacitance_gnd_map_t> net_lumpedcaps_t;
+  typedef std::map<name_token_value_t, resistance_map_t> net_res_connections_t;
+  typedef std::map<name_token_value_t, capacitance_map_t> cap_connections_t;
+  net_lumpedcaps_t gnd_lumped_caps;
+  net_res_connections_t resistors;
+  cap_connections_t capacitors;
 
 };
 
@@ -210,26 +222,49 @@ BOOST_AUTO_TEST_CASE( header ) {
 BOOST_AUTO_TEST_CASE( units ) {
 
   spef result;
+  Visitor spefVisitor;
+
   std::string preamble = spefData::preamble + spefData::empty_flow + spefData::delimiters;
-  parse_check(preamble + "*T_UNIT 1 PS\n*C_UNIT 1 PF\n*R_UNIT 1 KOHM\n*L_UNIT 1 HENRY\n", result);
+  std::string components = "*NAME_MAP\n*1 A\n*2 B\n"
+                           "*D_NET *1 121.0\n"
+                           "*CAP\n1 *1:1 1.0\n"
+                           "*RES\n1 *1:1 *2:1 1.0\n"
+                           "*END\n";
+
+  parse_check(preamble + "*T_UNIT 1 PS\n*C_UNIT 1 PF\n*R_UNIT 1 KOHM\n*L_UNIT 1 HENRY\n" + components,
+              spefVisitor, result);
+  BOOST_REQUIRE_EQUAL(1, spefVisitor.resistors.size() );
+  BOOST_REQUIRE_EQUAL(1, spefVisitor.gnd_lumped_caps.size() );
   BOOST_CHECK_EQUAL( (quantity<si::time, double>(1e-12 * si::seconds)), result.t_unit );
-  BOOST_CHECK_EQUAL( (quantity<si::resistance, double>(1e3 * si::ohms)), result.r_unit );
-  BOOST_CHECK_EQUAL( (quantity<si::capacitance, double>(1e-12 * si::farads)), result.c_unit );
+  BOOST_CHECK_EQUAL( (quantity<si::resistance, double>(1e3 * si::ohms)),
+                     spefVisitor.resistors.at(0).at(1).value );
+  BOOST_CHECK_EQUAL( (quantity<si::capacitance, double>(1e-12 * si::farads)),
+                     spefVisitor.gnd_lumped_caps.at(0).at(1).value );
   BOOST_CHECK_EQUAL( (quantity<si::inductance, double>(1 * si::henrys)), result.l_unit );
 
-  parse_check(preamble + "*T_UNIT 1 NS\n*C_UNIT 1 FF\n*R_UNIT 1 KOHM\n*L_UNIT 1 UH\n", result);
+  spefVisitor = Visitor();   // replace with fresh visitor
+  parse_check(preamble + "*T_UNIT 1 NS\n*C_UNIT 1 FF\n*R_UNIT 1 KOHM\n*L_UNIT 1 UH\n" + components,
+              spefVisitor, result);
   BOOST_CHECK_EQUAL( (quantity<si::time, double>(1e-9 * si::seconds)), result.t_unit );
-  BOOST_CHECK_EQUAL( (quantity<si::resistance, double>(1e3 * si::ohms)), result.r_unit );
-  BOOST_CHECK_EQUAL( (quantity<si::capacitance, double>(1e-15 * si::farads)), result.c_unit );
+  BOOST_CHECK_EQUAL( (quantity<si::resistance, double>(1e3 * si::ohms)),
+                     spefVisitor.resistors.at(0).at(1).value );
+  BOOST_CHECK_EQUAL( (quantity<si::capacitance, double>(1e-15 * si::farads)),
+                     spefVisitor.gnd_lumped_caps.at(0).at(1).value );
   BOOST_CHECK_EQUAL( (quantity<si::inductance, double>(1e-6 * si::henrys)), result.l_unit );
 
-  parse_check(preamble + "*T_UNIT 1 US\n*C_UNIT 1 PF\n*R_UNIT 1 OHM\n*L_UNIT 1 HENRY\n", result);
+  spefVisitor = Visitor();
+  parse_check(preamble + "*T_UNIT 1 US\n*C_UNIT 1 PF\n*R_UNIT 1 OHM\n*L_UNIT 1 HENRY\n" + components,
+              spefVisitor, result);
   BOOST_CHECK_EQUAL( (quantity<si::time, double>(1e-6 * si::seconds)), result.t_unit );
-  BOOST_CHECK_EQUAL( (quantity<si::resistance, double>(1 * si::ohms)), result.r_unit );
+  BOOST_CHECK_EQUAL( (quantity<si::resistance, double>(1 * si::ohms)),
+                     spefVisitor.resistors.at(0).at(1).value );
 
-  parse_check(preamble + "*T_UNIT 1 MS\n*C_UNIT 2.0 PF\n*R_UNIT 1.0 KOHM\n*L_UNIT 1 HENRY\n", result);
+  spefVisitor = Visitor();
+  parse_check(preamble + "*T_UNIT 1 MS\n*C_UNIT 2.0 PF\n*R_UNIT 1.0 KOHM\n*L_UNIT 1 HENRY\n" + components,
+              spefVisitor, result);
   BOOST_CHECK_EQUAL( (quantity<si::time, double>(1e-3 * si::seconds)), result.t_unit );
-  BOOST_CHECK_EQUAL( (quantity<si::capacitance, double>(2e-12 * si::farads)), result.c_unit );
+  BOOST_CHECK_EQUAL( (quantity<si::capacitance, double>(2e-12 * si::farads)),
+                     spefVisitor.gnd_lumped_caps.at(0).at(1).value );
 
   std::string crl("*C_UNIT 2.0 PF\n*R_UNIT 1.0 KOHM\n*L_UNIT 1 HENRY\n");
   parse_check_fail(preamble + "*T_UNIT 1 QS\n" + crl);  // a fake unit prefix
@@ -301,8 +336,8 @@ BOOST_AUTO_TEST_CASE( nets ) {
 
   Visitor spefVisitorMin;
   parse_check(spefData::header + name_map + nets_minimal, spefVisitorMin, result);
-  BOOST_REQUIRE_EQUAL( 1, spefVisitorMin.lumped_caps.size() );
-  BOOST_CHECK_CLOSE( 0.0011, spefVisitorMin.lumped_caps.at(1), 0.000001 );
+  BOOST_REQUIRE_EQUAL( 1, spefVisitorMin.total_caps.size() );
+  BOOST_CHECK_CLOSE( 0.0011e-12, spefVisitorMin.total_caps.at(1).value(), 0.00001 );
   BOOST_REQUIRE_EQUAL( 1, spefVisitorMin.inst_connections.size() );
   // key of first entry is the name of the net
   Visitor::name_token_value_t firstNet = spefVisitorMin.inst_connections.begin()->first;
@@ -322,8 +357,8 @@ BOOST_AUTO_TEST_CASE( nets ) {
 
   parse_check(spefData::header + name_map + nets_unimplemented_features,
               spefVisitor, result);
-  BOOST_REQUIRE_EQUAL( 1, spefVisitor.lumped_caps.size() );
-  BOOST_CHECK_CLOSE( 29.33, spefVisitor.lumped_caps.at(0), 0.000001 );
+  BOOST_REQUIRE_EQUAL( 1, spefVisitor.total_caps.size() );
+  BOOST_CHECK_CLOSE( 29.33e-12, spefVisitor.total_caps.at(0).value(), 0.00001 );
 
 }
 
@@ -410,14 +445,14 @@ BOOST_AUTO_TEST_CASE( simple_circuit ) {
   BOOST_CHECK_EQUAL("2", i1_conn.conn1.second);      // my node
   BOOST_CHECK_EQUAL(1, i1_conn.conn2.first);         // other net
   BOOST_CHECK_EQUAL("2", i1_conn.conn2.second);      // other node
-  BOOST_CHECK_EQUAL(0.1, i1_conn.value);
+  BOOST_CHECK_EQUAL((quantity<si::capacitance, double>(0.1e-12 * si::farads)), i1_conn.value);
   // then I2
   auto i2_conn = spefVisitor.capacitors.at(1).at(3);
   BOOST_CHECK_EQUAL(1, i2_conn.conn1.first);
   BOOST_CHECK_EQUAL("2", i2_conn.conn1.second);
   BOOST_CHECK_EQUAL(0, i2_conn.conn2.first);
   BOOST_CHECK_EQUAL("2", i2_conn.conn2.second);
-  BOOST_CHECK_EQUAL(0.1, i2_conn.value);
+  BOOST_CHECK_EQUAL((quantity<si::capacitance, double>(0.1e-12 * si::farads)), i2_conn.value);
 
   // check grounded caps
   BOOST_CHECK_EQUAL(4, spefVisitor.gnd_lumped_caps.size());  // 4 nets have cap to gnd
@@ -430,20 +465,20 @@ BOOST_AUTO_TEST_CASE( simple_circuit ) {
   auto i1_c1 = spefVisitor.gnd_lumped_caps.at(0).at(1);
   BOOST_CHECK_EQUAL(0, i1_c1.conn.first);
   BOOST_CHECK_EQUAL("1", i1_c1.conn.second);
-  BOOST_CHECK_EQUAL(0.1, i1_c1.value);
+  BOOST_CHECK_EQUAL((quantity<si::capacitance, double>(0.1e-12 * si::farads)), i1_c1.value);
 
   BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.at(0).find(2) != spefVisitor.gnd_lumped_caps.at(0).end());
   auto i1_c2 = spefVisitor.gnd_lumped_caps.at(0).at(2);
   BOOST_CHECK_EQUAL(0, i1_c2.conn.first);
   BOOST_CHECK_EQUAL("2", i1_c2.conn.second);
-  BOOST_CHECK_EQUAL(0.2, i1_c2.value);
+  BOOST_CHECK_EQUAL((quantity<si::capacitance, double>(0.2e-12 * si::farads)), i1_c2.value);
 
   // coupling cap is index 3, not present here
   BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.at(0).find(4) != spefVisitor.gnd_lumped_caps.at(0).end());
   auto i1_c3 = spefVisitor.gnd_lumped_caps.at(0).at(4);
   BOOST_CHECK_EQUAL(4, i1_c3.conn.first);      // A pin of nand2
   BOOST_CHECK_EQUAL("A", i1_c3.conn.second);
-  BOOST_CHECK_EQUAL(0.1, i1_c3.value);
+  BOOST_CHECK_EQUAL((quantity<si::capacitance, double>(0.1e-12 * si::farads)), i1_c3.value);
 
   // I2 is the same as I1
   BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.find(1) != spefVisitor.gnd_lumped_caps.end());
@@ -453,20 +488,20 @@ BOOST_AUTO_TEST_CASE( simple_circuit ) {
   auto i2_c1 = spefVisitor.gnd_lumped_caps.at(1).at(1);
   BOOST_CHECK_EQUAL(1, i2_c1.conn.first);
   BOOST_CHECK_EQUAL("1", i2_c1.conn.second);
-  BOOST_CHECK_EQUAL(0.1, i2_c1.value);
+  BOOST_CHECK_EQUAL((quantity<si::capacitance, double>(0.1e-12 * si::farads)), i2_c1.value);
 
   BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.at(1).find(2) != spefVisitor.gnd_lumped_caps.at(1).end());
   auto i2_c2 = spefVisitor.gnd_lumped_caps.at(1).at(2);
   BOOST_CHECK_EQUAL(1, i2_c2.conn.first);
   BOOST_CHECK_EQUAL("2", i2_c2.conn.second);
-  BOOST_CHECK_EQUAL(0.2, i2_c2.value);
+  BOOST_CHECK_EQUAL((quantity<si::capacitance, double>(0.2e-12 * si::farads)), i2_c2.value);
 
   // coupling cap is index 3, not present here
   BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.at(1).find(4) != spefVisitor.gnd_lumped_caps.at(1).end());
   auto i2_c3 = spefVisitor.gnd_lumped_caps.at(1).at(4);
   BOOST_CHECK_EQUAL(4, i2_c3.conn.first);      // B pin of nand2
   BOOST_CHECK_EQUAL("B", i2_c3.conn.second);
-  BOOST_CHECK_EQUAL(0.1, i2_c3.value);
+  BOOST_CHECK_EQUAL((quantity<si::capacitance, double>(0.1e-12 * si::farads)), i2_c3.value);
 
   // O_X (nand2 output/inverter input)
   BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.find(2) != spefVisitor.gnd_lumped_caps.end());
@@ -477,14 +512,14 @@ BOOST_AUTO_TEST_CASE( simple_circuit ) {
   auto ox_c1 = spefVisitor.gnd_lumped_caps.at(2).at(1);
   BOOST_CHECK_EQUAL(4, ox_c1.conn.first);      // Z pin of nand2
   BOOST_CHECK_EQUAL("Z", ox_c1.conn.second);
-  BOOST_CHECK_EQUAL(0.1, ox_c1.value);
+  BOOST_CHECK_EQUAL((quantity<si::capacitance, double>(0.1e-12 * si::farads)), ox_c1.value);
 
   // second lumped cap (last node of pi model)
   BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.at(2).find(2) != spefVisitor.gnd_lumped_caps.at(2).end());
   auto ox_c2 = spefVisitor.gnd_lumped_caps.at(2).at(2);
   BOOST_CHECK_EQUAL(5, ox_c2.conn.first);      // A pin of inverter
   BOOST_CHECK_EQUAL("A", ox_c2.conn.second);
-  BOOST_CHECK_EQUAL(0.1, ox_c2.value);
+  BOOST_CHECK_EQUAL((quantity<si::capacitance, double>(0.1e-12 * si::farads)), ox_c2.value);
 
   // lumped cap at inverter output
   BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.find(3) != spefVisitor.gnd_lumped_caps.end());
@@ -494,7 +529,7 @@ BOOST_AUTO_TEST_CASE( simple_circuit ) {
   auto o_c = spefVisitor.gnd_lumped_caps.at(3).at(1);
   BOOST_CHECK_EQUAL(5, o_c.conn.first);      // Z pin of inverter
   BOOST_CHECK_EQUAL("Z", o_c.conn.second);
-  BOOST_CHECK_EQUAL(0.1, o_c.value);
+  BOOST_CHECK_EQUAL((quantity<si::capacitance, double>(0.1e-12 * si::farads)), o_c.value);
 
   // Now the resistors
   // They are present in the first three nets but not the last
@@ -508,14 +543,16 @@ BOOST_AUTO_TEST_CASE( simple_circuit ) {
   BOOST_CHECK_EQUAL("1", i1_r1.conn1.second); // starts at node 1
   BOOST_CHECK_EQUAL(0, i1_r1.conn2.first);    // net I1
   BOOST_CHECK_EQUAL("2", i1_r1.conn2.second); // ends at node 2
-  BOOST_CHECK_EQUAL(100, i1_r1.value);        // 100 ohms
+  BOOST_CHECK_EQUAL((quantity<si::resistance, double>(100e3 * si::ohms)),
+                    i1_r1.value);             // 100 ohms
   BOOST_REQUIRE(spefVisitor.resistors.at(0).find(2) != spefVisitor.resistors.at(0).end());
   auto i1_r2 = spefVisitor.resistors.at(0).at(2);
   BOOST_CHECK_EQUAL(0, i1_r2.conn1.first);    // net I1
   BOOST_CHECK_EQUAL("2", i1_r2.conn1.second); // starts at node 2
   BOOST_CHECK_EQUAL(4, i1_r2.conn2.first);    // instance U1
   BOOST_CHECK_EQUAL("A", i1_r2.conn2.second); // ends at pin A
-  BOOST_CHECK_EQUAL(100, i1_r2.value);        // 100 ohms
+  BOOST_CHECK_EQUAL((quantity<si::resistance, double>(100e3 * si::ohms)),
+                    i1_r2.value);        // 100 ohms
 
   // I2
   BOOST_REQUIRE(spefVisitor.resistors.find(1) != spefVisitor.resistors.end());
@@ -525,14 +562,16 @@ BOOST_AUTO_TEST_CASE( simple_circuit ) {
   BOOST_CHECK_EQUAL("1", i2_r1.conn1.second); // starts at node 1
   BOOST_CHECK_EQUAL(1, i2_r1.conn2.first);    // net I2
   BOOST_CHECK_EQUAL("2", i2_r1.conn2.second); // ends at node 2
-  BOOST_CHECK_EQUAL(100, i2_r1.value);        // 100 ohms
+  BOOST_CHECK_EQUAL((quantity<si::resistance, double>(100e3 * si::ohms)),
+                    i2_r1.value);        // 100 ohms
   BOOST_REQUIRE(spefVisitor.resistors.at(1).find(2) != spefVisitor.resistors.at(1).end());
   auto i2_r2 = spefVisitor.resistors.at(1).at(2);
   BOOST_CHECK_EQUAL(1, i2_r2.conn1.first);    // net I2
   BOOST_CHECK_EQUAL("2", i2_r2.conn1.second); // starts at node 2
   BOOST_CHECK_EQUAL(4, i2_r2.conn2.first);    // instance U1
   BOOST_CHECK_EQUAL("B", i2_r2.conn2.second); // ends at pin B
-  BOOST_CHECK_EQUAL(100, i2_r2.value);        // 100 ohms
+  BOOST_CHECK_EQUAL((quantity<si::resistance, double>(100e3 * si::ohms)),
+                    i2_r2.value);        // 100 ohms
 
   // O_X
   BOOST_REQUIRE(spefVisitor.resistors.find(1) != spefVisitor.resistors.end());
@@ -542,6 +581,7 @@ BOOST_AUTO_TEST_CASE( simple_circuit ) {
   BOOST_CHECK_EQUAL("Z", ox_r.conn1.second);
   BOOST_CHECK_EQUAL(5, ox_r.conn2.first);     // to U2 pin A
   BOOST_CHECK_EQUAL("A", ox_r.conn2.second);
-  BOOST_CHECK_EQUAL(100, ox_r.value);
+  BOOST_CHECK_EQUAL((quantity<si::resistance, double>(100e3 * si::ohms)),
+                    ox_r.value);
 
 }

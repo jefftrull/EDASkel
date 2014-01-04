@@ -49,8 +49,6 @@ namespace EDASkel {
       std::string         vendor, program, version;
       design_flow_map_t   design_flow;
       time_units_t        t_unit;     // multiplier for all duration values
-      capacitance_units_t c_unit;     // capacitance
-      resistance_units_t  r_unit;     // and for resistance
       inductance_units_t  l_unit;     // and inductance
     };
   }
@@ -65,8 +63,6 @@ BOOST_FUSION_ADAPT_STRUCT(
   (std::string,                             version)
   (EDASkel::SpefParse::design_flow_map_t,   design_flow)
   (EDASkel::SpefParse::time_units_t,        t_unit)
-  (EDASkel::SpefParse::capacitance_units_t, c_unit)
-  (EDASkel::SpefParse::resistance_units_t,  r_unit)
   (EDASkel::SpefParse::inductance_units_t,  l_unit)
 )
 
