@@ -126,23 +126,23 @@ namespace EDASkel {
                          >> char_("IOB")
                          >> -(lit("*C") >> double_ >> double_)
                          >> -(lit("*L") >> double_)
-                         >> -(lit("*D") >> lexeme[+ascii::alnum]) ;
+                         >> -(lit("*D") >> lexeme[+(ascii::alnum | '_')]) ;
 
         gndcapline = (uint_
-                      >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]]
+                      >> '*' >> name_map_symtab >> as_string[(':' >> lexeme[+ascii::alnum]) | attr("")]
                       >> double_)[
                         phx::bind(&SpefVisitor::cgnd, phx::ref(visitor_),
                                   _r1, _1, _2, _3, _4 * phx::cref(c_unit_value))];
 
         capline = (uint_
-                   >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]]
-                   >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]]
+                   >> '*' >> name_map_symtab >> as_string[(':' >> lexeme[+ascii::alnum]) | attr("")]
+                   >> '*' >> name_map_symtab >> as_string[(':' >> lexeme[+ascii::alnum]) | attr("")]
                    >> double_)[
                      phx::bind(&SpefVisitor::capacitor, phx::ref(visitor_),
                                _r1, _1, _2, _3, _4, _5, _6 * phx::cref(c_unit_value))];
 
-        resline = (uint_ >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]]
-                         >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]]
+        resline = (uint_ >> '*' >> name_map_symtab >> as_string[(':' >> lexeme[+ascii::alnum]) | attr("")]
+                         >> '*' >> name_map_symtab >> as_string[(':' >> lexeme[+ascii::alnum]) | attr("")]
                          >> double_)[
                            phx::bind(&SpefVisitor::resistor, phx::ref(visitor_),
                                      _r1, _1, _2, _3, _4, _5, _6 * phx::cref(r_unit_value))];

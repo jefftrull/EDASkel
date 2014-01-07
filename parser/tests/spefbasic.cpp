@@ -420,9 +420,9 @@ BOOST_AUTO_TEST_CASE( simple_circuit ) {
   std::string o_net("*D_NET *4 0\n"
                      "*CONN\n"
                      "*P *4 O\n"
-                     "*I *6:Z O\n"
+                     "*I *6:Z O *D INV_8\n"
                      "*CAP\n"          
-                     "1 *6:Z 0.1\n"      // a simple lumped C
+                     "1 *4 0.1\n"        // a simple lumped C with net name alone
                      "*END\n");
 
   spef result;
@@ -527,8 +527,8 @@ BOOST_AUTO_TEST_CASE( simple_circuit ) {
 
   BOOST_REQUIRE(spefVisitor.gnd_lumped_caps.at(3).find(1) != spefVisitor.gnd_lumped_caps.at(3).end());
   auto o_c = spefVisitor.gnd_lumped_caps.at(3).at(1);
-  BOOST_CHECK_EQUAL(5, o_c.conn.first);      // Z pin of inverter
-  BOOST_CHECK_EQUAL("Z", o_c.conn.second);
+  BOOST_CHECK_EQUAL(3, o_c.conn.first);        // this form just names the net itself
+  BOOST_CHECK_EQUAL("", o_c.conn.second);
   BOOST_CHECK_EQUAL((quantity<si::capacitance, double>(0.1e-12 * si::farads)), o_c.value);
 
   // Now the resistors
