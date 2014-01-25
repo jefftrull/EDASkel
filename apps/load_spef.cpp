@@ -26,6 +26,8 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_utility.hpp>
 #include <boost/property_map/property_map.hpp>
+#include <boost/graph/filtered_graph.hpp>
+#include <boost/graph/connected_components.hpp>
 
 // vertex (circuit node) properties are just a string with the name we got out of SPEF;
 typedef std::string vertex_property_t;
@@ -40,7 +42,7 @@ typedef boost::adjacency_list<boost::vecS, boost::listS, boost::undirectedS,
                               vertex_property_t, edge_property_t> CktGraph;
 
 struct Visitor {
-  Visitor() : gnd(add_vertex(g)) {}
+  Visitor() : g(new CktGraph()), gnd(add_vertex(*g)) {}
 
   typedef size_t name_token_value_t;
   name_token_value_t name_map_entry(std::string n) {
@@ -57,9 +59,27 @@ struct Visitor {
     lumped_caps.emplace(net, lumpc);
   }
 
-  void net_port_connection(name_token_value_t net, name_token_value_t port) {}
+  void net_port_connection(name_token_value_t net, name_token_value_t port) {
+    // add this to the list of connections for the net
+    auto it = net_ports.find(net);
+    if (it == net_ports.end()) {
+      bool found;
+      std::tie(it, found) = net_ports.insert(std::make_pair(net, std::vector<name_token_value_t>()));
+    }
+    it->second.push_back(port);
+    get_vertex(port, "");    // ensure the vertex descriptor map contains this connection
+  }
 
-  void net_inst_connection(name_token_value_t net, name_token_value_t inst, std::string const& pin) {}
+  void net_inst_connection(name_token_value_t net, name_token_value_t inst, std::string const& pin) {
+    auto it = net_iconns.find(net);
+    if (it == net_iconns.end()) {
+      bool found;
+      std::tie(it, found) =
+        net_iconns.insert(std::make_pair(net, std::vector<std::pair<name_token_value_t, std::string> >()));
+    }
+    it->second.emplace_back(inst, pin);
+    get_vertex(inst, pin);
+  }
 
   void capacitor(name_token_value_t net, unsigned capnum,
                  name_token_value_t net_or_inst1, std::string const& node_or_pin1,
@@ -68,7 +88,7 @@ struct Visitor {
     // store in graph as edge
     boost::add_edge(get_vertex(net_or_inst1, node_or_pin1),
                     get_vertex(net_or_inst2, node_or_pin2),
-                    value, g);
+                    value, *g);
   }
 
   void cgnd     (name_token_value_t net, unsigned capnum,
@@ -76,7 +96,7 @@ struct Visitor {
                  quantity<si::capacitance, double> value) {
     boost::add_edge(get_vertex(net_or_inst, node_or_pin),
                     gnd,
-                    value, g);
+                    value, *g);
   }
 
   void resistor (name_token_value_t net, unsigned capnum,
@@ -85,33 +105,68 @@ struct Visitor {
                  quantity<si::resistance, double> value) {
     boost::add_edge(get_vertex(net_or_inst1, node_or_pin1),
                     get_vertex(net_or_inst2, node_or_pin2),
-                    value, g);
-}
+                    value, *g);
+  }
 
-  std::vector<std::string> names;
+  std::vector<std::string> names;   // from the name map
   std::map<name_token_value_t, quantity<si::capacitance, double> > lumped_caps;
 
-  CktGraph g;
+  std::shared_ptr<CktGraph> g;
+
+  typedef std::map<std::pair<name_token_value_t, std::string>,
+                   CktGraph::vertex_descriptor> VertexMap;
+  VertexMap vertex_desc_map;
+
+  typedef std::map<name_token_value_t, std::vector<name_token_value_t> > PortsMap;
+  PortsMap net_ports;
+
+  typedef std::vector<std::pair<name_token_value_t, std::string> > InstConnList;
+  typedef std::map<name_token_value_t, InstConnList> InstConnsMap;
+  InstConnsMap net_iconns;
+
+  // will not allocate if not present (throws out_of_range, in fact)
+  CktGraph::vertex_descriptor vertex(name_token_value_t net, std::string const& node_or_pin) const {
+    return vertex_desc_map.at(std::make_pair(net, node_or_pin));
+  }
 
 private:
   CktGraph::vertex_descriptor gnd;
 
+  // for internal use: allocates if not present
   CktGraph::vertex_descriptor get_vertex(name_token_value_t net, std::string const& node_or_pin) {
     // return index of net/node pair for use in circuit graph
     VertexMap::const_iterator it = vertex_desc_map.find(std::make_pair(net, node_or_pin));
     if (it == vertex_desc_map.end()) {
       bool found;  // it won't be
       std::tie(it, found) = vertex_desc_map.emplace(std::make_pair(net, node_or_pin),
-                                                    add_vertex(g)); // no vertex property for now
+                                                    add_vertex(*g)); // no vertex property for now
     }
     return it->second;
   }
 
-  typedef std::map<std::pair<name_token_value_t, std::string>,
-                   CktGraph::vertex_descriptor> VertexMap;
-  VertexMap vertex_desc_map;
 };
 
+// A Variant visitor that selects only resistors
+struct IsResistor : boost::static_visitor<bool> {
+  bool operator()(resistor_edge_t const&) const {
+    return true;
+  }
+  bool operator()(capacitor_edge_t const&) const {
+    return false;
+  }
+};
+
+// a predicate class for creating a resistor-only filtered graph
+struct ResistorsOnly {
+  ResistorsOnly() {}
+  ResistorsOnly(std::shared_ptr<CktGraph> g) : graph_(g) {}
+  bool operator()(CktGraph::edge_descriptor e) const {
+    // access edge property (res/cap variant) and apply predicate visitor
+    return boost::apply_visitor(IsResistor(), (*graph_)[e]);
+  }
+private:
+  std::shared_ptr<CktGraph> graph_;
+};
 
 int main(int argc, char **argv) {
    using namespace std;
@@ -140,16 +195,78 @@ int main(int argc, char **argv) {
    }
    if (beg != end) {
      cerr << "not all input processed.  Extra input: |";
-     std::copy(beg, end, ostream_iterator<char>(cerr, ""));
+     copy(beg, end, ostream_iterator<char>(cerr, ""));
      cerr << "|" << endl;
       return 1;
    }
 
-   cout << "Total capacitance per net (from lumped cap information):" << endl;
-   for (auto lc : spefVisitor.lumped_caps) {
-      cout << lc.second << " " << spefVisitor.names.at(lc.first) << endl;
-   }
+   cout << "Parasitic graph contains " << num_vertices(*spefVisitor.g) << " vertices and " << num_edges(*spefVisitor.g) << " edges" << endl;
 
-   cout << "Parasitic graph contains " << num_vertices(spefVisitor.g) << " vertices and " << num_edges(spefVisitor.g) << " edges" << endl;
+   // Produce a filtered graph containing only resistor edges
+   ResistorsOnly res_filter(spefVisitor.g);
+   typedef boost::filtered_graph<CktGraph, ResistorsOnly> ResGraph;
+   ResGraph res_graph(*spefVisitor.g, res_filter);
+
+   // Divide resistor-only circuit graph into connected components
+   typedef ResGraph::vertices_size_type comp_number_t;
+   typedef map<ResGraph::vertex_descriptor, comp_number_t> CCompsStorageMap;
+   CCompsStorageMap comps;      // component map for algorithm results
+   typedef map<ResGraph::vertex_descriptor, boost::default_color_type> ColorsStorageMap;
+   ColorsStorageMap colors;     // temp storage for algorithm
+   
+   // adapt std::map for use by Graph algorithms as "property map"
+   boost::associative_property_map<CCompsStorageMap> cpmap(comps);
+   boost::associative_property_map<ColorsStorageMap> clrpmap(colors);
+
+   // Run the algorithm
+   connected_components(res_graph, cpmap, boost::color_map(clrpmap));
+
+   // Iterate over the nets, verifying that all connections of each net are in the same connected component
+   // BOZO this code is confusing me and needs a clean rewrite
+   for (auto lcpair : spefVisitor.lumped_caps) {
+      // get component numbers for all port and instance connections
+      // new plan: store component numbers in a set; store vertex descriptor/component numbers pairs in a map
+      // if set size > 1, make report using the map
+      set<comp_number_t> comps_seen;
+      vector<pair<comp_number_t, std::string> > vertex2comp;
+
+      // Record components associated with ports
+      auto npit = spefVisitor.net_ports.find(lcpair.first);
+      if (npit != spefVisitor.net_ports.end()) {
+        // this net has port connections
+        for (auto pname : npit->second) {
+          // look up the vertex descriptor for this port
+          ResGraph::vertex_descriptor port_desc = spefVisitor.vertex(pname, "");
+          // add its component to our tracking info for this net
+          comps_seen.insert(comps.at(port_desc));
+          vertex2comp.push_back(make_pair(comps.at(port_desc), spefVisitor.names.at(pname)));
+        }
+      }
+
+      // components connected to instance pins
+      auto niit = spefVisitor.net_iconns.find(lcpair.first);
+      if (niit != spefVisitor.net_iconns.end()) {
+        // instance connections:
+        for (auto ic : niit->second) {
+          ResGraph::vertex_descriptor iconn_desc = spefVisitor.vertex(ic.first, ic.second);
+          comps_seen.insert(comps.at(iconn_desc));
+          vertex2comp.push_back(make_pair(comps.at(iconn_desc), spefVisitor.names.at(ic.first) + ":" + ic.second));
+        }
+      }
+
+      if (comps_seen.size() > 1) {
+        cout << "Net " << spefVisitor.names.at(lcpair.first) << " appears to be discontinuous:" << endl;
+        for (comp_number_t comp : comps_seen) {
+          cout << "  Connection Group:" << endl;
+          for (auto vtcomp : vertex2comp) {
+            // yes, we are repeatedly searching this.
+            // Hopefully faster than building the reverse lookups (we only do this for open nets)
+            if (vtcomp.first == comp) {
+              cout << "    " << vtcomp.second << endl;
+            }
+          }
+        }
+      }
+   }
 
 }
