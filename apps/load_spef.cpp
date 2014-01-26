@@ -61,23 +61,12 @@ struct Visitor {
 
   void net_port_connection(name_token_value_t net, name_token_value_t port) {
     // add this to the list of connections for the net
-    auto it = net_ports.find(net);
-    if (it == net_ports.end()) {
-      bool found;
-      std::tie(it, found) = net_ports.insert(std::make_pair(net, std::vector<name_token_value_t>()));
-    }
-    it->second.push_back(port);
+    net_ports[net].push_back(port);   // creates map entry if not present
     get_vertex(port, "");    // ensure the vertex descriptor map contains this connection
   }
 
   void net_inst_connection(name_token_value_t net, name_token_value_t inst, std::string const& pin) {
-    auto it = net_iconns.find(net);
-    if (it == net_iconns.end()) {
-      bool found;
-      std::tie(it, found) =
-        net_iconns.insert(std::make_pair(net, std::vector<std::pair<name_token_value_t, std::string> >()));
-    }
-    it->second.emplace_back(inst, pin);
+    net_iconns[net].emplace_back(inst, pin);
     get_vertex(inst, pin);
   }
 
@@ -146,7 +135,7 @@ private:
 
 };
 
-// A Variant visitor that selects only resistors
+// A Variant visitor for edge attributes that selects only resistors
 struct IsResistor : boost::static_visitor<bool> {
   bool operator()(resistor_edge_t const&) const {
     return true;
@@ -208,6 +197,8 @@ int main(int argc, char **argv) {
    ResGraph res_graph(*spefVisitor.g, res_filter);
 
    // Divide resistor-only circuit graph into connected components
+
+   // define required color and component property maps
    typedef ResGraph::vertices_size_type comp_number_t;
    typedef map<ResGraph::vertex_descriptor, comp_number_t> CCompsStorageMap;
    CCompsStorageMap comps;      // component map for algorithm results
@@ -221,49 +212,45 @@ int main(int argc, char **argv) {
    // Run the algorithm
    connected_components(res_graph, cpmap, boost::color_map(clrpmap));
 
+   // At this point, "comps" contains, for each vertex, the component to which it belongs
+   // We need to verify that the vertices associated with the connections (instance and port)
+   // for each net are all in the same component
+
    // Iterate over the nets, verifying that all connections of each net are in the same connected component
-   // BOZO this code is confusing me and needs a clean rewrite
    for (auto lcpair : spefVisitor.lumped_caps) {
+      map<comp_number_t, vector<string> > comps2conn_names;  // every component and its attached connections
+
       // get component numbers for all port and instance connections
-      // new plan: store component numbers in a set; store vertex descriptor/component numbers pairs in a map
-      // if set size > 1, make report using the map
-      set<comp_number_t> comps_seen;
-      vector<pair<comp_number_t, std::string> > vertex2comp;
+      auto net = lcpair.first;
 
       // Record components associated with ports
-      auto npit = spefVisitor.net_ports.find(lcpair.first);
+      auto npit = spefVisitor.net_ports.find(net);
       if (npit != spefVisitor.net_ports.end()) {
         // this net has port connections
         for (auto pname : npit->second) {
           // look up the vertex descriptor for this port
           ResGraph::vertex_descriptor port_desc = spefVisitor.vertex(pname, "");
           // add its component to our tracking info for this net
-          comps_seen.insert(comps.at(port_desc));
-          vertex2comp.push_back(make_pair(comps.at(port_desc), spefVisitor.names.at(pname)));
+          comps2conn_names[comps.at(port_desc)].push_back(spefVisitor.names.at(pname));
         }
       }
 
       // components connected to instance pins
-      auto niit = spefVisitor.net_iconns.find(lcpair.first);
+      auto niit = spefVisitor.net_iconns.find(net);
       if (niit != spefVisitor.net_iconns.end()) {
         // instance connections:
         for (auto ic : niit->second) {
           ResGraph::vertex_descriptor iconn_desc = spefVisitor.vertex(ic.first, ic.second);
-          comps_seen.insert(comps.at(iconn_desc));
-          vertex2comp.push_back(make_pair(comps.at(iconn_desc), spefVisitor.names.at(ic.first) + ":" + ic.second));
+          comps2conn_names[comps.at(iconn_desc)].push_back(spefVisitor.names.at(ic.first) + ":" + ic.second);
         }
       }
 
-      if (comps_seen.size() > 1) {
-        cout << "Net " << spefVisitor.names.at(lcpair.first) << " appears to be discontinuous:" << endl;
-        for (comp_number_t comp : comps_seen) {
+      if (comps2conn_names.size() > 1) {
+        cout << "Net " << spefVisitor.names.at(net) << " appears to be discontinuous:" << endl;
+        for (auto comp : comps2conn_names) {
           cout << "  Connection Group:" << endl;
-          for (auto vtcomp : vertex2comp) {
-            // yes, we are repeatedly searching this.
-            // Hopefully faster than building the reverse lookups (we only do this for open nets)
-            if (vtcomp.first == comp) {
-              cout << "    " << vtcomp.second << endl;
-            }
+          for (auto vtcomp : comp.second) {
+             cout << "    " << vtcomp << endl;
           }
         }
       }
