@@ -97,7 +97,7 @@ void QtTclNotifier::writeReady(int fd) { perform_callback<TCL_WRITABLE>(fd); }
 void QtTclNotifier::exception(int fd) { perform_callback<TCL_EXCEPTION>(fd); }
 
 // arrange for Tcl_ServiceAll to be executed after the specified time
-void QtTclNotifier::SetTimer(Tcl_Time* timePtr) {
+void QtTclNotifier::SetTimer(Tcl_Time const* timePtr) {
   if (getInstance()->m_timer->isActive()) {
     getInstance()->m_timer->stop();
   }
@@ -112,7 +112,7 @@ void QtTclNotifier::handle_timer() {
 }
 
 // If events are available process them, and otherwise wait up to a specified interval for one to occur
-int QtTclNotifier::WaitForEvent(Tcl_Time* timePtr) {
+int QtTclNotifier::WaitForEvent(Tcl_Time const* timePtr) {
   // following tclXtNotify.c here.  Hope the analogies hold.
   int timeout;
   if (timePtr) {

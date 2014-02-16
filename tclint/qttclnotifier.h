@@ -42,8 +42,8 @@ namespace QtTclNotify {
     typedef std::map<int, QtTclFileHandler*> HandlerMap;
 
     // the key Tcl Notifier functions
-    static void SetTimer(Tcl_Time* timePtr);
-    static int WaitForEvent(Tcl_Time* timePtr);
+    static void SetTimer(Tcl_Time const* timePtr);
+    static int WaitForEvent(Tcl_Time const* timePtr);
     static void CreateFileHandler(int fd, int mask, Tcl_FileProc* proc, ClientData clientData);
     static void DeleteFileHandler(int fd);
     static void* InitNotifier();
