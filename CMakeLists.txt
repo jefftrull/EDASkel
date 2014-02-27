@@ -11,8 +11,8 @@ endif()
 
 # global flags
 if (CMAKE_COMPILER_IS_GNUCC)
-  add_definitions(-Wall)          # be conservative about checks
-  add_definitions(-std=c++0x)     # enable C++11
+  add_definitions(-Wall -Wextra -Werror)  # be conservative about checks
+  add_definitions(-std=c++0x)             # enable C++11
 elseif (MSVC11)
   # VC11 workaround: emplace_back requires variadic template emulation, for which VC11 has
   # a default limit of 5 arguments due to some memory explosion issue.  Raising this to 6

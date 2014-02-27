@@ -51,7 +51,7 @@ struct Visitor {
     return id;   // just the offset within the name map, for now
   }
 
-  void port_definition(name_token_value_t net, char dir) {
+  void port_definition(name_token_value_t /*net*/, char /*dir*/) {
   }
 
   void net_definition(name_token_value_t net,
@@ -70,7 +70,7 @@ struct Visitor {
     get_vertex(inst, pin);
   }
 
-  void capacitor(name_token_value_t net, unsigned capnum,
+  void capacitor(name_token_value_t /*net*/, unsigned /*capnum*/,
                  name_token_value_t net_or_inst1, std::string const& node_or_pin1,
                  name_token_value_t net_or_inst2, std::string const& node_or_pin2,
                  quantity<si::capacitance, double> value) {
@@ -80,7 +80,7 @@ struct Visitor {
                     value, *g);
   }
 
-  void cgnd     (name_token_value_t net, unsigned capnum,
+  void cgnd     (name_token_value_t /*net*/, unsigned /*capnum*/,
                  name_token_value_t net_or_inst, std::string const& node_or_pin,
                  quantity<si::capacitance, double> value) {
     boost::add_edge(get_vertex(net_or_inst, node_or_pin),
@@ -88,7 +88,7 @@ struct Visitor {
                     value, *g);
   }
 
-  void resistor (name_token_value_t net, unsigned capnum,
+  void resistor (name_token_value_t /*net*/, unsigned /*capnum*/,
                  name_token_value_t net_or_inst1, std::string const& node_or_pin1,
                  name_token_value_t net_or_inst2, std::string const& node_or_pin2,
                  quantity<si::resistance, double> value) {
