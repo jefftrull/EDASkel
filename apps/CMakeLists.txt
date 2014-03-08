@@ -10,9 +10,13 @@ if( MSVC )
   add_definitions( -DBOOST_PROGRAM_OPTIONS_DYN_LINK )
 endif()
 
-add_executable( sv simple_viewer.cpp ${DS_MOC_SRC} ${DV_MOC_SRC})
-qt5_use_modules( sv Widgets )
-
-target_link_libraries( sv lefdef ${Boost_LIBRARIES} )
-
 add_executable( spef load_spef.cpp )
+
+include_directories(${TCL_INCLUDE_PATH})
+
+if( TCL_FOUND )
+  add_executable( sv simple_viewer.cpp ${DS_MOC_SRC} ${DV_MOC_SRC})
+  qt5_use_modules( sv Widgets )
+  target_link_libraries( sv lefdef ${Boost_LIBRARIES} qttclnotifier ${TCL_LIBRARY} )
+endif()
+

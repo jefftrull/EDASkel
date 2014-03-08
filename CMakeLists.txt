@@ -23,9 +23,14 @@ endif()
 # for packages without a standard CMake find script:
 set( CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 
+# packages relied on by multiple directories
+find_package(TCL 8.6)
+
 add_subdirectory( parser )
 add_subdirectory( gui )
 add_subdirectory( db )
 add_subdirectory( apps )
-add_subdirectory( tclint )
+if( TCL_FOUND )
+  add_subdirectory( tclint )
+endif()
 add_subdirectory( analysis )

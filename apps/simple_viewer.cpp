@@ -33,6 +33,8 @@
 #include "../gui/designscene.h"
 #include "../gui/designview.h"
 
+#include "../tclint/qttclnotifier.h"
+
 namespace EDASkel {
   extern DefParse::DefTokens<LefDefLexer> defTokens;
   extern DefParse::defparser<DefParse::DefTokens<LefDefLexer>::iterator_type,
@@ -156,8 +158,16 @@ int main(int argc, char **argv) {
   DesignView view(&myScene);
   view.fitInView(myScene.sceneRect(), Qt::KeepAspectRatio);
   view.show();
-  app.exec();
 
-  return 0;
+  // instantiate "notifier" to combine Tcl and Qt events
+  QtTclNotify::QtTclNotifier::setup();
+
+  // create a Tcl interpreter and connect it to the terminal
+  Tcl_Main(argc, argv,
+           [](Tcl_Interp*) {
+               // run Qt's event loop
+               Tcl_SetMainLoop([]() { QApplication::exec(); });
+               return 0;
+           });
 
 }
