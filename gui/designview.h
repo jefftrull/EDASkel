@@ -22,6 +22,8 @@
 #ifndef EDASKEL_DESIGNVIEW_H
 #define EDASKEL_DESIGNVIEW_H
 
+#include <memory>
+
 #include <QGraphicsView>
 #include <QKeyEvent>
 
@@ -29,8 +31,10 @@ namespace EDASkel {
 
 class DesignView : public QGraphicsView {
   Q_OBJECT
-  public:
-  explicit DesignView(QGraphicsScene* scene, QWidget* parent = 0 ) : QGraphicsView(scene, parent) {
+public:
+  explicit DesignView(std::unique_ptr<QGraphicsScene> scene,
+                      QWidget* parent = 0 ) : QGraphicsView(scene.get(), parent),
+                                              scene_(std::move(scene)) {
 
     // compensate for Qt's use of 0,0 to mean "upper left"
     // as designers we expect to see coordinates increasing up and to the right
@@ -50,6 +54,10 @@ class DesignView : public QGraphicsView {
     else
       QGraphicsView::keyPressEvent(event);          // just pass it on
   }
+
+private:
+  std::unique_ptr<QGraphicsScene> scene_;
+
 };
 
 }
