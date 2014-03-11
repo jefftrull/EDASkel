@@ -50,6 +50,42 @@ class DesignSceneBase : public QGraphicsScene {
 
 template<class DB, class Lib>
 class DesignScene : public DesignSceneBase {
+  class InstItem : public QGraphicsRectItem {
+    typename DB::InstPtr inst_;
+    typename Lib::CellPtr cell_;
+  public:
+    InstItem(typename DB::InstPtr inst, typename Lib::CellPtr cell) : inst_(inst), cell_(cell) {
+      // look up cell dimensions
+      // TODO: handle rectilinear polygon boundaries
+      // TODO: handle other coordinate sizes (e.g., long, float)
+      float width = cell_->getWidth();
+      float height = cell_->getHeight();
+
+      typename DB::Point orig = inst_->getOrigin();
+      // handle orientation
+      // From what I can tell the DEF coordinate is the location of the LL corner *after*
+      // orientation is taken into account
+      // For instance outlines all we care about is the location of the UR corner
+      // It seems like this can be handled by conditionally exchanging width and height
+      if ((inst_->getOrient() == "E") || (inst_->getOrient() == "FE") ||
+	  (inst_->getOrient() == "W") || (inst_->getOrient() == "FW"))
+	std::swap(width, height);
+      // when we display the geometries within the cell we'll have to revisit this with
+      // a more sophisticated technique involving transforms
+
+      setRect(QRectF(0, 0, width, height));
+      setPos(inst_->getOrigin().x(), inst_->getOrigin().y());
+      setPen(QPen(Qt::red, 0));
+      // create a formatted "Tool Tip" (hover text) to identify this inst
+      setToolTip(QString("%1 (%2) (%3, %4) %5").
+                 arg(inst_->getName().c_str()).
+                 arg(inst_->getCellName().c_str()).
+                 arg(orig.x()).
+                 arg(orig.y()).
+                 arg(inst_->getOrient().c_str()));
+    }
+  };
+
  public:
   explicit DesignScene(const DB& db,
 		       const Lib& lib,
@@ -64,45 +100,16 @@ class DesignScene : public DesignSceneBase {
     // Qt uses "topleft/bottomright" which conveniently is exactly what I consider bottomleft/topright
     setSceneRect(QRectF(QPointF(design_extent.ll().x(), design_extent.ll().y()),
 			QPointF(design_extent.ur().x(), design_extent.ur().y())));
-    // get instances and add their boundaries
-    // ultimately you want to subclass one of the GraphicsItem classes instead
-    // so you can store a pointer to the instance and maybe further customize
-    // the appearance (e.g., by marking the UR corner to make orientation more obvious)
-    QPen instPen(Qt::red, 0);
-    typename DB::InstIter iit, end;
-    
+
+    // get instances and add their proxy objects
     for (auto const& instp : db.getInstances()) {
       const typename Lib::CellPtr cell = lib.findCell(instp->getCellName());
       if (!cell)
 	continue;   // or produce an error somehow?
 
-      // look up cell dimensions
-      // TODO: handle rectilinear polygon boundaries
-      // TODO: handle other coordinate sizes (e.g., long, float)
-      int width = cell->getWidth() * dbu;
-      int height = cell->getHeight() * dbu;
-
-      typename DB::Point orig = instp->getOrigin();
-      // handle orientation
-      // From what I can tell the DEF coordinate is the location of the LL corner *after*
-      // orientation is taken into account
-      // For instance outlines all we care about is the location of the UR corner
-      // It seems like this can be handled by conditionally exchanging width and height
-      if ((instp->getOrient() == "E") || (instp->getOrient() == "FE") ||
-	  (instp->getOrient() == "W") || (instp->getOrient() == "FW"))
-	std::swap(width, height);
-      // when we display the geometries within the cell we'll have to revisit this with
-      // a more sophisticated technique involving transforms
-
-      QGraphicsRectItem* instrect = addRect(QRectF(orig.x(), orig.y(), width, height));
-      instrect->setPen(instPen);
-      // create a formatted "Tool Tip" (hover text) to identify this inst
-      instrect->setToolTip(QString("%1 (%2) (%3, %4) %5").
-			   arg(instp->getName().c_str()).
-			   arg(instp->getCellName().c_str()).
-			   arg(orig.x()).
-			   arg(orig.y()).
-			   arg(instp->getOrient().c_str()));
+      InstItem* inst = new InstItem(instp, cell);
+      inst->setScale(dbu);
+      addItem(inst);
     }
   }
 };
