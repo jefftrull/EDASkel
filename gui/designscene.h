@@ -35,6 +35,7 @@
 
 #include <QGraphicsScene>
 #include <QGraphicsRectItem>
+#include <QGraphicsLineItem>
 
 namespace EDASkel {
 
@@ -50,7 +51,7 @@ class DesignSceneBase : public QGraphicsScene {
 
 template<class DB, class Lib>
 class DesignScene : public DesignSceneBase {
-  class InstItem : public QGraphicsRectItem {
+  class InstItem : public QGraphicsItemGroup {
     typename DB::InstPtr inst_;
     typename Lib::CellPtr cell_;
   public:
@@ -61,22 +62,45 @@ class DesignScene : public DesignSceneBase {
       float width = cell_->getWidth();
       float height = cell_->getHeight();
 
-      typename DB::Point orig = inst_->getOrigin();
-      // handle orientation
-      // From what I can tell the DEF coordinate is the location of the LL corner *after*
-      // orientation is taken into account
-      // For instance outlines all we care about is the location of the UR corner
-      // It seems like this can be handled by conditionally exchanging width and height
-      if ((inst_->getOrient() == "E") || (inst_->getOrient() == "FE") ||
-	  (inst_->getOrient() == "W") || (inst_->getOrient() == "FW"))
-	std::swap(width, height);
-      // when we display the geometries within the cell we'll have to revisit this with
-      // a more sophisticated technique involving transforms
+      auto r = new QGraphicsRectItem(QRectF(0, 0, width, height));
+      r->setPen(QPen(Qt::red, 0));
+      addToGroup(r);
+      // add dogear to indicate origin corner (lower left, for N instances)
+      auto l = new QGraphicsLineItem(0, height/2, width/2, 0);
+      l->setPen(QPen(Qt::red, 0));
+      addToGroup(l);
 
-      setRect(QRectF(0, 0, width, height));
-      setPos(inst_->getOrigin().x(), inst_->getOrigin().y());
-      setPen(QPen(Qt::red, 0));
+      // handle orientation
+      // It looks like W, S, E = 90, 180, -90 degree rotations
+      // The "flip" versions can happen by mirroring around the Y axis first
+      std::string ort = inst_->getOrient();
+      // right-hand rotation (natural, positive angle) for each orientation
+      std::map<std::string, int> rotations;
+      rotations.insert(std::make_pair("N", 0));
+      rotations.insert(std::make_pair("W", 90));
+      rotations.insert(std::make_pair("S", 180));
+      rotations.insert(std::make_pair("E", -90));
+
+      QTransform xform;
+      if (ort.front() == 'F') {
+        ort = ort.back();
+        xform.scale(-1.0, 1.0);               // apply flip
+        xform.rotate(-rotations.at(ort));     // negate rotation to compensate for flip
+      } else {
+        // Qt's clockwise rotation is cancelled out by the fact that the Z axis is into
+        // the screen due to our overall flipping in the "view".  So use the natural value.
+        xform.rotate(rotations.at(ort));
+      }
+
+      // Finally, the position specified in DEF is that of the lower left *after* orientation
+      // figure out where the new LL is so we can compensate
+      QPointF newLL = xform.mapRect(r->boundingRect()).topLeft();  // "top" left due to scene flip
+      xform = xform * QTransform::fromTranslate(-newLL.x(), -newLL.y());
+
+      setTransform(xform);
+
       // create a formatted "Tool Tip" (hover text) to identify this inst
+      typename DB::Point orig = inst_->getOrigin();
       setToolTip(QString("%1 (%2) (%3, %4) %5").
                  arg(inst_->getName().c_str()).
                  arg(inst_->getCellName().c_str()).
@@ -108,7 +132,9 @@ class DesignScene : public DesignSceneBase {
 	continue;   // or produce an error somehow?
 
       InstItem* inst = new InstItem(instp, cell);
-      inst->setScale(dbu);
+      // InstItem works in LEF units so scale/apply position here
+      inst->setTransform(inst->transform() * QTransform::fromScale(dbu, dbu));
+      inst->setPos(instp->getOrigin().x(), instp->getOrigin().y());
       addItem(inst);
     }
   }
