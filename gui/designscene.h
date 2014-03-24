@@ -34,32 +34,18 @@
 
 
 #include <QGraphicsScene>
-#include <QGraphicsRectItem>
-#include <QGraphicsLineItem>
+#include <QGraphicsItem>
+#include <QPainter>
 
 namespace EDASkel {
 
 class DesignScene : public QGraphicsScene {
   template<class DB, class Lib>
-  class InstItem : public QGraphicsItemGroup {
+  class InstItem : public QGraphicsItem {
     typename DB::InstPtr inst_;
     typename Lib::CellPtr cell_;
   public:
     InstItem(typename DB::InstPtr inst, typename Lib::CellPtr cell) : inst_(inst), cell_(cell) {
-      // look up cell dimensions
-      // TODO: handle rectilinear polygon boundaries
-      // TODO: handle other coordinate sizes (e.g., long, float)
-      float width = cell_->getWidth();
-      float height = cell_->getHeight();
-
-      auto r = new QGraphicsRectItem(QRectF(0, 0, width, height));
-      r->setPen(QPen(Qt::red, 0));
-      addToGroup(r);
-      // add dogear to indicate origin corner (lower left, for N instances)
-      auto l = new QGraphicsLineItem(0, height/2, width/2, 0);
-      l->setPen(QPen(Qt::red, 0));
-      addToGroup(l);
-
       // handle orientation
       // It looks like W, S, E = 90, 180, -90 degree rotations
       // The "flip" versions can happen by mirroring around the Y axis first
@@ -84,7 +70,7 @@ class DesignScene : public QGraphicsScene {
 
       // Finally, the position specified in DEF is that of the lower left *after* orientation
       // figure out where the new LL is so we can compensate
-      QPointF newLL = xform.mapRect(r->boundingRect()).topLeft();  // "top" left due to scene flip
+      QPointF newLL = xform.mapRect(boundingRect()).topLeft();  // "top" left due to scene flip
       xform = xform * QTransform::fromTranslate(-newLL.x(), -newLL.y());
 
       setTransform(xform);
@@ -98,6 +84,25 @@ class DesignScene : public QGraphicsScene {
                  arg(orig.y()).
                  arg(inst_->getOrient().c_str()));
     }
+
+    QRectF boundingRect() const {
+      // look up cell dimensions
+      // TODO: handle rectilinear polygon boundaries
+      // TODO: handle other coordinate sizes (e.g., long, float)
+      float width = cell_->getWidth();
+      float height = cell_->getHeight();
+
+      return QRectF(0, 0, width, height);
+    }
+
+    void paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) {
+      painter->setPen(QPen(Qt::red, 0));
+      QRectF boundary = boundingRect();
+      painter->drawRect(boundary);
+      // add dogear to indicate origin corner (lower left, for N instances)
+      painter->drawLine(0, boundary.bottom()/2, boundary.right()/2, 0);
+    }
+
   };
 
  public:
