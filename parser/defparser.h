@@ -182,9 +182,9 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
     plcinfo %= '+' >> ((token(T_FIXED) > point > orient) |
                        (token(T_PLACED) > point > orient)) ;    // location and orientation
 
-    weight %= '+' >> raw_token(T_WEIGHT) > tok.int_ ;
+    weight %= '+' >> (raw_token(T_WEIGHT) > tok.int_) ;
 
-    source = '+' >> raw_token(T_SOURCE) > (raw_token(T_DIST) | raw_token(T_NETLIST) | raw_token(T_USER) | raw_token(T_TIMING)) ;
+    source = '+' >> (raw_token(T_SOURCE) > (raw_token(T_DIST) | raw_token(T_NETLIST) | raw_token(T_USER) | raw_token(T_TIMING))) ;
 
     // components required instance name and celltype; optional any (or none) of placement and weight, in any order:
     comp = ( '-' > tok.nonkwd_[at_c<0>(_val) = _1] > tok.nonkwd_[at_c<1>(_val) = _1] >

@@ -10,9 +10,15 @@ if (MSVC)
 endif()
 
 # global flags
-if (CMAKE_COMPILER_IS_GNUCC)
+if (CMAKE_COMPILER_IS_GNUCC OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
   add_definitions(-Wall -Wextra -Werror)  # be conservative about checks
   add_definitions(-std=c++0x)             # enable C++11
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    # some helpful additional checks suggested by http://blog.llvm.org/2013/09/clang-warnings.html
+    add_definitions( -Wheader-guard -Wlogical-not-parentheses -Wduplicate-enum -Wdangling-field
+      -Wstring-plus-int -Wstring-conversion -Wsizeof-array-argument -Wsometimes-uninitialized
+      -Woverloaded-shift-op-parentheses -Wloop-analysis )
+  endif()
 elseif (MSVC11)
   # VC11 workaround: emplace_back requires variadic template emulation, for which VC11 has
   # a default limit of 5 arguments due to some memory explosion issue.  Raising this to 6
