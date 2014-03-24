@@ -124,8 +124,8 @@ namespace EDASkel {
                              (lit('I') >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]])[
                                phx::bind(&SpefVisitor::net_inst_connection, phx::ref(visitor_), _r1, _1, _2)])
                          >> char_("IOB")
-                         >> -(lit("*C") >> double_ >> double_)
-                         >> -(lit("*L") >> double_)
+                         >> -(lit("*C") >> double_ >> double_)   // location in X/Y coordinates
+                         >> -(lit("*L") >> double_)              // pin load
                          >> -(lit("*D") >> lexeme[+(ascii::alnum | '_')]) ;
 
         gndcapline = (uint_
