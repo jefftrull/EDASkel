@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE( basic ) {
   i2->setPlacement(Database::Point(2095, 2095), "N");   // create a small overlap
   db.addInst(i2);
   instRange = db.getInstances();
-  BOOST_CHECK( distance(begin(instRange), end(instRange)) == 2 );
+  BOOST_CHECK_EQUAL(2, distance(begin(instRange), end(instRange)));
 
   // now verify that the resulting scene has the expected contents
   DesignScene<Database, Library> myScene(db, lib);
@@ -65,13 +65,24 @@ BOOST_AUTO_TEST_CASE( basic ) {
   BOOST_CHECK( (sr.left() == 0.0) && (sr.right() == 10000.0) &&
 	       (sr.bottom() == 10000.0) && (sr.top() == 0.0) );
 
-  // check inserted items
-  BOOST_CHECK( myScene.items().size() == 2 );
+  // check top-level inserted items
   QList<QGraphicsItem*> ilist = myScene.items();
+  BOOST_CHECK_EQUAL(2,  std::count_if(ilist.begin(), ilist.end(),
+                                      [](QGraphicsItem const *i) {
+                                        return (i->topLevelItem() == i);
+                                      }));
+
   bool foundsmall = false, foundbig = false;
   while (!ilist.isEmpty()) {
     QGraphicsItem* i = ilist.takeFirst();
-    QRectF br = i->boundingRect();
+    if (i->topLevelItem() != i) {
+      // a sub-item (either the boundary or dogear of an instance)
+      continue;
+    }
+
+    // get the boundary as viewed by the parent (the DesignScene)
+    QRectF br = i->mapToParent(i->boundingRect()).boundingRect();
+
     if ((br.left() == 2000.0) && (br.right() == 2100.0) &&
 	(br.bottom() == 2100.0) && (br.top() == 2000.0))
       foundbig = true;
