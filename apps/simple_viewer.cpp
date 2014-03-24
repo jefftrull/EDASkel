@@ -164,8 +164,7 @@ struct CommandState {
     cerr << "DEF contains " << distance(std::begin(instRange), std::end(instRange)) << " instances\n";
 
     // create a "scene" (model) for display from the filled-out library and database
-    typedef DesignScene<SimpleDB::Database, SimpleDB::Library> Scene;
-    unique_ptr<Scene> scenep(new Scene(db_, lib_));
+    unique_ptr<DesignScene> scenep(new DesignScene(db_, lib_));
     auto design_extent = scenep->sceneRect();
 
     // Our special view adds some keyboard shortcuts and shows the design

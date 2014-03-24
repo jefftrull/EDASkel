@@ -1,10 +1,7 @@
 # Qt5 support from KDAB requires component-level access at this time:
 find_package( Qt5Widgets REQUIRED )
 
-# automoc does not seem to work here for some reason, so:
-QT5_WRAP_CPP(DS_MOC_SRC ../designscene.h)
-
-add_executable ( basicgui basic.cpp ${DS_MOC_SRC} )
+add_executable ( basicgui basic.cpp )
 qt5_use_modules( basicgui Widgets )
 
 if (MSVC)

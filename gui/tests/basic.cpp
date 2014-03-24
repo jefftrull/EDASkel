@@ -59,7 +59,7 @@ BOOST_AUTO_TEST_CASE( basic ) {
   BOOST_CHECK_EQUAL(2, distance(begin(instRange), end(instRange)));
 
   // now verify that the resulting scene has the expected contents
-  DesignScene<Database, Library> myScene(db, lib);
+  DesignScene myScene(db, lib);
   QRectF sr = myScene.sceneRect();
   // scene rectangle.  Remember that Y axis is reversed in Qt (0,0 is upper left)
   BOOST_CHECK( (sr.left() == 0.0) && (sr.right() == 10000.0) &&

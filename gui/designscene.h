@@ -39,18 +39,8 @@
 
 namespace EDASkel {
 
-// Templated classes can't be turned directly into QObjects by "moc" so I have to
-// separate DB/Lib access stuff into a child class and leave Signal/Slot stuff
-// in a non-templated base class.
-class DesignSceneBase : public QGraphicsScene {
-  Q_OBJECT
-  public:
-  explicit DesignSceneBase( QObject* parent = 0 ) : QGraphicsScene(parent) {}
-  ~DesignSceneBase() {}
-};
-
-template<class DB, class Lib>
-class DesignScene : public DesignSceneBase {
+class DesignScene : public QGraphicsScene {
+  template<class DB, class Lib>
   class InstItem : public QGraphicsItemGroup {
     typename DB::InstPtr inst_;
     typename Lib::CellPtr cell_;
@@ -111,9 +101,10 @@ class DesignScene : public DesignSceneBase {
   };
 
  public:
+  template<class DB, class Lib>
   explicit DesignScene(const DB& db,
 		       const Lib& lib,
-		       QObject* parent = 0) : DesignSceneBase(parent) {
+		       QObject* parent = 0) : QGraphicsScene(parent) {
     // basic setup
     setBackgroundBrush(Qt::black);
     int dbu = db.getDbuPerMicron();
@@ -131,7 +122,7 @@ class DesignScene : public DesignSceneBase {
       if (!cell)
 	continue;   // or produce an error somehow?
 
-      InstItem* inst = new InstItem(instp, cell);
+      QGraphicsItem* inst = new InstItem<DB, Lib>(instp, cell);
       // InstItem works in LEF units so scale/apply position here
       inst->setTransform(inst->transform() * QTransform::fromScale(dbu, dbu));
       inst->setPos(instp->getOrigin().x(), instp->getOrigin().y());
