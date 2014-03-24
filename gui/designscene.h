@@ -40,10 +40,38 @@
 namespace EDASkel {
 
 class DesignScene : public QGraphicsScene {
+  // base class of templated child class so we can "erase" the db/lib details and use
+  // the highlight interface uniformly
+  class InstItemBase : public QGraphicsItem {
+    bool highlighted_;
+  public:
+    InstItemBase() : highlighted_(false)  {}
+    ~InstItemBase() {}
+
+    void setHighlight(bool highlighted) {
+      highlighted_ = highlighted;
+      update(boundingRect());
+    }
+
+    virtual QRectF boundingRect() const = 0;
+
+    void paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) {
+      QPen pen = highlighted_ ? QPen(QColor::fromRgb(255, 215, 0), 0) // golden
+                              : QPen(Qt::red, 0);
+      painter->setPen(pen);
+      QRectF boundary = boundingRect();
+      painter->drawRect(boundary);
+      // add dogear to indicate origin corner (lower left, for N instances)
+      painter->drawLine(0, boundary.bottom()/2, boundary.right()/2, 0);
+    }
+
+  };
+
   template<class DB, class Lib>
-  class InstItem : public QGraphicsItem {
+  class InstItem : public InstItemBase {
     typename DB::InstPtr inst_;
     typename Lib::CellPtr cell_;
+
   public:
     InstItem(typename DB::InstPtr inst, typename Lib::CellPtr cell) : inst_(inst), cell_(cell) {
       // handle orientation
@@ -84,8 +112,8 @@ class DesignScene : public QGraphicsScene {
                  arg(orig.y()).
                  arg(inst_->getOrient().c_str()));
     }
-
-    QRectF boundingRect() const {
+    
+    virtual QRectF boundingRect() const {
       // look up cell dimensions
       // TODO: handle rectilinear polygon boundaries
       // TODO: handle other coordinate sizes (e.g., long, float)
@@ -95,21 +123,17 @@ class DesignScene : public QGraphicsScene {
       return QRectF(0, 0, width, height);
     }
 
-    void paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) {
-      painter->setPen(QPen(Qt::red, 0));
-      QRectF boundary = boundingRect();
-      painter->drawRect(boundary);
-      // add dogear to indicate origin corner (lower left, for N instances)
-      painter->drawLine(0, boundary.bottom()/2, boundary.right()/2, 0);
-    }
-
   };
+
+  // raw pointers OK here because this class owns (in Qt parlance is parent of) the InstItems
+  InstItemBase* highlightedInst;
+  std::map<std::string, InstItemBase*> instNameMap;
 
  public:
   template<class DB, class Lib>
   explicit DesignScene(const DB& db,
 		       const Lib& lib,
-		       QObject* parent = 0) : QGraphicsScene(parent) {
+		       QObject* parent = 0) : QGraphicsScene(parent), highlightedInst(nullptr) {
     // basic setup
     setBackgroundBrush(Qt::black);
     int dbu = db.getDbuPerMicron();
@@ -127,13 +151,29 @@ class DesignScene : public QGraphicsScene {
       if (!cell)
 	continue;   // or produce an error somehow?
 
-      QGraphicsItem* inst = new InstItem<DB, Lib>(instp, cell);
+      InstItemBase* inst = new InstItem<DB, Lib>(instp, cell);
       // InstItem works in LEF units so scale/apply position here
       inst->setTransform(inst->transform() * QTransform::fromScale(dbu, dbu));
       inst->setPos(instp->getOrigin().x(), instp->getOrigin().y());
       addItem(inst);
+      instNameMap.emplace(instp->getName(), inst);
     }
   }
+
+  bool highlightInstance(std::string const& name) {
+    if (highlightedInst != nullptr) {
+      highlightedInst->setHighlight(false);
+    }
+    auto map_it = instNameMap.find(name);
+    if (map_it != instNameMap.end()) {
+      highlightedInst = map_it->second;
+      highlightedInst->setHighlight(true);
+      return true;
+    }
+    highlightedInst = nullptr;
+    return false;
+  }
+
 };
 
 }

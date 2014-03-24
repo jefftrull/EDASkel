@@ -27,14 +27,15 @@
 #include <QGraphicsView>
 #include <QKeyEvent>
 
+#include "designscene.h"
+
 namespace EDASkel {
 
 class DesignView : public QGraphicsView {
   Q_OBJECT
 public:
-  explicit DesignView(std::unique_ptr<QGraphicsScene> scene,
-                      QWidget* parent = 0 ) : QGraphicsView(scene.get(), parent),
-                                              scene_(std::move(scene)) {
+  explicit DesignView(DesignScene* scene,
+                      QWidget* parent = 0 ) : QGraphicsView(scene, parent) {
 
     // compensate for Qt's use of 0,0 to mean "upper left"
     // as designers we expect to see coordinates increasing up and to the right
@@ -54,9 +55,6 @@ public:
     else
       QGraphicsView::keyPressEvent(event);          // just pass it on
   }
-
-private:
-  std::unique_ptr<QGraphicsScene> scene_;
 
 };
 

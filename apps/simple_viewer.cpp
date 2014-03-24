@@ -164,17 +164,18 @@ struct CommandState {
     cerr << "DEF contains " << distance(std::begin(instRange), std::end(instRange)) << " instances\n";
 
     // create a "scene" (model) for display from the filled-out library and database
-    unique_ptr<DesignScene> scenep(new DesignScene(db_, lib_));
-    auto design_extent = scenep->sceneRect();
+    scene_ = new DesignScene(db_, lib_);
+    auto design_extent = scene_->sceneRect();
 
     // Our special view adds some keyboard shortcuts and shows the design
     // "right side up"
-    view_ = unique_ptr<DesignView>(new DesignView(move(scenep)));
-    view_->fitInView(design_extent, Qt::KeepAspectRatio);
-    view_->show();
+    DesignView* view = new DesignView(scene_);  // owner??
+    view->fitInView(design_extent, Qt::KeepAspectRatio);
+    view->show();
 
     // register static methods using "clientData" to hold the "this" pointer
     Tcl_CreateObjCommand(interp_, "instances", &CommandState::instances, this, NULL);
+    Tcl_CreateObjCommand(interp_, "highlight", &CommandState::highlight, this, NULL);
 
     // Ensure final cleanup invokes our destructor
     Tcl_CreateExitHandler(&CommandState::cleanup, this);
@@ -186,6 +187,9 @@ private:
   static int instances(ClientData me, Tcl_Interp*, int objc, Tcl_Obj* const objv[]) {
     // strategy TODO: should user syntax/semantic checking be in Tcl, here, or in the instance method?
     return static_cast<CommandState*>(me)->instances(objc, objv);
+  }
+  static int highlight(ClientData me, Tcl_Interp*, int objc, Tcl_Obj* const objv[]) {
+    return static_cast<CommandState*>(me)->highlight(objc, objv);
   }
 
   // arranges for destructor to be called when interpreter is shut down
@@ -212,10 +216,24 @@ private:
     return TCL_OK;
   }
 
+  int highlight(int objc, Tcl_Obj* const objv[]) {
+    if (objc != 2) {
+      Tcl_WrongNumArgs(interp_, 1, objv, "instance_name");
+      return TCL_ERROR;
+    }
+
+    // attempt to highlight
+    if (!scene_->highlightInstance(Tcl_GetString(objv[1]))) {
+      Tcl_AppendResult(interp_, "could not find instance ", Tcl_GetString(objv[1]), NULL);
+      return TCL_ERROR;
+    }
+    return TCL_OK;
+  }
+
   Tcl_Interp* interp_;
   SimpleDB::Database db_;
   SimpleDB::Library lib_;
-  std::unique_ptr<DesignView> view_;
+  DesignScene* scene_;
 
 };
 
