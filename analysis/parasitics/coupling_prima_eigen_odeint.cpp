@@ -150,33 +150,23 @@ struct signal_coupling {
       // to a load (the victim receiver).  But for PRIMA, they are all I/O (voltage in, current out)
 
       // connecting inputs
-      Matrix<double, 15, N> B; B << 0, 0, 0
-                                  , 0, 0, 0
-                                  , 0, 0, 0
-                                  , 0, 0, 0
-                                  , 0, 0, 0
-                                  , 0, 0, 0
-                                  , 0, 0, 0
-                                  , 0, 0, 0
-                                  , 0, 0, 0
-                                  , 0, 0, 0
-                                  , 0, 0, 0
-                                  , 0, 0, 0
-                                  , -1, 0, 0   // insert Vagg = V0
-                                  , 0, -1, 0   // insert Vvic = V6
-                                  , 0, 0, -1 ; // insert Vvicrcv = V11
+      SparseMatrix<double> B(15, N);
+      // we want a negative identity matrix in the last three rows
+      B.reserve(N);  // 1 non-zero per column
+      B.insert(12, 0) = -1;
+      B.insert(13, 1) = -1;
+      B.insert(14, 2) = -1;
 
       // And the same nodes are outputs:
-      Matrix<double, 15, N> L = -B;
+      SparseMatrix<double> L = -B;
                                   
       // Step 2: Solve GR = B for R
       SparseQR<SparseMatrix<double>, COLAMDOrdering<int> > G_QR(G);
       assert(G_QR.info() == Success);
-      SparseMatrix<double> Bsparse = B.sparseView();
       // warning: in debug builds this triggers an assertion failure due to an Eigen bug
       // see https://forum.kde.org/viewtopic.php?f=74&t=117474
       // You can get a fixed version from Mercurial 3.2 or "default" branch
-      SparseMatrix<double> R = G_QR.solve(Bsparse);
+      SparseMatrix<double> R = G_QR.solve(B);
       assert(G_QR.info() == Success);
 
       // set up types for various versions of "X" variables used in PRIMA
