@@ -13,6 +13,7 @@ using namespace boost::numeric;
 using namespace Eigen;
  
 #include "analysis/mna.hpp"
+#include "analysis/prima.hpp"
 #include <Eigen/SparseQR>
 
 // Utility functions for working with Eigen
@@ -133,117 +134,25 @@ struct signal_coupling {
       Eigen::SparseMatrix<double> C(15, 15); C.setFromTriplets(Centries.begin(), Centries.end());
       Eigen::SparseMatrix<double> G(15, 15); G.setFromTriplets(Gentries.begin(), Gentries.end());
 
-      // PRIMA
-      // This is a famous model reduction technique invented around 1997/8 at CMU
-      // I am generally following the treatment in Odabasioglu, IEEE TCAD, August 1998
-      // They base their work on the prior Block Arnoldi algorithm, a helpful
-      // explanation of which you can find in their 6th citation:
-      // D. L. Boley, “Krylov space methods on state-space control models”
-      
-      // Aiming for q state variables, a significant reduction from 15...
+      // Apply PRIMA reduction to the input model
 
       // Step 1: create B and L (input and output) matrices
+      // In the PRIMA paper all ports are treated as inputs
+      // Some postprocessing by the caller will fix this
+      SparseMatrix<double> B(C.rows(), N);
 
-      // In the interest of following the PRIMA paper as closely as possible, we will
-      // have three generic "ports" that are theoretically attached to voltage sources.
-      // In fact two of these will be driven through drivers, and the last will be attached
-      // to a load (the victim receiver).  But for PRIMA, they are all I/O (voltage in, current out)
-
-      // connecting inputs
-      SparseMatrix<double> B(15, N);
-      // we want a negative identity matrix in the last three rows
-      B.reserve(N);  // 1 non-zero per column
-      B.insert(12, 0) = -1;
-      B.insert(13, 1) = -1;
-      B.insert(14, 2) = -1;
-
-      // And the same nodes are outputs:
-      SparseMatrix<double> L = -B;
-                                  
-      // Step 2: Solve GR = B for R
-      SparseQR<SparseMatrix<double>, COLAMDOrdering<int> > G_QR(G);
-      assert(G_QR.info() == Success);
-      // warning: in debug builds this triggers an assertion failure due to an Eigen bug
-      // see https://forum.kde.org/viewtopic.php?f=74&t=117474
-      // You can get a fixed version from Mercurial 3.2 or "default" branch
-      SparseMatrix<double> R = G_QR.solve(B);
-      assert(G_QR.info() == Success);
-
-      // set up types for various versions of "X" variables used in PRIMA
-      // matrices we are gathering will all be 15 rows tall but some unknown number
-      // of columns, depending on how many bases we harvest from each Krylov matrix
-
-      // we want to use these in std::vectors, which requires a special allocator
-      // in order to be Eigen-compatible:
-      typedef aligned_allocator<Matrix15dX> Allocator15dX;
-      typedef vector<Matrix15dX, Allocator15dX> Matrix15dXList;
-      Matrix15dXList X;   // one entry per value of "k", gathered at the end into a single Xfinal
-
-      // Step 3: Set X[0] to the orthonormal basis of R as determined by QR factorization
-      SparseQR<SparseMatrix<double>, COLAMDOrdering<int> > R_QR(R);
-      assert(R_QR.info() == Success);
-      SparseMatrix<double> rQ;
-      rQ = R_QR.matrixQ();
-      X.push_back(Matrix15dX(rQ.leftCols(R_QR.rank())));
-
-      // Step 4: Set n = floor(q/N)+1 if q/N is not an integer, and q/N otherwise
-      size_t n = (q % N) ? (q/N + 1) : (q/N);
-
-      // Step 5: Block Arnoldi (see Boyer for detailed explanation)
-      for (size_t k = 1; k <= n; ++k)
-      {
-         // because X[] will vary in number of columns, so will Xk[]
-         vector<Matrix<double, 15, Dynamic>,
-                aligned_allocator<Matrix<double, 15, Dynamic> > > Xk(k+1);
-
-         // set V = C * X[k-1]
-         auto V = C * X[k-1];
-
-         // solve G*X[k][0] = V for X[k][0]
-         Xk[0] = G_QR.solve(V);
-
-         for (size_t j = 1; j <= k; ++j)
-         {
-            // H = X[k-j].transpose() * X[k][j-1]
-            auto H = X[k-j].transpose() * Xk[j-1];
-
-            // X[k][j] = X[k][j-1] - X[k-j]*H
-            Xk[j] = Xk[j-1] - X[k-j] * H;
-         }
-
-         // set X[k] to the orthonormal basis of X[k][k] via QR factorization
-         if (Xk[k].cols() == 1)
-         {
-            // a single column is automatically orthogonalized; just normalize
-            X.push_back(Xk[k].normalized());
-         } else {
-            auto xkkQR = Xk[k].fullPivHouseholderQr();
-            Matrix15dX xkkQ = xkkQR.matrixQ();
-            X.push_back(xkkQ.leftCols(xkkQR.rank()));
-         }
-
-
+      // insert a negative identity matrix in the last <N> rows
+      B.reserve(N);     // 1 non-zero element per column
+      size_t firstrow = C.rows() - N;
+      for (size_t col = 0; col < N; ++col) {
+        B.insert(firstrow + col, col) = -1;
       }
 
-      // Step 6: Set Xfinal to the concatenation of X[0] to X[n-1],
-      //         truncated to q columns
-      // Note this implies we calculated X[n] unnecessarily... I'm not sure what to make of this
-      size_t cols = accumulate(X.begin(), X.end()-1, 0,
-                               [](size_t sum, Matrix15dX const& m) { return sum + m.cols(); });
-      cols = std::min(q, cols);  // truncate to q
+      SparseMatrix<double> L = -B;   // inputs are also outputs
 
-      Xfinal = Matrix15dX(15, cols);
-      size_t col = 0;
-      for (size_t k = 0; (k <= n) && (col < cols); ++k)
-      {
-         // copy columns from X[k] to Xfinal
-         for (int j = 0; (j < X[k].cols()) && (col < cols); ++j)
-         {
-            Xfinal.col(col++) = X[k].col(j);
-         }
-      }
+      auto Xfinal = EDASkel::analysis::Prima(C, G, B, L, q);
 
-      // Step 7: Compute the C and G matrices in the new state variables using X
+      // Compute the C and G matrices in the new state variables using X
       Matrix<double, q, q> Cprime = Xfinal.transpose() * C * Xfinal;  // TODO: look at SVD here
       Matrix<double, q, q> Gprime = Xfinal.transpose() * G * Xfinal;
       Matrix<double, q, N> Bprime = Xfinal.transpose() * B;
@@ -253,7 +162,14 @@ struct signal_coupling {
 
       // Compare block moments between original and reduced model
       // Prima claims to produce the same moments up to floor(q/N)
+      SparseQR<SparseMatrix<double>, COLAMDOrdering<int> > G_QR(G);
+      assert(G_QR.info() == Success);
+      // warning: in Pre-Eigen-3.2 debug builds this triggers an assertion failure due to an Eigen bug
+      // see https://forum.kde.org/viewtopic.php?f=74&t=117474
+      SparseMatrix<double> R = G_QR.solve(B);
+      assert(G_QR.info() == Success);
       SparseMatrix<double> A = G_QR.solve(C);
+
       auto GprimeQR = Gprime.fullPivHouseholderQr();
       Matrix<double, q, q> Aprime = GprimeQR.solve(Cprime);
       Matrix<double, q, N> Rprime = GprimeQR.solve(Bprime);
