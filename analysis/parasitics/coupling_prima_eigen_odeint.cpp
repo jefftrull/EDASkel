@@ -35,10 +35,10 @@ struct signal_coupling {
                              // 12 is the "natural" count (1 per circuit node)
   static const size_t N = 3; // port count (one per input/output: two drivers and the victim rcvr)
 
-  // final system for simulation: 
-  Matrix<double, q+1, q+1> coeff_;        // reduced system state evolution
-  Matrix<double, q+1, 2> input_;          // inputs (agg/vic) to reduced system state
-  Matrix<double, 1, q+1> output_;         // reduced system state to chosen outputs
+  // final system for simulation.  State variable count determined by regularization:
+  Matrix<double, Dynamic, Dynamic> coeff_;    // reduced system state evolution
+  Matrix<double, Dynamic, 2> input_;          // inputs (agg/vic) to reduced system state
+  Matrix<double, 1, Dynamic> output_;         // reduced system state to chosen outputs
 
   // original MNA matrices: 12 circuit nodes, 3 independent sources
   typedef Matrix<double, 15, Dynamic> Matrix15dX;
@@ -295,12 +295,13 @@ struct signal_coupling {
       }
     }
         
-    Map<const Matrix<double, q+1, 1> > xvec(x.data());   // turn state vector into Eigen matrix
+    // turn state vector into Eigen matrix
+    Map<const Matrix<double, Dynamic, 1> > xvec(x.data(), statecount(), 1);
 
     // Input excitation:  the independent variables calculated above
     Matrix<double, 2, 1> u; u << Vagg, Vvic;
 
-    Map<Matrix<double, q+1, 1> > result(dxdt.data());
+    Map<Matrix<double, Dynamic, 1> > result(dxdt.data(), statecount(), 1);
     result = coeff_ * xvec + input_ * u;              // sets dxdt via reference
 
   }
@@ -309,6 +310,12 @@ struct signal_coupling {
   {
      // supply a matrix that can be used to extract the single output from the current state
      return output_;
+  }
+
+  // the actual number of state bits used in simulation depends on
+  // the reduction results and on regularizing the circuit:
+  size_t statecount() const {
+    return coeff_.rows();
   }
 
 };
@@ -387,7 +394,8 @@ int main() {
 		      coupling_c, v);
 
   // initial state: all low
-  state_type x(signal_coupling::q+1, 0.0);
+  size_t statecount = ckt.statecount();
+  state_type x(statecount, 0.0);
 
   vector<state_type> state_history;
   vector<state_type> outputs;
@@ -399,10 +407,10 @@ int main() {
   // generate observable (output) values by applying output transform matrix to each state
   auto const output_translator = ckt.output();
   transform(state_history.begin(), state_history.end(), back_inserter(outputs),
-            [&output_translator]
+            [statecount, &output_translator]
             (const state_type& state) -> state_type {
               // access vector state data through an Eigen map so we can multiply
-               Map<const Matrix<double, signal_coupling::q+1, 1> > statevec(state.data());
+              Map<const Matrix<double, Dynamic, 1> > statevec(state.data(), statecount, 1);
               state_type ovec(1);   // result
               Map<Matrix<double, 1, 1> > outputvec(ovec.data(), 1, 1);   // also needs a Map
               outputvec = output_translator * statevec;  // multiply into vector via Map
