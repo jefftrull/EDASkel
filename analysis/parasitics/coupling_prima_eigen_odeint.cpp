@@ -120,10 +120,13 @@ struct signal_coupling {
       stamp(Gentries, 4, 5, 2/agg_r2);    // fourth stage pi resistance
       stamp(Gentries, 10, 11, 2/vic_r2);
       stamp(Centries, 5, agg_c2 / 4.0);   // end of fourth stage pi model
-      stamp(Centries, 11, vic_c2 / 4.0);
 
       stamp(Centries, 5, agg_cl);
-      stamp(Centries, 11, vic_cl);
+      // The victim receiver is the third port of the reduced network
+      // we cannot put this through the reduction, because we model the ports as voltage
+      // sources, which neutralizes capacitors.  Instead we will add this at the end.
+      // stamp(Centries, 11, vic_cl);
+      // stamp(Centries, 11, vic_c2 / 4.0);   // end of fourth stage pi model, victim side
 
       // add an additional pair of equations for the independent sources
       // aggressor and victim driver source currents will be nodes 12 and 13
@@ -225,9 +228,10 @@ struct signal_coupling {
       // hook up independent sources in first two rows: connects inputs to Vagg/Vvic via Bdirect
       Gdirect.block<2, 2>(0, 0) = -Matrix<double, 2, 2>::Identity(); 
 
-      // Fix an issue where the generation of the reduced model for simulation encounters
-      // a singularity in the G22 matrix.  Probably a hack.
-      Gdirect(2, 5) = 1; Cdirect(2, 2) = 1e-15;  // exposed cap at end of wire, formerly driven by voltage source
+      // Add back the victim receiver load capacitor and the final capacitor of the trace
+      stamp(Cdirect, 2, vic_cl);
+      stamp(Cdirect, 2, vic_c2 / 4.0);
+      Gdirect(2, 5) = 1;              // connect port current to the caps
 
       // connect reduced state to currents (line 3 of "(50)")
       Gdirect.block<3, 3>(3, 3) = Matrix<double, 3, 3>::Identity();  // extract source currents
