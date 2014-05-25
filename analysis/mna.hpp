@@ -110,8 +110,8 @@ regularize(Matrix<Float, scount, scount> const & G,
    std::size_t nonzero_count = scount - zero_count;
 
    // 1. Generate permutation matrix to move zero rows to the bottom
-   typedef Matrix<Float, scount, scount> eqn_matrix_t;
-   eqn_matrix_t permut = eqn_matrix_t::Identity();   // start with null permutation
+   PermutationMatrix<scount, scount, std::size_t> permut;
+   permut.setIdentity();      // start with null permutation
    std::size_t i, j;
    for (i = 0, j=(scount-1); i < j;) {
       // loop invariant: rows > j are all zero; rows < i are not
@@ -119,13 +119,13 @@ regularize(Matrix<Float, scount, scount> const & G,
       while ((j > 0) && zero_rows(j)) --j;
       if (i < j) {
          // exchange rows i and j via the permutation vector
-         permut(i, i) = 0; permut(j, j) = 0;
-         permut(i, j) = 1; permut(j, i) = 1;
+         permut.applyTranspositionOnTheRight(i, j);
          ++i; --j;
       }
    }
 
    // 2. Apply permutation to MNA matrices
+   typedef Matrix<Float, scount, scount> eqn_matrix_t;
    eqn_matrix_t CP = permut * C * permut;          // permute rows and columns
    eqn_matrix_t GP = permut * G * permut;
    Matrix<Float, Dynamic, icount> BP = permut * B; // permute only rows
