@@ -252,7 +252,7 @@ struct signal_coupling {
       MatrixXd Gred, Cred;
       Matrix<double, Dynamic, 2> Bred;
       Matrix<double, Dynamic, 1> Lred;
-      std::tie(Gred, Cred, Bred, Lred) = regularize(Gdirect, Cdirect, Bdirect, Ldirect);
+      std::tie(Gred, Cred, Bred, Lred) = regularize_su(Gdirect, Cdirect, Bdirect, Ldirect);
 
       // Solve to produce a pair of matrices we can use to calculate dX/dt
       auto CredQR = Cred.fullPivHouseholderQr();

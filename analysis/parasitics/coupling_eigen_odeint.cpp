@@ -150,7 +150,7 @@ struct signal_coupling {
 
       MatrixXd Cred, Gred;
       Matrix<double, Dynamic, 2> Bred;
-      std::tie(Gred, Cred, Bred, Lred_) = regularize(G, C, B, L);
+      std::tie(Gred, Cred, Bred, Lred_) = regularize_su(G, C, B, L);
 
       // Solve to produce a pair of matrices we can use to calculate dX/dt
       coeff_ = Cred.ldlt().solve(-1.0 * Gred);  // state evolution
