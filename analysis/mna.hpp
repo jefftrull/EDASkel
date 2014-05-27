@@ -116,15 +116,15 @@ regularize_su(Matrix<Float, scount, scount> const & G,
    // Use Eigen reductions to find zero rows
    auto zero_rows = (C.array() == 0.0).rowwise().all();   // per row "all zeros"
    std::size_t zero_count = zero_rows.count();
-   std::size_t nonzero_count = scount - zero_count;
+   std::size_t nonzero_count = C.rows() - zero_count;
 
    // 1. Generate permutation matrix to move zero rows to the bottom
    PermutationMatrix<scount, scount, std::size_t> permut;
-   permut.setIdentity();      // start with null permutation
+   permut.setIdentity(C.rows());      // start with null permutation
    std::size_t i, j;
-   for (i = 0, j=(scount-1); i < j;) {
+   for (i = 0, j=(C.rows()-1); i < j;) {
       // loop invariant: rows > j are all zero; rows < i are not
-      while ((i < scount) && !zero_rows(i)) ++i;
+      while ((i < C.rows()) && !zero_rows(i)) ++i;
       while ((j > 0) && zero_rows(j)) --j;
       if (i < j) {
          // exchange rows i and j via the permutation vector
@@ -165,6 +165,10 @@ regularize_su(Matrix<Float, scount, scount> const & G,
 
    Matrix<Float, Dynamic, ocount> Lred = (L1.transpose() - L2.transpose() * G22invG21).transpose();
    Matrix<Float, Dynamic, icount> Bred = B1 - G12 * G22invB2;
+
+   // This approach presumes no feedthrough (input-to-output) term
+   MatrixD D = L2.transpose() * G22invB2;
+   assert(D.isZero());
 
    return std::make_tuple(Gred, Cred, Bred, Lred);
 }
