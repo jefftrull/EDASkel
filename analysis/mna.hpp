@@ -200,7 +200,7 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     auto Cprime = U;
     auto P = lu.permutationP();
     auto Q = lu.permutationQ();
-    auto Gprime = L.inverse() * P * G * Q;              // rows and columns
+    MatrixD Gprime = L.inverse() * P * G * Q;           // rows and columns
     auto Bprime = L.inverse() * P * B;                  // rows only
     // The D input is like L in PRIMA but this algorithm uses the transpose
     auto Dprime = D.transpose() * Q;                    // columns only
