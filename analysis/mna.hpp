@@ -89,8 +89,9 @@ void stamp_i(typename std::vector<Eigen::Triplet<Float> >& tlist,
 
 template<class M>
 bool isSingular(const M& m) {
-  // A singular matrix has at least one zero eigenvalue
+   // A singular matrix has at least one zero eigenvalue
    // Use the magic of Eigen reductions to implement:
+   using namespace Eigen;
    auto eigenvalues = EigenSolver<M>(m).eigenvalues();
    return ((eigenvalues.array().real() == 0.0) &&
            (eigenvalues.array().imag() == 0.0)).any();
@@ -176,8 +177,10 @@ regularize_su(Matrix<Float, scount, scount> const & G,
 template<int icount, int ocount, int scount, typename Float = double>
 std::tuple<Matrix<Float, Dynamic, Dynamic>,   // G result
            Matrix<Float, Dynamic, Dynamic>,   // C result
-           Matrix<Float, Dynamic, icount>,    // B result
-           Matrix<Float, Dynamic, ocount> >   // D result
+           Matrix<Float, Dynamic, icount>,    // B1 result
+           Matrix<Float, Dynamic, icount>,    // B2 result (coeff of derivative)
+           Matrix<Float, Dynamic, ocount>,    // D result
+           Matrix<Float, ocount, icount> >    // E result (feedthrough)
 regularize_natarajan(Matrix<Float, scount, scount> const & G,
            Matrix<Float, scount, scount> const & C,
            Matrix<Float, scount, icount> const & B,
@@ -190,6 +193,17 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
 
     // Step 1: put C into "Row Echelon" form by performing LU factorization
     auto lu = C.fullPivLu();
+    auto k = lu.rank();
+    if (k == C.rows()) {
+        // C is already non-singular
+        Matrix<Float, Dynamic, icount> B2 = Matrix<Float, Dynamic, icount>::Zero(B.rows(), B.cols());
+        Matrix<Float, ocount, icount>   E = Matrix<Float, ocount, icount>();
+        E.setZero();
+        return std::make_tuple(G, C,
+                               B, B2,
+                               D, E);
+    }
+
     MatrixD U = lu.matrixLU().template triangularView<Upper>();
     MatrixD L = lu.matrixLU().template triangularView<UnitLower>();
 
@@ -197,57 +211,66 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     // given that C = P.inverse() * L * U * Q.inverse()
     // (from source it seems that permutationP/Q is inverse)
     // then to get the new G we reverse those operations:
-    auto Cprime = U;
+    auto Cprime = U;   // note we may have small non-zero values in bottom rows, but they will be ignored
     auto P = lu.permutationP();
     auto Q = lu.permutationQ();
+
     MatrixD Gprime = L.inverse() * P * G * Q;           // rows and columns
     auto Bprime = L.inverse() * P * B;                  // rows only
+
     // The D input is like L in PRIMA but this algorithm uses the transpose
     auto Dprime = D.transpose() * Q;                    // columns only
 
-    // calculate submatrices
-    auto k = lu.rank();
-
     // Step 3: "Convert [G21 G22] matrix into row echelon form starting from the last row"
-    // Since the order of the rows is irrelevant, I'll perform the decomposition, then
-    // combine reversing the rows with the row reordering the LU decomposition produces
+    MatrixD Cnew, Gnew, Bnew, Dnew;
 
-    MatrixD G2 = Gprime.bottomRows(C.rows() - k);
-    auto G2_LU = G2.fullPivLu();
-    MatrixD G2_U = (G2_LU.matrixLU().template triangularView<Upper>());
+    if (Cprime.rows() == (k+1)) {
+        // if G22 is only a single row, there is no point attempting to decompose it
+        Cnew = Cprime; Gnew = Gprime; Bnew = Bprime; Dnew = Dprime;
+    } else {
+        // decompose the bottom rows
+        // Since the order of the rows is irrelevant, I'll perform the decomposition, then
+        // combine reversing the rows with the row reordering the LU decomposition produces
 
-    // Now we have a U matrix with zeros in the bottom left corner, while algorithm
-    // wants them (at this point) in the upper left.  Reverse the rows to accomodate
-    typedef PermutationMatrix<Dynamic, Dynamic, std::size_t> PermutationD;
-    PermutationD reverse_rows;                // order of rows is completely reversed
-    reverse_rows.setIdentity(G2.rows());      // start with null permutation
-    for (std::size_t i = 0; i < (G2.rows() / 2); ++i) {
-        reverse_rows.applyTranspositionOnTheRight(i, (G2.rows()-1) - i);
+        MatrixD G2 = Gprime.bottomRows(C.rows() - k);
+        auto G2_LU = G2.fullPivLu();
+        MatrixD G2_U = (G2_LU.matrixLU().template triangularView<Upper>());
+
+        // Now we have a U matrix with zeros in the bottom left corner, while algorithm
+        // wants them (at this point) in the upper left.  Reverse the rows to accomodate
+        typedef PermutationMatrix<Dynamic, Dynamic, std::size_t> PermutationD;
+        PermutationD reverse_rows;                // order of rows is completely reversed
+        reverse_rows.setIdentity(G2.rows());      // start with null permutation
+        for (std::size_t i = 0; i < (G2.rows() / 2); ++i) {
+            reverse_rows.applyTranspositionOnTheRight(i, (G2.rows()-1) - i);
+        }
+        // permute columns of the full matrix according to LU result
+        Gnew = Gprime * G2_LU.permutationQ();
+        // insert already-permuted rows that came from LU, but in reverse order
+        Gnew.block(k, 0, Gprime.rows() - k, Gprime.cols()) =
+            reverse_rows * G2_U;
+
+        // Step 4: "Carry out the same row operations in the B matrix"
+        // Note: not necessary to do it for C, because all coefficients are zero in those rows
+        MatrixD G2_L = G2_LU.matrixLU().leftCols(G2.rows()).template triangularView<UnitLower>();
+
+        Bnew = Bprime;
+        Bnew.block(k, 0, Bnew.rows() - k, Bnew.cols()) =
+            reverse_rows * G2_L.inverse() * G2_LU.permutationP() * Bprime.bottomRows(Bprime.rows() - k);
+
+        // Step 5: "Interchange the columns in the G, C, and D matrices... such that G22 is non-singular"
+        // This comes down to applying both the column permutation from the LU decomposition of G2
+        // and the column permutation that moves the resulting zeros into position in G22
+        PermutationD exchange_columns;
+        exchange_columns.setIdentity(G2.cols());
+        for (std::size_t i = 0; i < (G2.cols() - k); ++i) {
+            exchange_columns.applyTranspositionOnTheRight(i, (G2.cols()-1) - i);
+        }
+        Gnew = Gnew * exchange_columns;   // already has LU column pivots applied
+
+        Cnew = Cprime * G2_LU.permutationQ() * exchange_columns;
+        Dnew = Dprime * G2_LU.permutationQ() * exchange_columns;
     }
-    // permute columns of the full matrix according to LU result
-    MatrixD Gnew = Gprime * G2_LU.permutationQ();
-    // insert already-permuted rows that came from LU, but in reverse order
-    Gnew.block(k, 0, Gprime.rows() - k, Gprime.cols()) =
-        reverse_rows * G2_U;
-
-    // Step 4: "Carry out the same row operations in the B matrix"
-    // Note: not necessary to do it for C, because all coefficients are zero in those rows
-    MatrixD G2_L = G2_LU.matrixLU().leftCols(G2.rows()).template triangularView<UnitLower>();
-    MatrixD Bnew = Bprime;
-    Bnew.block(k, 0, Bnew.rows() - k, Bnew.cols()) =
-        reverse_rows * G2_L.inverse() * G2_LU.permutationP() * Bprime.bottomRows(Bprime.rows() - k);
-
-    // Step 5: "Interchange the columns in the G, C, and D matrices... such that G22 is non-singular"
-    // This comes down to applying both the column permutation from the LU decomposition of G2
-    // and the column permutation that moves the resulting zeros into position in G22
-    PermutationD exchange_columns;
-    exchange_columns.setIdentity(G2.cols());
-    for (std::size_t i = 0; i < (G2.cols() - k); ++i) {
-        exchange_columns.applyTranspositionOnTheRight(i, (G2.cols()-1) - i);
-    }
-    Gnew = Gnew * exchange_columns;   // already has LU column pivots applied
-    MatrixD Cnew = Cprime * G2_LU.permutationQ() * exchange_columns;
-    Matrix<Float, ocount, Dynamic> Dnew = Dprime * G2_LU.permutationQ() * exchange_columns;
 
     // Step 6: compute reduced matrices using equations given in paper
     MatrixD G11 = Gnew.topLeftCorner(k, k);
@@ -256,28 +279,30 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     MatrixD G22 = Gnew.bottomRightCorner(Gnew.rows() - k, Gnew.rows() - k);
     MatrixD C11 = Cnew.topLeftCorner(k, k);
     MatrixD C12 = Cnew.topRightCorner(k, Cnew.rows() - k);
-    MatrixD B1  = Bnew.topRows(k);
-    MatrixD B2  = Bnew.bottomRows(Bnew.rows() - k);
-    MatrixD D1  = Dnew.leftCols(k);
-    MatrixD D2  = Dnew.rightCols(Dnew.cols() - k);
+    MatrixD B01 = Bnew.topRows(k);
+    MatrixD B02 = Bnew.bottomRows(Bnew.rows() - k);
+    MatrixD D01 = Dnew.leftCols(k);
+    MatrixD D02 = Dnew.rightCols(Dnew.cols() - k);
 
     assert(!isSingular(G22));
     auto    G22_LU = G22.fullPivLu();
 
     MatrixD Gfinal  = G11 - G12 * G22_LU.solve(G21);
     MatrixD Cfinal  = C11 - C12 * G22_LU.solve(G21);
-    MatrixD Bfinal  = B1  - G12 * G22_LU.solve(B2);
-    MatrixD Bfinal2 =     - C12 * G22_LU.solve(B2);
-    MatrixD Dfinal  = D1  - D2  * G22_LU.solve(G21);
+    MatrixD B1      = B01 - G12 * G22_LU.solve(B02);
+    MatrixD B2      =     - C12 * G22_LU.solve(B02);
+    MatrixD Dfinal  = D01 - D02 * G22_LU.solve(G21);
 
-    MatrixD Efinal  = D2 * G22_LU.solve(B2);
+    MatrixD Efinal  = D02 * G22_LU.solve(B02);
 
-    // Checks
-    assert(Efinal.isZero());         // assuming no feedthrough
-    assert(!isSingular(Cfinal));     // assuming one pass is enough
+    if (isSingular(Cfinal)) {
+        MatrixD Dft = Dfinal.transpose();
+        return regularize_natarajan(Gfinal, Cfinal, B1, Dft);
+    }
 
-    return std::make_tuple(Gfinal, Cfinal, Bfinal,
-                           Dfinal.transpose());  // for PRIMA compatibility
+    return std::make_tuple(Gfinal, Cfinal, B1, B2,
+                           Dfinal.transpose(),  // for PRIMA compatibility
+                           Efinal);
 
 }
 
