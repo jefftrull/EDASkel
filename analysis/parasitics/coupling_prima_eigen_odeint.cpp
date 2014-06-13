@@ -165,32 +165,28 @@ struct signal_coupling {
 
       // Compare block moments between original and reduced model
       // Prima claims to produce the same moments up to floor(q/N)
-      SparseQR<SparseMatrix<double>, COLAMDOrdering<int> > G_QR(G);
-      assert(G_QR.info() == Success);
-      // warning: in Pre-Eigen-3.2 debug builds this triggers an assertion failure due to an Eigen bug
-      // see https://forum.kde.org/viewtopic.php?f=74&t=117474
-      SparseMatrix<double> R = G_QR.solve(B);
-      assert(G_QR.info() == Success);
-      SparseMatrix<double> A = G_QR.solve(C);
+      auto moments_orig    = moments(Matrix<double, 15, 15>(G), Matrix<double, 15, 15>(C),
+                                     Matrix<double, 15, N>(B), Matrix<double, 15, N>(L), q/N);
+      auto moments_reduced = moments(Gprime, Cprime, Bprime, Lprime, q/N);
 
-      auto GprimeQR = Gprime.fullPivHouseholderQr();
-      Matrix<double, q, q> Aprime = GprimeQR.solve(Cprime);
-      Matrix<double, q, N> Rprime = GprimeQR.solve(Bprime);
-      SparseMatrix<double> AtotheI(15, 15); AtotheI.setIdentity();
-
-      Matrix<double, q, q> AprimetotheI = Matrix<double, q, q>::Identity();
       for (size_t i = 0; i < (q/N); ++i) {
         std::cerr << "moment " << i << " of original model is:" << std::endl;
-        std::cerr << L.transpose() * AtotheI * R << std::endl;
+        std::cerr << moments_orig[i] << std::endl;
         std::cerr << "moment " << i << " of reduced model is:" << std::endl;
-        std::cerr << Lprime.transpose() * AprimetotheI * Rprime << std::endl;
-        AtotheI = A * AtotheI;
-        AprimetotheI = Aprime * AprimetotheI;
+        std::cerr << moments_reduced[i] << std::endl;
       }
       
       // Also compare eigenvalues, which are evidently the reciprocals of the poles
       // They are not guaranteed to be the same but should be "similar" (?)
+      SparseQR<SparseMatrix<double>, COLAMDOrdering<int> > G_QR(G);
+      assert(G_QR.info() == Success);
+      // warning: in Pre-Eigen-3.2 debug builds this triggers an assertion failure due to an Eigen bug
+      // see https://forum.kde.org/viewtopic.php?f=74&t=117474
+      SparseMatrix<double> A = G_QR.solve(C);
+      assert(G_QR.info() == Success);
       std::cerr << "eigenvalues of original model are:\n" << EigenSolver<MatrixXd>(A).eigenvalues() << std::endl;
+      auto GprimeQR = Gprime.fullPivHouseholderQr();
+      Matrix<double, q, q> Aprime = GprimeQR.solve(Cprime);
       std::cerr << "eigenvalues of reduced model are:\n" << EigenSolver<decltype(Aprime)>(Aprime).eigenvalues() << std::endl;
 
       // PRIMA done.  Next step: Construct "Direct Stamp" reduced realization

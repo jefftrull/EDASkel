@@ -97,6 +97,31 @@ bool isSingular(const M& m) {
            (eigenvalues.array().imag() == 0.0)).any();
 }
 
+// Calculate moments of given system in MNA form
+template<int icount, int ocount, int scount, typename Float = double>
+std::vector<Matrix<Float, ocount, icount>>
+moments(Matrix<Float, scount, scount> const & G,
+        Matrix<Float, scount, scount> const & C,
+        Matrix<Float, scount, icount> const & B,
+        Matrix<Float, scount, ocount> const & L,
+        size_t count) {
+    std::vector<Matrix<Float, ocount, icount>> result;
+
+    using namespace EDASkel::analysis::mna;
+    assert(!isSingular(G));
+    auto G_QR = G.fullPivHouseholderQr();
+    Matrix<Float, scount, scount> A = -G_QR.solve(C);
+    Matrix<Float, scount, scount> AtotheI = Matrix<Float, scount, scount>::Identity(A.rows(), A.cols());
+    Matrix<Float, scount, icount> R = G_QR.solve(B);
+
+    for (size_t i = 0; i < count; ++i) {
+        result.push_back(L.transpose() * AtotheI * R);
+        AtotheI = A * AtotheI;
+    }
+
+    return result;
+}
+
 // take a circuit's linear system description in G, C, B, L form and compress it so
 // the resulting C array is non-singular.  Operation depends on runtime data, so
 // output array dimensions are "Dynamic"
