@@ -239,8 +239,9 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     auto P = lu.permutationP();
     auto Q = lu.permutationQ();
 
-    MatrixD Gprime = L.inverse() * P * G * Q;           // rows and columns
-    auto Bprime = L.inverse() * P * B;                  // rows only
+    assert(!isSingular(L));
+    MatrixD Gprime = L.fullPivLu().solve(P * G * Q);    // rows and columns
+    MatrixD Bprime = L.fullPivLu().solve(P * B);        // rows only
 
     // The D input is like L in PRIMA but this algorithm uses the transpose
     auto Dprime = D.transpose() * Q;                    // columns only
@@ -287,7 +288,7 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
         MatrixD G2R_L = G2R_LU.matrixLU().leftCols(G2R.rows()).template triangularView<UnitLower>();
         Bnew = Bprime;
         Bnew.block(k, 0, Bnew.rows() - k, Bnew.cols()) =
-            reverse_rows.transpose() * G2R_L.inverse() * G2R_LU.permutationP() * B2R;
+            reverse_rows.transpose() * G2R_L.fullPivLu().solve(G2R_LU.permutationP() * B2R);
 
         // Step 5: "Interchange the columns in the G, C, and D matrices... such that G22 is non-singular"
         // Since we have done a full pivot factorization of G2 I assume G22 is already non-singular,
