@@ -42,12 +42,11 @@ BOOST_AUTO_TEST_CASE( RC_3x3 ) {
     D << 0,  1,  0;             // end of trace is output
 
     Matrix<double, Dynamic, Dynamic> Greg, Creg;
-    Matrix<double, Dynamic, 1> Breg, B2reg, Dreg;
+    Matrix<double, Dynamic, 1> Breg, Dreg;
     Matrix<double, 1, 1> E;
-    std::tie(Greg, Creg, Breg, B2reg, Dreg, E) = regularize_natarajan(G, C, B, D);
+    std::tie(Greg, Creg, Breg, Dreg, E) = regularize_natarajan(G, C, B, D);
 
     BOOST_CHECK( !isSingular(Creg) );
-    BOOST_CHECK( B2reg.isZero() );
 
     typedef std::vector<Matrix<double, 1, 1> > moments_t;
     moments_t moments_nr = moments(Greg, Creg, Breg, Dreg, 5);
@@ -104,16 +103,13 @@ BOOST_AUTO_TEST_CASE( Sallen_Key_Filter ) {
     D << 0,  0,  0,  0,  1,  0,  0;
 
     Matrix<double, Dynamic, Dynamic> Greg, Creg;
-    Matrix<double, Dynamic, 1> Breg, Dreg, B2reg;
+    Matrix<double, Dynamic, 1> Breg, Dreg;
     Matrix<double, 1, 1> E;
-    std::tie(Greg, Creg, Breg, B2reg, Dreg, E) = regularize_natarajan(G, C, B, D);
+    std::tie(Greg, Creg, Breg, Dreg, E) = regularize_natarajan(G, C, B, D);
 
-    // Use Chen (TCAD July 2012) "variable transform" to eliminate input derivative term (B1)
-    Matrix<double, Dynamic, 1> Breg_xform = Breg - Greg * Creg.inverse() * B2reg;
-    Matrix<double, 1, 1> feedthrough = Dreg.transpose() * Creg.inverse() * B2reg;   // input -> output
-    BOOST_CHECK( feedthrough.isZero() );
+    BOOST_CHECK( E.isZero() );  // no feedthrough
 
-    std::vector<Matrix<double, 1, 1> > moments_nr = moments(Greg, Creg, Breg_xform, Dreg, 5);
+    std::vector<Matrix<double, 1, 1> > moments_nr = moments(Greg, Creg, Breg, Dreg, 5);
 
     // Now calculate Natarajan manual calculated results described in the paper
     // Begin after step (b) is complete (last complete intermediate step shown)

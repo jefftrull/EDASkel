@@ -202,8 +202,7 @@ regularize_su(Matrix<Float, scount, scount> const & G,
 template<int icount, int ocount, int scount, typename Float = double>
 std::tuple<Matrix<Float, Dynamic, Dynamic>,   // G result
            Matrix<Float, Dynamic, Dynamic>,   // C result
-           Matrix<Float, Dynamic, icount>,    // B1 result
-           Matrix<Float, Dynamic, icount>,    // B2 result (coeff of derivative)
+           Matrix<Float, Dynamic, icount>,    // B result
            Matrix<Float, Dynamic, ocount>,    // D result
            Matrix<Float, ocount, icount> >    // E result (feedthrough)
 regularize_natarajan(Matrix<Float, scount, scount> const & G,
@@ -221,11 +220,8 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     auto k = lu.rank();
     if (k == C.rows()) {
         // C is already non-singular
-        Matrix<Float, Dynamic, icount> B2 = Matrix<Float, Dynamic, icount>::Zero(B.rows(), B.cols());
         Matrix<Float, ocount, icount>   E = Matrix<Float, ocount, icount>::Zero();
-        return std::make_tuple(G, C,
-                               B, B2,
-                               D, E);
+        return std::make_tuple(G, C, B, D, E);
     }
 
     MatrixD U = lu.matrixLU().template triangularView<Upper>();
@@ -318,14 +314,21 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     MatrixD B2      =     - C12 * G22_LU.solve(B02);
     MatrixD Dfinal  = D01 - D02 * G22_LU.solve(G21);
 
-    MatrixD Efinal  = D02 * G22_LU.solve(B02);
+    Matrix<double, ocount, icount> E1
+                    =       D02 * G22_LU.solve(B02);
 
     assert(!isSingular(Cfinal));   // not iterating yet b/c we need to combine results
 
-    return std::make_tuple(Gfinal, Cfinal, B1, B2,
-                           Dfinal.transpose(),  // for PRIMA compatibility
-                           Efinal);
+    // Now apply a transformation suggested by Chen (TCAD July 2012) to eliminate
+    // the input derivative term (B1)
+    auto CfinalQR = Cfinal.fullPivHouseholderQr();
+    Matrix<double, Dynamic, icount> Bfinal      = B1 - Gfinal * CfinalQR.solve(B2);
+    // This change of variable creates an additional feedthrough term
+    Matrix<double, ocount, icount>  feedthrough =      Dfinal * CfinalQR.solve(B2);
 
+    return std::make_tuple(Gfinal, Cfinal, Bfinal,
+                           Dfinal.transpose(),  // for PRIMA compatibility
+                           E1 + feedthrough);
 }
 
 
