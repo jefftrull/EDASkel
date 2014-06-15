@@ -165,9 +165,14 @@ struct signal_coupling {
 
       // Compare block moments between original and reduced model
       // Prima claims to produce the same moments up to floor(q/N)
+      Matrix<double, N, N> Ezero = Matrix<double, N, N>::Zero();  // no feedthrough
+      // TODO: understand why we cannot directly call moments with Matrix<double, N, N>::Zero()
+      // Eigen issue?
       auto moments_orig    = moments(Matrix<double, 15, 15>(G), Matrix<double, 15, 15>(C),
-                                     Matrix<double, 15, N>(B), Matrix<double, 15, N>(L), q/N);
-      auto moments_reduced = moments(Gprime, Cprime, Bprime, Lprime, q/N);
+                                     Matrix<double, 15, N>(B), Matrix<double, 15, N>(L),
+                                     Ezero, q/N);
+      auto moments_reduced = moments(Gprime, Cprime, Bprime, Lprime,
+                                     Ezero, q/N);
 
       for (size_t i = 0; i < (q/N); ++i) {
         std::cerr << "moment " << i << " of original model is:" << std::endl;

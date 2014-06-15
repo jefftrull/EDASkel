@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE( RC_3x3 ) {
     BOOST_CHECK( !isSingular(Creg) );
 
     typedef std::vector<Matrix<double, 1, 1> > moments_t;
-    moments_t moments_nr = moments(Greg, Creg, Breg, Dreg, 5);
+    moments_t moments_nr = moments(Greg, Creg, Breg, Dreg, E, 5);
 
     // A single RC is simple enough to calculate moments by hand
     // They are (-RC)^i for i=0, 1, 2...
@@ -66,7 +66,8 @@ BOOST_AUTO_TEST_CASE( RC_3x3 ) {
 
     BOOST_CHECK( !isSingular(Creg_su) );
 
-    moments_t moments_su = moments(Greg_su, Creg_su, Breg_su, Dreg_su, 5);
+    Matrix<double, 1, 1> Ezero = Matrix<double, 1, 1>::Zero();
+    moments_t moments_su = moments(Greg_su, Creg_su, Breg_su, Dreg_su, Ezero, 5);
 
     BOOST_CHECK_CLOSE_FRACTION(      1, moments_su[0](0, 0), 0.001 );
     BOOST_CHECK_CLOSE_FRACTION( -1e-10, moments_su[1](0, 0), 0.001 );
@@ -109,7 +110,7 @@ BOOST_AUTO_TEST_CASE( Sallen_Key_Filter ) {
 
     BOOST_CHECK( E.isZero() );  // no feedthrough
 
-    std::vector<Matrix<double, 1, 1> > moments_nr = moments(Greg, Creg, Breg, Dreg, 5);
+    std::vector<Matrix<double, 1, 1> > moments_nr = moments(Greg, Creg, Breg, Dreg, E, 5);
 
     // Now calculate Natarajan manual calculated results described in the paper
     // Begin after step (b) is complete (last complete intermediate step shown)
@@ -172,7 +173,8 @@ BOOST_AUTO_TEST_CASE( Sallen_Key_Filter ) {
     // Do Chen variable substitution
     Matrix<double, 3, 1>       Br = B1  - G1 * C1.inverse() * B2;
     Matrix<double, 3, 1>       D1 = (D01 - D02 * G22_LU.solve(G21)).transpose();
-    std::vector<Matrix<double, 1, 1> > moments_manual = moments(G1, C1, Br, D1, 5);
+    Matrix<double, 1, 1>    Ezero = Matrix<double, 1, 1>::Zero();
+    std::vector<Matrix<double, 1, 1> > moments_manual = moments(G1, C1, Br, D1, Ezero, 5);
 
     // Perform comparisons
     BOOST_CHECK_SMALL( moments_nr[0](0, 0), 1e-10 );   // these first two are theoretically 0

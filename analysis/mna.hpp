@@ -104,6 +104,7 @@ moments(Matrix<Float, scount, scount> const & G,
         Matrix<Float, scount, scount> const & C,
         Matrix<Float, scount, icount> const & B,
         Matrix<Float, scount, ocount> const & L,
+        Matrix<Float, ocount, icount> const & E,
         size_t count) {
     std::vector<Matrix<Float, ocount, icount>> result;
 
@@ -111,10 +112,11 @@ moments(Matrix<Float, scount, scount> const & G,
     assert(!isSingular(G));
     auto G_QR = G.fullPivHouseholderQr();
     Matrix<Float, scount, scount> A = -G_QR.solve(C);
-    Matrix<Float, scount, scount> AtotheI = Matrix<Float, scount, scount>::Identity(A.rows(), A.cols());
     Matrix<Float, scount, icount> R = G_QR.solve(B);
 
-    for (size_t i = 0; i < count; ++i) {
+    result.push_back(L.transpose() * R + E);   // incorporate feedthrough into first moment
+    Matrix<Float, scount, scount> AtotheI = A;
+    for (size_t i = 1; i < count; ++i) {
         result.push_back(L.transpose() * AtotheI * R);
         AtotheI = A * AtotheI;
     }
