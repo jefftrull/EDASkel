@@ -184,3 +184,98 @@ BOOST_AUTO_TEST_CASE( Sallen_Key_Filter ) {
     BOOST_CHECK_CLOSE_FRACTION( moments_manual[4](0, 0), moments_nr[4](0, 0), 1e-10 );
 
 }
+
+BOOST_AUTO_TEST_CASE( Passive_Network ) {
+    using namespace EDASkel::analysis::mna;
+
+    const size_t statecnt = 7;
+    Matrix<double, statecnt, statecnt> G, C;
+    G << 0.5, -0.5,  0,    0,    0,   1,  0,
+        -0.5,  0.5,  0,    0,    0,   0,  0,
+         0,    0,    0.25, 0,    0,   0,  0,
+         0,    0,    0,    0.2, -0.2, 0,  0,
+         0,    0,    0,   -0.2,  0.2, 0,  1,
+         1,    0,    0,    0,    0,   0,  0,
+         0,    0,    0,    0,    1,   0,  0;
+
+    C << 0,  0,  0,  0,  0,  0,  0,
+         0,  3, -2, -1,  0,  0,  0,
+         0, -2,  6, -4,  0,  0,  0,
+         0, -1, -4,  5,  0,  0,  0,
+         0,  0,  0,  0,  0,  0,  0,
+         0,  0,  0,  0,  0,  0,  0,
+         0,  0,  0,  0,  0,  0, -5;
+
+    Matrix<double, statecnt, 1> B;
+    B << 0,  0,  0,  0,  0,  1,  0;
+    Matrix<double, statecnt, 2> D;
+    D << 0,  0,
+         0,  1,
+         0,  0,
+         0, -1,
+         1,  0,
+         0,  0,
+         0,  0;
+
+    Matrix<double, Dynamic, Dynamic> Greg, Creg;
+    Matrix<double, Dynamic, 1> Breg;
+    Matrix<double, Dynamic, 2> Lreg;
+    Matrix<double, 2, 1> E;
+    std::tie(Greg, Creg, Breg, Lreg, E) = regularize_natarajan(G, C, B, D);
+    std::vector<Matrix<double, 2, 1> > moments_nr = moments(Greg, Creg, Breg, Lreg, E, 2);
+
+    // values from the paper
+    Matrix<double, 3, 3> Aexpected;   // -C^-1 * G
+    Aexpected <<
+        -0.267, -0.500, -0.292,
+        -0.267, -0.714, -0.327,
+        -0.267, -0.571, -0.345 ;      // <<< error in paper! not .245...
+    Matrix<double, 3, 1> Bexpected;   //  C^-1 * B1
+    Bexpected << 0.5, 0.714, 0.571;
+    Matrix<double, 3, 1> B1expected;  //  C^-1 * B2
+    B1expected << 0.667, 0.667, 0.667;
+    Matrix<double, 2, 3> Dexpected;
+    Dexpected <<
+         1, 2.5, 1.25,
+        -1, 1,   0;
+    Matrix<double, 2, 1> Eexpected;
+    Eexpected << -2.5, 0;
+
+    // These results are of the form dX/dt = A*X + B*u + B1*du/dt
+    // To get moments, use Y = D*X + E, then take Laplace transform
+    // I get H(s) = D * (B + sB1) / (sI - A) + E
+    // H(0)  = -D * A^-1 * B + E
+    Matrix<double, Dynamic, 1> Rexpected = Aexpected.fullPivHouseholderQr().solve(Bexpected);
+    Matrix<double, 2, 1> moment_expected0 = -Dexpected * Rexpected + Eexpected;
+    BOOST_CHECK_SMALL( moment_expected0(0, 0), 1e-10 );
+
+    // H'(0) = -D * A^-2 * (B + A * B1)
+    Matrix<double, 2, 1> moment_expected1 = -Dexpected *
+        Aexpected.fullPivHouseholderQr().solve(
+            Aexpected.fullPivHouseholderQr().solve(Bexpected + Aexpected * B1expected));
+
+    // and if we needed to do additional ones:
+    // H''(0) = 2 * D * A^-3 * (B + A * B1)
+    // M2 = H''(0) / (2!)
+    // etc.
+
+    // Check vs. values from paper.  Using a fairly loose tolerance b/c paper only gives 3 digits of precision
+    BOOST_CHECK_SMALL( moments_nr[0](0, 0), 1e-10 );
+    BOOST_CHECK_CLOSE_FRACTION( moment_expected0(1, 0), moments_nr[0](1, 0), 0.01 );
+    BOOST_CHECK_SMALL( moments_nr[1](0, 0), 1e-10 );
+    BOOST_CHECK_CLOSE_FRACTION( moment_expected1(1, 0), moments_nr[1](1, 0), 0.01 );
+
+    // do the same for Su
+    Matrix<double, Dynamic, Dynamic> Greg_su, Creg_su;
+    Matrix<double, Dynamic, 1> Breg_su;
+    Matrix<double, Dynamic, 2> Lreg_su;
+    Matrix<double, 2, 1> Ezero = Matrix<double, 2, 1>::Zero();
+    std::tie(Greg_su, Creg_su, Breg_su, Lreg_su) = regularize_su(G, C, B, D);
+    std::vector<Matrix<double, 2, 1> > moments_su = moments(Greg_su, Creg_su, Breg_su, Lreg_su, Ezero, 2);
+
+    BOOST_CHECK_SMALL( moments_su[0](0, 0), 1e-10 );
+    BOOST_CHECK_CLOSE_FRACTION( moment_expected0(1, 0), moments_su[0](1, 0), 0.01 );
+    BOOST_CHECK_SMALL( moments_su[1](0, 0), 1e-10 );
+    BOOST_CHECK_CLOSE_FRACTION( moment_expected1(1, 0), moments_su[1](1, 0), 0.01 );
+
+}
