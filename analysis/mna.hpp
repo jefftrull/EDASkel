@@ -89,12 +89,14 @@ void stamp_i(typename std::vector<Eigen::Triplet<Float> >& tlist,
 
 template<class M>
 bool isSingular(const M& m) {
-   // A singular matrix has at least one zero eigenvalue
-   // Use the magic of Eigen reductions to implement:
-   using namespace Eigen;
-   auto eigenvalues = EigenSolver<M>(m).eigenvalues();
-   return ((eigenvalues.array().real() == 0.0) &&
-           (eigenvalues.array().imag() == 0.0)).any();
+   // A singular matrix has at least one zero eigenvalue -
+   // in theory, at least... but due to machine precision we can have "nearly singular"
+   // matrices that misbehave.  Comparing rank instead is safer because it uses thresholds
+   // for near-zero values.
+
+   assert(m.rows() == m.cols());   // singularity has no meaning for a non-square matrix
+   return (m.fullPivLu().rank() != m.rows());
+
 }
 
 // Calculate moments of given system in MNA form
