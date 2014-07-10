@@ -317,7 +317,8 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     Matrix<double, Dynamic, icount> B1
                     = B01 - G12 * G22_LU.solve(B02);
     MatrixD B2      =     - C12 * G22_LU.solve(B02);
-    MatrixD Dfinal  = D01 - D02 * G22_LU.solve(G21);
+    Matrix<double, ocount, Dynamic> Dfinal
+                   = D01 - D02 * G22_LU.solve(G21);
 
     Matrix<double, ocount, icount> E1
                     =       D02 * G22_LU.solve(B02);
