@@ -314,13 +314,14 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
 
     MatrixD Gfinal  = G11 - G12 * G22_LU.solve(G21);
     MatrixD Cfinal  = C11 - C12 * G22_LU.solve(G21);
-    Matrix<double, Dynamic, icount> B1
+    Matrix<Float, Dynamic, icount> B1
                     = B01 - G12 * G22_LU.solve(B02);
-    MatrixD B2      =     - C12 * G22_LU.solve(B02);
-    Matrix<double, ocount, Dynamic> Dfinal
+    Matrix<Float, Dynamic, icount> B2
+                    =     - C12 * G22_LU.solve(B02);
+    Matrix<Float, ocount, Dynamic> Dfinal
                    = D01 - D02 * G22_LU.solve(G21);
 
-    Matrix<double, ocount, icount> E1
+    Matrix<Float, ocount, icount> E1
                     =       D02 * G22_LU.solve(B02);
 
     assert(!isSingular(Cfinal));   // not iterating yet b/c we need to combine results
@@ -328,9 +329,9 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     // Now apply a transformation suggested by Chen (TCAD July 2012) to eliminate
     // the input derivative term (B2)
     auto CfinalQR = Cfinal.fullPivHouseholderQr();
-    Matrix<double, Dynamic, icount> Bfinal      = B1 - Gfinal * CfinalQR.solve(B2);
+    Matrix<Float, Dynamic, icount> Bfinal      = B1 - Gfinal * CfinalQR.solve(B2);
     // This change of variable creates an additional feedthrough term
-    Matrix<double, ocount, icount>  feedthrough =      Dfinal * CfinalQR.solve(B2);
+    Matrix<Float, ocount, icount>  feedthrough =      Dfinal * CfinalQR.solve(B2);
 
     return std::make_tuple(Gfinal, Cfinal, Bfinal,
                            Dfinal.transpose(),  // for PRIMA compatibility
