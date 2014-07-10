@@ -240,11 +240,11 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     auto Q = lu.permutationQ();
 
     assert(!isSingular(L));
-    MatrixD Gprime = L.fullPivLu().solve(P * G * Q);    // rows and columns
-    MatrixD Bprime = L.fullPivLu().solve(P * B);        // rows only
+    MatrixD Gprime = L.fullPivLu().solve(P * G * Q);                   // rows and columns
+    Matrix<Float, scount, icount> Bprime = L.fullPivLu().solve(P * B); // rows only
 
     // The D input is like L in PRIMA but this algorithm uses the transpose
-    auto Dprime = D.transpose() * Q;                    // columns only
+    Matrix<Float, ocount, scount> Dprime = D.transpose() * Q;          // columns only
 
     // Step 3: "Convert [G21 G22] matrix into row echelon form starting from the last row"
     MatrixD Cnew, Gnew, Bnew, Dnew;
@@ -314,7 +314,8 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
 
     MatrixD Gfinal  = G11 - G12 * G22_LU.solve(G21);
     MatrixD Cfinal  = C11 - C12 * G22_LU.solve(G21);
-    MatrixD B1      = B01 - G12 * G22_LU.solve(B02);
+    Matrix<double, Dynamic, icount> B1
+                    = B01 - G12 * G22_LU.solve(B02);
     MatrixD B2      =     - C12 * G22_LU.solve(B02);
     MatrixD Dfinal  = D01 - D02 * G22_LU.solve(G21);
 
@@ -324,7 +325,7 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     assert(!isSingular(Cfinal));   // not iterating yet b/c we need to combine results
 
     // Now apply a transformation suggested by Chen (TCAD July 2012) to eliminate
-    // the input derivative term (B1)
+    // the input derivative term (B2)
     auto CfinalQR = Cfinal.fullPivHouseholderQr();
     Matrix<double, Dynamic, icount> Bfinal      = B1 - Gfinal * CfinalQR.solve(B2);
     // This change of variable creates an additional feedthrough term
