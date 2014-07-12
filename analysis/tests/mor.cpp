@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE( RC_3x3 ) {
 
     BOOST_CHECK( !isSingular(Creg) );
 
-    typedef std::vector<Matrix<double, 1, 1> > moments_t;
+    typedef MatrixVector<double, 1, 1> moments_t;
     moments_t moments_nr = moments(Greg, Creg, Breg, Dreg, E, 5);
 
     // A single RC is simple enough to calculate moments by hand
@@ -110,7 +110,7 @@ BOOST_AUTO_TEST_CASE( Sallen_Key_Filter ) {
 
     BOOST_CHECK( E.isZero() );  // no feedthrough
 
-    std::vector<Matrix<double, 1, 1> > moments_nr = moments(Greg, Creg, Breg, Dreg, E, 5);
+    MatrixVector<double, 1, 1> moments_nr = moments(Greg, Creg, Breg, Dreg, E, 5);
 
     // Now calculate Natarajan manual calculated results described in the paper
     // Begin after step (b) is complete (last complete intermediate step shown)
@@ -174,7 +174,7 @@ BOOST_AUTO_TEST_CASE( Sallen_Key_Filter ) {
     Matrix<double, 3, 1>       Br = B1  - G1 * C1.inverse() * B2;
     Matrix<double, 3, 1>       D1 = (D01 - D02 * G22_LU.solve(G21)).transpose();
     Matrix<double, 1, 1>    Ezero = Matrix<double, 1, 1>::Zero();
-    std::vector<Matrix<double, 1, 1> > moments_manual = moments(G1, C1, Br, D1, Ezero, 5);
+    MatrixVector<double, 1, 1> moments_manual = moments(G1, C1, Br, D1, Ezero, 5);
 
     // Perform comparisons
     BOOST_CHECK_SMALL( moments_nr[0](0, 0), 1e-10 );   // these first two are theoretically 0
@@ -222,7 +222,7 @@ BOOST_AUTO_TEST_CASE( Passive_Network ) {
     Matrix<double, Dynamic, 2> Lreg;
     Matrix<double, 2, 1> E;
     std::tie(Greg, Creg, Breg, Lreg, E) = regularize_natarajan(G, C, B, D);
-    std::vector<Matrix<double, 2, 1> > moments_nr = moments(Greg, Creg, Breg, Lreg, E, 2);
+    MatrixVector<double, 2, 1> moments_nr = moments(Greg, Creg, Breg, Lreg, E, 2);
 
     // values from the paper
     Matrix<double, 3, 3> Aexpected;   // -C^-1 * G
@@ -271,7 +271,7 @@ BOOST_AUTO_TEST_CASE( Passive_Network ) {
     Matrix<double, Dynamic, 2> Lreg_su;
     Matrix<double, 2, 1> Ezero = Matrix<double, 2, 1>::Zero();
     std::tie(Greg_su, Creg_su, Breg_su, Lreg_su) = regularize_su(G, C, B, D);
-    std::vector<Matrix<double, 2, 1> > moments_su = moments(Greg_su, Creg_su, Breg_su, Lreg_su, Ezero, 2);
+    MatrixVector<double, 2, 1> moments_su = moments(Greg_su, Creg_su, Breg_su, Lreg_su, Ezero, 2);
 
     BOOST_CHECK_SMALL( moments_su[0](0, 0), 1e-10 );
     BOOST_CHECK_CLOSE_FRACTION( moment_expected0(1, 0), moments_su[0](1, 0), 0.01 );

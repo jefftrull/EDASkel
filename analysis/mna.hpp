@@ -18,6 +18,8 @@
 #ifndef EDASKEL_ANALYSIS_MNA_HPP
 #define EDASKEL_ANALYSIS_MNA_HPP
 
+#include <Eigen/StdVector>
+
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
@@ -99,16 +101,21 @@ bool isSingular(const M& m) {
 
 }
 
+// Convience template for using Eigen's special allocator with vectors
+template<typename Float, int nrows, int ncols>
+using MatrixVector = std::vector<Matrix<Float, nrows, ncols>,
+                                 Eigen::aligned_allocator<Matrix<Float, nrows, ncols> > >;
+
 // Calculate moments of given system in MNA form
 template<int icount, int ocount, int scount, typename Float = double>
-std::vector<Matrix<Float, ocount, icount>>
+MatrixVector<Float, ocount, icount>
 moments(Matrix<Float, scount, scount> const & G,
         Matrix<Float, scount, scount> const & C,
         Matrix<Float, scount, icount> const & B,
         Matrix<Float, scount, ocount> const & L,
         Matrix<Float, ocount, icount> const & E,
         size_t count) {
-    std::vector<Matrix<Float, ocount, icount>> result;
+    MatrixVector<Float, ocount, icount> result;
 
     using namespace EDASkel::analysis::mna;
     assert(!isSingular(G));
