@@ -210,6 +210,13 @@ regularize_su(Matrix<Float, scount, scount> const & G,
    return std::make_tuple(Gred, Cred, Bred, Lred);
 }
 
+namespace detail {
+
+// Implementation of Natarajan regularization
+// Each iteration of this process can produce an input derivative term that we subsequently
+// absorb into the state variable once the process is complete.  This means potentially
+// a series of input derivative coefficients (B's).  We hide that from the users by delegating here:
+
 template<int icount, int ocount, int scount, typename Float = double>
 std::tuple<Matrix<Float, Dynamic, Dynamic>,   // G result
            Matrix<Float, Dynamic, Dynamic>,   // C result
@@ -218,7 +225,7 @@ std::tuple<Matrix<Float, Dynamic, Dynamic>,   // G result
            Matrix<Float, ocount, icount> >    // E result (feedthrough)
 regularize_natarajan(Matrix<Float, scount, scount> const & G,
            Matrix<Float, scount, scount> const & C,
-           Matrix<Float, scount, icount> const & B,
+           MatrixVector<Float, scount, icount> const & B, // in decreasing order of derived-ness
            Matrix<Float, scount, ocount> const & D) {
 
     // Implements the algorithm in [Natarajan]
@@ -232,7 +239,7 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     if (k == C.rows()) {
         // C is already non-singular
         Matrix<Float, ocount, icount>   E = Matrix<Float, ocount, icount>::Zero();
-        return std::make_tuple(G, C, B, D, E);
+        return std::make_tuple(G, C, B.back(), D, E);
     }
 
     MatrixD U = lu.matrixLU().template triangularView<Upper>();
@@ -248,13 +255,18 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
 
     assert(!isSingular(L));
     MatrixD Gprime = L.fullPivLu().solve(P * G * Q);                   // rows and columns
-    Matrix<Float, scount, icount> Bprime = L.fullPivLu().solve(P * B); // rows only
+    MatrixVector<Float, scount, icount> Bprime;
+    std::transform(B.begin(), B.end(), std::back_inserter(Bprime),
+                   [L, P](Matrix<Float, scount, icount> const& b) -> Matrix<Float, scount, icount> {
+                       return L.fullPivLu().solve(P * b);              // rows only
+                   });
 
     // The D input is like L in PRIMA but this algorithm uses the transpose
     Matrix<Float, ocount, scount> Dprime = D.transpose() * Q;          // columns only
 
     // Step 3: "Convert [G21 G22] matrix into row echelon form starting from the last row"
-    MatrixD Cnew, Gnew, Bnew, Dnew;
+    MatrixD Cnew, Gnew, Dnew;
+    MatrixVector<Float, scount, icount> Bnew;
 
     if (Cprime.rows() == (k+1)) {
         // if G22 is only a single row, there is no point attempting to decompose it
@@ -282,6 +294,7 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
 
         // Step 4: "Carry out the same row operations in the B matrix"
         // Note: not necessary to do it for C, because all coefficients are zero in those rows
+
         // 4.1 reverse the rows in B2
         typedef PermutationMatrix<Dynamic, Dynamic, std::size_t> PermutationD;
         PermutationD reverse_rows;                // order of rows is completely reversed
@@ -289,13 +302,18 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
         for (std::size_t i = 0; i < (G2R.rows() / 2); ++i) {
             reverse_rows.applyTranspositionOnTheRight(i, (G2R.rows()-1) - i);
         }
-        MatrixD B2R = reverse_rows * Bprime.bottomRows(Bprime.rows() - k);
 
         // 4.2 extract and apply L operation from reversed G2
         MatrixD G2R_L = G2R_LU.matrixLU().leftCols(G2R.rows()).template triangularView<UnitLower>();
-        Bnew = Bprime;
-        Bnew.block(k, 0, Bnew.rows() - k, Bnew.cols()) =
-            reverse_rows.transpose() * G2R_L.fullPivLu().solve(G2R_LU.permutationP() * B2R);
+        std::transform(Bprime.begin(), Bprime.end(), std::back_inserter(Bnew),
+                       [reverse_rows, k, G2R_L, G2R_LU]
+                       (Matrix<Float, scount, icount> const& bp) {
+                           MatrixD B2R = reverse_rows * bp.bottomRows(bp.rows() - k);
+                           Matrix<Float, scount, icount> bn = bp;
+                           bn.block(k, 0, bn.rows() - k, bn.cols()) =
+                               reverse_rows.transpose() * G2R_L.fullPivLu().solve(G2R_LU.permutationP() * B2R);
+                           return bn;
+                       });
 
         // Step 5: "Interchange the columns in the G, C, and D matrices... such that G22 is non-singular"
         // Since we have done a full pivot factorization of G2 I assume G22 is already non-singular,
@@ -311,8 +329,6 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     MatrixD G22 = Gnew.bottomRightCorner(Gnew.rows() - k, Gnew.rows() - k);
     MatrixD C11 = Cnew.topLeftCorner(k, k);
     MatrixD C12 = Cnew.topRightCorner(k, Cnew.rows() - k);
-    MatrixD B01 = Bnew.topRows(k);
-    MatrixD B02 = Bnew.bottomRows(Bnew.rows() - k);
     MatrixD D01 = Dnew.leftCols(k);
     MatrixD D02 = Dnew.rightCols(Dnew.cols() - k);
 
@@ -321,28 +337,101 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
 
     MatrixD Gfinal  = G11 - G12 * G22_LU.solve(G21);
     MatrixD Cfinal  = C11 - C12 * G22_LU.solve(G21);
-    Matrix<Float, Dynamic, icount> B1
-                    = B01 - G12 * G22_LU.solve(B02);
-    Matrix<Float, Dynamic, icount> B2
-                    =     - C12 * G22_LU.solve(B02);
     Matrix<Float, ocount, Dynamic> Dfinal
-                   = D01 - D02 * G22_LU.solve(G21);
+                    = D01 - D02 * G22_LU.solve(G21);
 
+    Matrix<Float, Dynamic, icount> B02 = Bnew.back().bottomRows(Bnew.back().rows() - k);
     Matrix<Float, ocount, icount> E1
                     =       D02 * G22_LU.solve(B02);
 
-    assert(!isSingular(Cfinal));   // not iterating yet b/c we need to combine results
+    // reduce the entire series of B's to the new size
+    // Performing the same substitution as in Natarajan beginning with eqn [5]
+    // but with additional input derivatives present.  Adding B11/B12 multiplying a first
+    // derivative of Ws demonstrates that each additional input derivative term contributes:
+    // Bn1 - G12 * G22^-1 * Bn2  to its own term, and
+    //     - C12 * G22^-1 * Bn2  to the derivative n+1 coefficient,
+    // once reduced.
+    MatrixVector<Float, Dynamic, icount> Btrans;
+    // n+1's first (equation 9d)
+    std::transform(Bnew.begin(), Bnew.end(), std::back_inserter(Btrans),
+                   [k, G12, C12, G22_LU](Matrix<Float, scount, icount> const& Bn) {
+                       Matrix<Float, Dynamic, icount> Bn2 = Bn.bottomRows(Bn.rows() - k);
+                       return -C12 * G22_LU.solve(Bn2);
+                   });
+    Btrans.push_back(Matrix<Float, Dynamic, icount>::Zero(k, icount));  // contribution from n-1 is 0 (nonexistent)
 
-    // Now apply a transformation suggested by Chen (TCAD July 2012) to eliminate
-    // the input derivative term (B2)
-    auto CfinalQR = Cfinal.fullPivHouseholderQr();
-    Matrix<Float, Dynamic, icount> Bfinal      = B1 - Gfinal * CfinalQR.solve(B2);
-    // This change of variable creates an additional feedthrough term
-    Matrix<Float, ocount, icount>  feedthrough =      Dfinal * CfinalQR.solve(B2);
+    // n's next, shifted by one (equation 9c)
+    std::transform(Bnew.begin(), Bnew.end(), Btrans.begin()+1, Btrans.begin()+1,
+                   [k, G12, C12, G22_LU](Matrix<Float, scount,  icount> const& Bn,
+                                         Matrix<Float, Dynamic, icount> const& Bnm1_contribution)
+                   -> Matrix<Float, Dynamic, icount> {  // without explicitly declared return type Eigen has a problem here
+                       Matrix<Float, Dynamic, icount> Bn1 = Bn.topRows(k);
+                       Matrix<Float, Dynamic, icount> Bn2 = Bn.bottomRows(Bn.rows() - k);
+
+                       return Bn1 - G12 * G22_LU.solve(Bn2) + Bnm1_contribution;
+                   });
+
+    // If Cfinal is singular, we need to repeat this analysis on the new matrices
+    if (isSingular(Cfinal)) {
+        Matrix<Float, Dynamic, ocount> Dtrans = Dfinal.transpose();   // no implicit conversion on fn tmpl args
+        auto recursive_result = regularize_natarajan<icount, ocount, Dynamic>(Gfinal, Cfinal, Btrans, Dtrans);
+        return std::make_tuple(std::get<0>(recursive_result),  // G
+                               std::get<1>(recursive_result),  // C
+                               std::get<2>(recursive_result),  // B
+                               std::get<3>(recursive_result),  // D
+                               std::get<4>(recursive_result) + E1);  // combine E
+    }
+
+    // We've found a non-singular Cfinal and a set of B's
+    // We need to apply a transformation suggested by Chen (TCAD July 2012) to eliminate
+    // all input derivative terms.  Chen gives only the simplest case, for B0 * Ws + B1 * Ws' :
+    // Br = B0 - Gr * Cr^-1 * B1
+    // based on a variable substitution of:
+    // Xnew = X - Cr^-1 * B1 * Ws
+    // and mentions the rest should be done "recursively".  I believe the general case is:
+    // Br = B0 - Gr * Cr^-1 * (B1 - Gr * Cr^-1 *(B2 - ... ))
+    Matrix<Float, Dynamic, icount> Bfinal = Matrix<Float, Dynamic, icount>::Zero(k, icount);
+    Bfinal = std::accumulate(
+        // starting with the first (most derived) coefficient, compute above expression for Br:
+        Btrans.begin(), Btrans.end(), Bfinal,
+        [Gfinal, Cfinal](Matrix<Float, Dynamic, icount> const& acc,
+                         Matrix<Float, Dynamic, icount> const& B) {
+            return B - Gfinal * Cfinal.fullPivHouseholderQr().solve(acc);
+        });
+
+    // The variable substitution for the 2nd derivative case is:
+    // Xnew = X - Cr^-1 * (B2 * Ws' - (Gr * Cr^-1 * B2 - B1) * Ws)
+    // Making this substitution in the output equation Y = D * X + E * Ws gives
+    // Y = D * Xnew + D * Cr^-1 * (B1 - Gr * Cr^-1 * B2) * Ws + Cr^-1 * B2 * Ws'
+    // however, if the Ws' term is nonzero the system is ill-formed:
+    if (Btrans.size() >= 3) {
+        Matrix<Float, Dynamic, icount> CinvB = Cfinal.fullPivLu().solve(*(Btrans.rbegin()+2));
+        assert(CinvB.isZero());
+    }
+
+    // now I can calculate the new value for E, which can only be:
+    // E = E1 + D * Cr^-1 * B1
+    // because, thanks to the assertion, all other terms must be 0
+    Matrix<Float, ocount, icount> Efinal = E1 + Dfinal * Cfinal.fullPivHouseholderQr().solve(*(Btrans.rbegin()+1));
 
     return std::make_tuple(Gfinal, Cfinal, Bfinal,
                            Dfinal.transpose(),  // for PRIMA compatibility
-                           E1 + feedthrough);
+                           Efinal);
+}
+}  // namespace detail
+
+// user-facing function (only one "B" parameter)
+template<int icount, int ocount, int scount, typename Float = double>
+std::tuple<Matrix<Float, Dynamic, Dynamic>,   // G result
+           Matrix<Float, Dynamic, Dynamic>,   // C result
+           Matrix<Float, Dynamic, icount>,    // B result
+           Matrix<Float, Dynamic, ocount>,    // D result
+           Matrix<Float, ocount, icount> >    // E result (feedthrough)
+regularize_natarajan(Matrix<Float, scount, scount> const & G,
+           Matrix<Float, scount, scount> const & C,
+           Matrix<Float, scount, icount> const & B,
+           Matrix<Float, scount, ocount> const & D) {
+    return detail::regularize_natarajan(G, C, MatrixVector<Float, scount, icount>(1, B), D);
 }
 
 
