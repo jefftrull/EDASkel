@@ -219,7 +219,7 @@ struct signal_coupling {
       typedef Matrix<double, 6+q, 6+q> direct_eqn_matrix_t;
       direct_eqn_matrix_t Gdirect = direct_eqn_matrix_t::Zero();   // multiplies state vector
       direct_eqn_matrix_t Cdirect = direct_eqn_matrix_t::Zero();   // multiplies 1st derivative of state
-      Matrix<double, 6+q, 2> Bdirect;
+      Matrix<double, 6+q, 2> Bdirect = Matrix<double, 6+q, 2>::Zero();
       Bdirect.block<2, 2>(0, 0) = -Matrix<double, 2, 2>::Identity();  // connects sources to nodes
       Matrix<double, 6+q, 1> Ldirect = Matrix<double, 6+q, 1>::Zero();
       Ldirect(2, 0) = 1;              // prima port 2 voltage is the sole output
