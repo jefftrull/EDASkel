@@ -121,7 +121,7 @@ namespace DefParse {
 	bool site_malformed = (ycount != 1) && (xcount != 1);
 	if (site_malformed && !CheckPolicy<DEFERR_SITE_MALFORMED>::silent) {
 	  if (rs.rowname)
-	    std::cerr << "DEF Checker: row " << rs.rowname << " must have either X or Y count == 1\n";
+	    std::cerr << "DEF Checker: row " << *rs.rowname << " must have either X or Y count == 1\n";
 	  else
 	    std::cerr << "DEF Checker: site row definition must have either X or Y count == 1\n";
 	}
@@ -140,7 +140,7 @@ namespace DefParse {
 			       (rs.origy > defin.diearea.ur.y) || (fary > defin.diearea.ur.y));
 	if (out_of_diearea && !CheckPolicy<DEFERR_SITE_OUTSIDE_DIEAREA>::silent) {
 	  if (rs.rowname)
-	    std::cerr << "DEF Checker: row " << rs.rowname << " from (" << rs.origx << ", " << rs.origy << ") to (" << farx << ", " << fary << ") extends beyond DIEAREA boundary\n";
+	    std::cerr << "DEF Checker: row " << *rs.rowname << " from (" << rs.origx << ", " << rs.origy << ") to (" << farx << ", " << fary << ") extends beyond DIEAREA boundary\n";
 	  else
 	    std::cerr << "DEF Checker: sites from (" << rs.origx << ", " << rs.origy << ") to (" << farx << ", " << fary << ") extend beyond DIEAREA boundary\n";
 	}

@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE( macro_basic_check ) {
 
   BOOST_REQUIRE_EQUAL( result.macros.size(), 1 );
   BOOST_CHECK_EQUAL( result.macros[0].name, "INX2" );
-  BOOST_CHECK_EQUAL( result.macros[0].class_, SITECLASS_CORE );
+  BOOST_CHECK_EQUAL( *result.macros[0].class_, SITECLASS_CORE );
   BOOST_REQUIRE( result.macros[0].foreign );
   BOOST_CHECK_EQUAL( result.macros[0].foreign->name, "INX2" );
   BOOST_CHECK_CLOSE( result.macros[0].foreign->pt.x, 0.0, 0.001f );

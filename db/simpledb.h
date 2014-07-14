@@ -55,7 +55,7 @@ namespace SimpleDB {
     std::string getName() const { return m_name; }
 
     void setDimensions(float w, float h) {m_dimensions = std::make_pair(w, h);}
-    bool hasDimensions() const {return m_dimensions;}
+    bool hasDimensions() const {return bool(m_dimensions);}
     // BOOST_ASSERT that dimensions are present (i.e., caller has checked hasDimensions)
     // Boost's asserts can be easily turned off globally - yet another thing I don't have to invent
     float getWidth() const {BOOST_ASSERT(m_dimensions); return m_dimensions->first;}
@@ -71,7 +71,7 @@ namespace SimpleDB {
     std::vector<SiteSymmetry> getSymmetry() const { return m_symmetry; }
 
     void setSite(const std::string& sitename) { m_site = sitename; }
-    bool hasSite() { return m_site; }
+    bool hasSite() { return bool(m_site); }
     std::string getSite() { BOOST_ASSERT(m_site); return *m_site; }
 
   private:
@@ -191,7 +191,7 @@ namespace SimpleDB {
     void setPlacement(DesPoint origin, const std::string& orient, bool fixed = false) {
       m_placement = InstPlacement(origin, orient, fixed);
     }
-    bool hasPlacement() const { return m_placement; }
+    bool hasPlacement() const { return bool(m_placement); }
     DesPoint getOrigin() const { BOOST_ASSERT( m_placement ); return m_placement->origin; }
     std::string getOrient() const { BOOST_ASSERT( m_placement ); return m_placement->orient; }
     // if it's not even placed, then it's definitely not "fixed" either...
@@ -243,7 +243,7 @@ namespace SimpleDB {
       return boost::make_iterator_range(m_instances.begin(), m_instances.end());
     }
     void setExtent(DesRect r) {m_extent = r;}
-    bool hasExtent() const {return m_extent;}
+    bool hasExtent() const {return bool(m_extent);}
     DesRect getExtent() const {BOOST_ASSERT(m_extent); return *m_extent;}
 
     void addInst(InstPtr i) {
