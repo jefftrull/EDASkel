@@ -18,8 +18,6 @@
 #ifndef EDASKEL_ANALYSIS_MNA_HPP
 #define EDASKEL_ANALYSIS_MNA_HPP
 
-#include <Eigen/StdVector>
-
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
@@ -101,7 +99,7 @@ bool isSingular(const M& m) {
 
 }
 
-// Convience template for using Eigen's special allocator with vectors
+// Convenience template for using Eigen's special allocator with vectors
 template<typename Float, int nrows, int ncols>
 using MatrixVector = std::vector<Matrix<Float, nrows, ncols>,
                                  Eigen::aligned_allocator<Matrix<Float, nrows, ncols> > >;
@@ -362,9 +360,10 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
 
     // n's next, shifted by one (equation 9c)
     std::transform(Bnew.begin(), Bnew.end(), Btrans.begin()+1, Btrans.begin()+1,
-                   [k, G12, C12, G22_LU](Matrix<Float, scount,  icount> const& Bn,
+                   [k, G12, G22_LU](Matrix<Float, scount, icount> const& Bn,
                                          Matrix<Float, Dynamic, icount> const& Bnm1_contribution)
-                   -> Matrix<Float, Dynamic, icount> {  // without explicitly declared return type Eigen has a problem here
+                   -> Matrix<Float, Dynamic, icount> {  // without explicitly declared return type Eigen
+                                                        // will keep references to these locals:
                        Matrix<Float, Dynamic, icount> Bn1 = Bn.topRows(k);
                        Matrix<Float, Dynamic, icount> Bn2 = Bn.bottomRows(Bn.rows() - k);
 
