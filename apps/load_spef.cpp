@@ -217,7 +217,7 @@ int main(int argc, char **argv) {
    // for each net are all in the same component
 
    // Iterate over the nets, verifying that all connections of each net are in the same connected component
-   for (auto lcpair : spefVisitor.lumped_caps) {
+   for (auto const& lcpair : spefVisitor.lumped_caps) {
       map<comp_number_t, vector<string> > comps2conn_names;  // every component and its attached connections
 
       // get component numbers for all port and instance connections
@@ -227,7 +227,7 @@ int main(int argc, char **argv) {
       auto npit = spefVisitor.net_ports.find(net);
       if (npit != spefVisitor.net_ports.end()) {
         // this net has port connections
-        for (auto pname : npit->second) {
+        for (auto const& pname : npit->second) {
           // look up the vertex descriptor for this port
           ResGraph::vertex_descriptor port_desc = spefVisitor.vertex(pname, "");
           // add its component to our tracking info for this net
@@ -239,7 +239,7 @@ int main(int argc, char **argv) {
       auto niit = spefVisitor.net_iconns.find(net);
       if (niit != spefVisitor.net_iconns.end()) {
         // instance connections:
-        for (auto ic : niit->second) {
+        for (auto const& ic : niit->second) {
           ResGraph::vertex_descriptor iconn_desc = spefVisitor.vertex(ic.first, ic.second);
           comps2conn_names[comps.at(iconn_desc)].push_back(spefVisitor.names.at(ic.first) + ":" + ic.second);
         }
@@ -247,9 +247,9 @@ int main(int argc, char **argv) {
 
       if (comps2conn_names.size() > 1) {
         cout << "Net " << spefVisitor.names.at(net) << " appears to be discontinuous:" << endl;
-        for (auto comp : comps2conn_names) {
+        for (auto const& comp : comps2conn_names) {
           cout << "  Connection Group:" << endl;
-          for (auto vtcomp : comp.second) {
+          for (auto const& vtcomp : comp.second) {
              cout << "    " << vtcomp << endl;
           }
         }
