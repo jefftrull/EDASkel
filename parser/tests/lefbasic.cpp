@@ -19,9 +19,11 @@
 #define BOOST_TEST_MODULE basic LEF tests
 #include <boost/test/included/unit_test.hpp>
 
-#include "../lefparser.h"
 #include <string>
 #include <iostream>
+
+#include "../lefparser.h"
+#include "../lefdef.h"
 
 using namespace LefParse;
 namespace EDASkel {

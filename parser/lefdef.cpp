@@ -22,6 +22,9 @@
 
 #include "lefparser.h"
 #include "defparser.h"
+
+#include "lefdef.h"
+
 using namespace LefParse;
 using namespace DefParse;
 using namespace EDASkel;

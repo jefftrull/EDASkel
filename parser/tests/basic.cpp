@@ -19,10 +19,12 @@
 #define BOOST_TEST_MODULE basic test
 #include <boost/test/included/unit_test.hpp>
 
-#include "../defparser.h"
 #include <string>
 #include <iostream>
 #include <sstream>
+
+#include "../defparser.h"
+#include "../lefdef.h"
 
 using namespace DefParse;
 namespace EDASkel {

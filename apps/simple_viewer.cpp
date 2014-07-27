@@ -29,6 +29,8 @@
 #include "../parser/lefsem.h"
 #include "../parser/defparser.h"
 #include "../parser/defsem.h"
+#include "../parser/lefdef.h"
+
 #include "../db/simpledb.h"
 #include "../gui/designscene.h"
 #include "../gui/designview.h"

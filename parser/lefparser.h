@@ -21,17 +21,16 @@
 #include <vector>
 #include <iostream>
 
+#include <boost/spirit/include/lex_lexertl.hpp>
+
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
 #include <boost/spirit/include/phoenix_fusion.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include "leftypes.h"
-#include "lefdef.h"
 
 
-
-using namespace EDASkel;
 
 namespace LefParse {
 

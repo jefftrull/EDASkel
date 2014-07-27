@@ -18,13 +18,15 @@
 #define BOOST_TEST_MODULE basic test
 #include <boost/test/included/unit_test.hpp>
 
+#include <string>
+#include <iostream>
+
 #include "../../db/simpledb.h"
 #include "../lefparser.h"
 #include "../lefsem.h"
 #include "../defparser.h"
 #include "../defsem.h"
-#include <string>
-#include <iostream>
+#include "../lefdef.h"
 
 using namespace LefParse;
 using namespace DefParse;
