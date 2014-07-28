@@ -31,7 +31,6 @@
 #include "leftypes.h"
 
 
-
 namespace LefParse {
 
 // just enough LEF to get library cells and their outlines
@@ -47,6 +46,7 @@ enum TokenIds {
   T_FEEDTHRU, T_TIEHIGH, T_TIELOW,
   T_PRE, T_POST, T_TOPLEFT, T_TOPRIGHT, T_BOTTOMLEFT, T_BOTTOMRIGHT,
   T_X, T_Y, T_R90,
+  T_TYPE, T_CUT, T_MASTERSLICE, T_IMPLANT, T_ROUTING, T_OVERLAP,
   T_ANY
 };
 
@@ -107,6 +107,12 @@ struct LefTokens : boost::spirit::lex::lexer<Lexer>
       | lex::string("(?i:x)", T_X)
       | lex::string("(?i:y)", T_Y)
       | lex::string("(?i:r90)", T_R90)
+      | lex::string("(?i:type)", T_TYPE)
+      | lex::string("(?i:cut)", T_CUT)
+      | lex::string("(?i:masterslice)", T_MASTERSLICE)
+      | lex::string("(?i:routing)", T_ROUTING)
+      | lex::string("(?i:overlap)", T_OVERLAP)
+      | lex::string("(?i:implant)", T_IMPLANT)
       | ident
       | double_
       | '+' | '-' | '(' | ')' | ';'
@@ -126,6 +132,7 @@ struct LefTokens : boost::spirit::lex::lexer<Lexer>
   boost::spirit::lex::token_def<std::string> ident;
   // numbers
   boost::spirit::lex::token_def<double> double_;
+
  };
 
 // for error handling
@@ -269,13 +276,23 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
 	-obs >
         raw_token(T_END) > tok.ident[_pass = (_1 == _a)] ;
 
+      layerdef = raw_token(T_LAYER) > tok.ident[_a = _1, at_c<0>(_val) = _1]
+        > raw_token(T_TYPE)
+        >   (raw_token(T_CUT)        [at_c<1>(_val) = Cut]
+           | raw_token(T_MASTERSLICE)[at_c<1>(_val) = Masterslice]
+           | raw_token(T_ROUTING)    [at_c<1>(_val) = Routing]
+           | raw_token(T_IMPLANT)    [at_c<1>(_val) = Implant]
+           | raw_token(T_OVERLAP)    [at_c<1>(_val) = Overlap])
+        > *catchall
+        > raw_token(T_END) > tok.ident[_pass = (_a == _1)] ;
 
       // define some major elements
 
       // strangely a LEF file does not begin with anything distinctive... just goes right into the data
       // BOZO siterule should store site name into symtab
       // evidently EVERY statement is optional
-      lef_file = *(casesens | units | spacing | layer | via | viarule |
+      lef_file = *(casesens | units | spacing | via | viarule |
+                   layerdef [push_back(at_c<2>(_val), _1)] |
 		   siterule [push_back(at_c<0>(_val), _1)] |
 		   macro [push_back(at_c<1>(_val), _1)])
 	>> -(raw_token(T_END) > raw_token(T_LIBRARY)) ;
@@ -314,6 +331,9 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
   // rules neither inheriting nor synthesizing an attribute
   typedef boost::spirit::qi::rule<Iterator> NoAttrRule;
   NoAttrRule spacing, units, casesens, obs;
+
+  boost::spirit::qi::rule<Iterator, leflayer(),
+                          boost::spirit::qi::locals<std::string> > layerdef;
 
   // for now macro synthesizes a string AND has a local variable (for checking END statement)
   boost::spirit::qi::rule<Iterator, lefmacro(),

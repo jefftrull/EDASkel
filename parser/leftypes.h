@@ -31,6 +31,11 @@ using namespace EDASkel;
 
 namespace LefParse {
 
+struct leflayer {
+  std::string name;
+  LayerTypes type;
+};
+
 // I'm naming this differently from the other types in here. Is that good?
 // should this be global?
 struct Site {
@@ -66,11 +71,18 @@ struct lefmacro {
 struct lef {
   std::vector<Site> sites;
   std::vector<lefmacro> macros;
+  std::vector<leflayer> layers;
 };
 
 }
 
 // BOOST_FUSION_ADAPT_STRUCT needs to be outside the namespace for some reason
+
+BOOST_FUSION_ADAPT_STRUCT(
+  LefParse::leflayer,
+  (std::string, name)
+  (LayerTypes, type)
+)
 
 BOOST_FUSION_ADAPT_STRUCT(
   LefParse::Site,
@@ -114,6 +126,7 @@ BOOST_FUSION_ADAPT_STRUCT(
   LefParse::lef,
   (std::vector<LefParse::Site>, sites)
   (std::vector<LefParse::lefmacro>, macros)
+  (std::vector<LefParse::leflayer>, layers)
 )
 
 #endif

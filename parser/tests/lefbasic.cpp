@@ -117,3 +117,20 @@ BOOST_AUTO_TEST_CASE( simple_comment ) {
   parse_check("NAMESCASESENSITIVE ON ;\n#one comment\n#  another comment\nEND LIBRARY\n", result);
 }
 
+BOOST_AUTO_TEST_CASE( ovlp_layer ) {
+  lef result;
+  parse_check("LAYER PLCBLK\nTYPE OVERLAP ;\nEND PLCBLK\n", result);
+  BOOST_REQUIRE_EQUAL(      1, result.layers.size() );
+  BOOST_CHECK_EQUAL(  Overlap, result.layers.front().type );
+  BOOST_CHECK_EQUAL( "PLCBLK", result.layers.front().name );
+}
+
+BOOST_AUTO_TEST_CASE( routing_layer ) {
+  lef result;
+  parse_check("LAYER M1\nTYPE ROUTING ;\nWIDTH 0.400 ;\nSPACE 0.600 ;\nPITCH 1.000 ;\nEND M1\n",
+              result);
+  BOOST_REQUIRE_EQUAL(      1, result.layers.size() );
+  BOOST_CHECK_EQUAL(  Routing, result.layers.front().type );
+  BOOST_CHECK_EQUAL(     "M1", result.layers.front().name );
+}
+
