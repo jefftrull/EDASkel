@@ -180,15 +180,16 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
       // can't seem to successfully say "any token other than END" so I've got to do this:
       catchall = ';' | tok.ident | tok.double_ | raw_token(T_SPACING);
 
-      layer = raw_token(T_LAYER) > tok.ident[_a = _1] >> *catchall > raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
+      layer = raw_token(T_LAYER) > tok.ident[_a = _1] >> *catchall >
+          raw_token(T_END) > tok.ident[_pass = (_1 == _a)] ;
 
       via = raw_token(T_VIA) > tok.ident[_a = _1] >>
-	*(catchall | raw_token(T_LAYER) | raw_token(T_FOREIGN)) >>
-	raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
+         *(catchall | raw_token(T_LAYER) | raw_token(T_FOREIGN)) >>
+         raw_token(T_END) > tok.ident[_pass = (_1 == _a)] ;
 
       viarule = raw_token(T_VIARULE) > tok.ident[_a = _1] >>
 	*(catchall | raw_token(T_LAYER) | raw_token(T_BY) | raw_token(T_VIA)) >>
-	raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
+        raw_token(T_END) > tok.ident[_pass = (_1 == _a)] ;
 
       // BOZO review case sensitivity of these keywords and correct if necessary
       // BOZO this can appear in DEF as well; move to common LEF/DEF header
@@ -234,7 +235,7 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
 	// BOZO use lefextent here
 	raw_token(T_SIZE) > tok.double_ > raw_token(T_BY) > tok.double_ > ';' >
 	// BOZO optional ROWPATTERN goes here
-	raw_token(T_END) > omit[tok.ident[_b = _1]] > eps[_a == _b];
+        raw_token(T_END) > omit[tok.ident[_pass = (_1 == _a)]] ;
 
       spacing = raw_token(T_SPACING) >> *catchall >> raw_token(T_END) > raw_token(T_SPACING) ;
       units = raw_token(T_UNITS) >> *catchall >> raw_token(T_END) >> raw_token(T_UNITS) ;
@@ -250,7 +251,7 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
       pin_geom = raw_token(T_PORT) >> *(raw_token(T_LAYER) > tok.ident > ';' > +(tok.ident | tok.double_ | ';')) > raw_token(T_END) ;
       pin = raw_token(T_PIN) > tok.ident[_a = _1] >>
 	*(catchall | padclass | pin_geom) >>
-	raw_token(T_END) >> tok.ident[_b = _1] > eps(_a == _b) ;
+        raw_token(T_END) >> tok.ident[_pass = (_1 == _a)] ;
       obs = raw_token(T_OBS) > *(catchall | raw_token(T_LAYER)) > raw_token(T_END) ;
 
       macro = raw_token(T_MACRO) > tok.ident[_a = _1, at_c<0>(_val) = _1] >
@@ -266,7 +267,7 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
 	// BOZO not stored for now:
 	*pin >
 	-obs >
-	raw_token(T_END) > tok.ident[_b = _1] > eps(_a == _b) ;
+        raw_token(T_END) > tok.ident[_pass = (_1 == _a)] ;
 
 
       // define some major elements
@@ -316,7 +317,7 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
 
   // for now macro synthesizes a string AND has a local variable (for checking END statement)
   boost::spirit::qi::rule<Iterator, lefmacro(),
-			  boost::spirit::qi::locals<std::string, std::string> > macro;
+			  boost::spirit::qi::locals<std::string> > macro;
 
   // Some keywords turn directly into enums in the database
   boost::spirit::qi::rule<Iterator, SiteClass()> siteclass, padclass, coreclass, endcapclass;
@@ -324,7 +325,7 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
   boost::spirit::qi::rule<Iterator, SiteClass()> classrule;
   // site rule uses local var (to check END statement) and synthesizes a Site
   boost::spirit::qi::rule<Iterator, Site(),
-			  boost::spirit::qi::locals<std::string, std::string> > siterule;
+			  boost::spirit::qi::locals<std::string> > siterule;
   // macros can list their site symmetry options
   boost::spirit::qi::rule<Iterator, std::vector<SiteSymmetry>()> macrosymmetry;
   // macros give "origin" as a real numbered point
@@ -339,7 +340,7 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
   // a catchall rule for everything I don't (yet) parse.  No attribute synthesized, but it has a local string var
   // (for checking END statements)
   typedef boost::spirit::qi::rule<Iterator,
-				  boost::spirit::qi::locals<std::string, std::string> > Unparsed;
+				  boost::spirit::qi::locals<std::string> > Unparsed;
   Unparsed layer, via, viarule, pin, pin_geom, catchall;
 
   // stuff inside macros I don't handle
