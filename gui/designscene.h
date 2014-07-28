@@ -79,11 +79,7 @@ class DesignScene : public QGraphicsScene {
       // The "flip" versions can happen by mirroring around the Y axis first
       std::string ort = inst_->getOrient();
       // right-hand rotation (natural, positive angle) for each orientation
-      std::map<std::string, int> rotations;
-      rotations.insert(std::make_pair("N", 0));
-      rotations.insert(std::make_pair("W", 90));
-      rotations.insert(std::make_pair("S", 180));
-      rotations.insert(std::make_pair("E", -90));
+      std::map<std::string, int> rotations{{"N", 0}, {"W", 90}, {"S", 180}, {"E", -90}};
 
       QTransform xform;
       if (ort.front() == 'F') {
