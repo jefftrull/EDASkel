@@ -46,12 +46,8 @@ namespace EDASkel {
 			     LefParse::LefTokens<LefDefLexer>::lexer_def > lefParser;
 }
 
-struct SetupException : std::exception {
-  explicit SetupException(std::string err) : err_(err) {}
-  const char* what() const noexcept { return err_.c_str(); }
-  virtual ~SetupException() noexcept {}
-private:
-  std::string err_;
+struct SetupException : std::runtime_error {
+    explicit SetupException(std::string err) : std::runtime_error(std::move(err)) {}
 };
 
 // Container for the Tcl commands we define, and any data they require
