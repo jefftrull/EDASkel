@@ -231,39 +231,36 @@ namespace EDASkel {
 
       typedef spefskipper<Iterator> skipper_t;
       template<typename Signature>
-      struct Rule
-      {
-        typedef boost::spirit::qi::rule<Iterator, Signature, skipper_t> type;
-      };
+      using Rule = boost::spirit::qi::rule<Iterator, Signature, skipper_t>;
       typedef boost::spirit::qi::rule<Iterator, skipper_t> no_attr_rule_t;
 
-      typename Rule<spef()>::type spef_file;
+      Rule<spef()> spef_file;
 
-      typename Rule<std::string()>::type quoted_string;
-      typename Rule<std::string()>:: type design_name, standard, datestr, vendor, program, version;
+      Rule<std::string()> quoted_string;
+      Rule<std::string()> design_name, standard, datestr, vendor, program, version;
 
       typename boost::spirit::qi::rule<Iterator, std::string()> nonspace_str;
       typedef std::pair<std::string, std::string> design_flow_entry_t;
-      typename Rule<design_flow_entry_t()>::type design_flow_entry;
-      typename Rule<design_flow_map_t()>::type design_flow;
+      Rule<design_flow_entry_t()> design_flow_entry;
+      Rule<design_flow_map_t()> design_flow;
 
       boost::spirit::qi::symbols<char, double> eng_prefixes;
-      typename Rule<double()>::type eng_prefix;
+      Rule<double()> eng_prefix;
 
-      typename Rule<char()>::type divider, delimiter;
-      typename Rule<std::pair<char, char> >::type bus_delimiter;
+      Rule<char()> divider, delimiter;
+      Rule<std::pair<char, char> > bus_delimiter;
 
       template <typename Quantity>
-      struct unit_rule {
-        typedef typename boost::spirit::qi::rule<Iterator, quantity<Quantity, double>(), skipper_t,
-                                        boost::spirit::locals<double> > type;
-      };
-      typename unit_rule<si::time>::type        t_unit;
-      typename unit_rule<si::resistance>::type  r_unit;
-      quantity<si::resistance, double>          r_unit_value;
-      typename unit_rule<si::capacitance>::type c_unit;
-      quantity<si::capacitance, double>         c_unit_value;
-      typename unit_rule<si::inductance>::type  l_unit;
+      using unit_rule = typename boost::spirit::qi::rule<Iterator,
+                                                         quantity<Quantity, double>(),
+                                                         skipper_t,
+                                                         boost::spirit::locals<double> >;
+      unit_rule<si::time>                t_unit;
+      unit_rule<si::resistance>          r_unit;
+      quantity<si::resistance, double>   r_unit_value;
+      unit_rule<si::capacitance>         c_unit;
+      quantity<si::capacitance, double>  c_unit_value;
+      unit_rule<si::inductance>          l_unit;
 
       typename boost::spirit::qi::rule<Iterator, std::string()> netname;
       no_attr_rule_t name_map_entry, name_map;   // semantic actions create symtab entries
