@@ -83,7 +83,7 @@ namespace EDASkel {
         program     = omit[lexeme["*PROGRAM"]] >> quoted_string ;
         version     = omit[lexeme["*VERSION"]] >> quoted_string ;
 
-        nonspace_str = lexeme[+(char_ - '"' - ' ')];
+        nonspace_str = +(char_ - '"' - ' ');
         design_flow_entry = '"' >> nonspace_str >> (no_skip[" " >> nonspace_str] | attr("")) >> '"' ;
         design_flow = omit[lexeme["*DESIGN_FLOW"]] >> *design_flow_entry ;
 
@@ -107,7 +107,7 @@ namespace EDASkel {
                       double_[_a = _1] >>
                       eng_prefix[_val = _a * _1 * val(si::henrys)] >> (lit("HENRY") | 'H') ;
 
-        netname = lexeme[+(char_("a-zA-Z0-9[]/:_") | ('\\' >> char_("[]/")))];
+        netname = +(char_("a-zA-Z0-9[]/:_") | ('\\' >> char_("[]/")));
         name_map_entry = ('*' >> lexeme[+digit] >> netname)[
            phx::bind(name_map_symtab.add, _1,
                      phx::bind(&SpefVisitor::name_map_entry, phx::ref(visitor_), _2))] ;
