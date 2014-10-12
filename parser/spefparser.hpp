@@ -72,6 +72,8 @@ namespace EDASkel {
         using boost::spirit::_6;
         using boost::spirit::_a;
         using boost::spirit::_val;
+        using boost::spirit::ascii::alnum;
+        using boost::spirit::ascii::digit;
 
         quoted_string = '"' >> no_skip[*(char_ - '"')] >> '"' ;
         standard    = omit[lexeme["*SPEF"]] >> quoted_string ;
@@ -106,7 +108,7 @@ namespace EDASkel {
                       eng_prefix[_val = _a * _1 * val(si::henrys)] >> (lit("HENRY") | 'H') ;
 
         netname = lexeme[+(char_("a-zA-Z0-9[]/:_") | ('\\' >> char_("[]/")))];
-        name_map_entry = ('*' >> lexeme[+ascii::digit] >> netname)[
+        name_map_entry = ('*' >> lexeme[+digit] >> netname)[
            phx::bind(name_map_symtab.add, _1,
                      phx::bind(&SpefVisitor::name_map_entry, phx::ref(visitor_), _2))] ;
         name_map = omit[lexeme["*NAME_MAP"]] >> *name_map_entry ;
@@ -121,28 +123,28 @@ namespace EDASkel {
 
         connection = '*' >> ((lit('P') >> '*' >> name_map_symtab)[
                                phx::bind(&SpefVisitor::net_port_connection, phx::ref(visitor_), _r1, _1)] |
-                             (lit('I') >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+ascii::alnum]])[
+                             (lit('I') >> '*' >> name_map_symtab >> ':' >> as_string[lexeme[+alnum]])[
                                phx::bind(&SpefVisitor::net_inst_connection, phx::ref(visitor_), _r1, _1, _2)])
                          >> char_("IOB")
                          >> -(lit("*C") >> double_ >> double_)   // location in X/Y coordinates
                          >> -(lit("*L") >> double_)              // pin load
-                         >> -(lit("*D") >> lexeme[+(ascii::alnum | '_')]) ;
+                         >> -(lit("*D") >> lexeme[+(alnum | '_')]) ;
 
         gndcapline = (uint_
-                      >> '*' >> name_map_symtab >> as_string[(':' >> lexeme[+ascii::alnum]) | attr("")]
+                      >> '*' >> name_map_symtab >> as_string[(':' >> lexeme[+alnum]) | attr("")]
                       >> double_)[
                         phx::bind(&SpefVisitor::cgnd, phx::ref(visitor_),
                                   _r1, _1, _2, _3, _4 * phx::cref(c_unit_value))];
 
         capline = (uint_
-                   >> '*' >> name_map_symtab >> as_string[(':' >> lexeme[+ascii::alnum]) | attr("")]
-                   >> '*' >> name_map_symtab >> as_string[(':' >> lexeme[+ascii::alnum]) | attr("")]
+                   >> '*' >> name_map_symtab >> as_string[(':' >> lexeme[+alnum]) | attr("")]
+                   >> '*' >> name_map_symtab >> as_string[(':' >> lexeme[+alnum]) | attr("")]
                    >> double_)[
                      phx::bind(&SpefVisitor::capacitor, phx::ref(visitor_),
                                _r1, _1, _2, _3, _4, _5, _6 * phx::cref(c_unit_value))];
 
-        resline = (uint_ >> '*' >> name_map_symtab >> as_string[(':' >> lexeme[+ascii::alnum]) | attr("")]
-                         >> '*' >> name_map_symtab >> as_string[(':' >> lexeme[+ascii::alnum]) | attr("")]
+        resline = (uint_ >> '*' >> name_map_symtab >> as_string[(':' >> lexeme[+alnum]) | attr("")]
+                         >> '*' >> name_map_symtab >> as_string[(':' >> lexeme[+alnum]) | attr("")]
                          >> double_)[
                            phx::bind(&SpefVisitor::resistor, phx::ref(visitor_),
                                      _r1, _1, _2, _3, _4, _5, _6 * phx::cref(r_unit_value))];
@@ -230,8 +232,10 @@ namespace EDASkel {
     private:
 
       typedef spefskipper<Iterator> skipper_t;
+
       template<typename Signature>
       using Rule = boost::spirit::qi::rule<Iterator, Signature, skipper_t>;
+
       typedef boost::spirit::qi::rule<Iterator, skipper_t> no_attr_rule_t;
 
       Rule<spef()> spef_file;
