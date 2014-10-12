@@ -76,34 +76,34 @@ namespace EDASkel {
         using boost::spirit::ascii::digit;
 
         quoted_string = '"' >> no_skip[*(char_ - '"')] >> '"' ;
-        standard    = omit[lexeme["*SPEF"]] >> quoted_string ;
-        design_name = omit[lexeme["*DESIGN"]] >> quoted_string ;
-        datestr     = omit[lexeme["*DATE"]] >> quoted_string ;
-        vendor      = omit[lexeme["*VENDOR"]] >> quoted_string ;
-        program     = omit[lexeme["*PROGRAM"]] >> quoted_string ;
-        version     = omit[lexeme["*VERSION"]] >> quoted_string ;
+        standard    = "*SPEF" >> quoted_string ;
+        design_name = "*DESIGN" >> quoted_string ;
+        datestr     = "*DATE" >> quoted_string ;
+        vendor      = "*VENDOR" >> quoted_string ;
+        program     = "*PROGRAM" >> quoted_string ;
+        version     = "*VERSION" >> quoted_string ;
 
         nonspace_str = +(char_ - '"' - ' ');
         design_flow_entry = '"' >> nonspace_str >> (no_skip[" " >> nonspace_str] | attr("")) >> '"' ;
-        design_flow = omit[lexeme["*DESIGN_FLOW"]] >> *design_flow_entry ;
+        design_flow = "*DESIGN_FLOW" >> *design_flow_entry ;
 
-        divider     = omit[lexeme["*DIVIDER"]] >> char_ ;
-        delimiter   = omit[lexeme["*DELIMITER"]] >> char_ ;
-        bus_delimiter = omit[lexeme["*BUS_DELIMITER"]] >> char_ >> char_ ;
+        divider     = "*DIVIDER" >> char_ ;
+        delimiter   = "*DELIMITER" >> char_ ;
+        bus_delimiter = "*BUS_DELIMITER" >> char_ >> char_ ;
 
         eng_prefixes.add("K", 1E3)("M", 1E-3)("U", 1E-6)("N", 1E-9)("P", 1E-12)("F", 1E-15);
         eng_prefix = lexeme[eng_prefixes] | attr(1.0) ;  // defaults to 1
 
-        t_unit      = omit[lexeme["*T_UNIT"]] >>
+        t_unit      = "*T_UNIT" >>
                       double_[_a = _1] >>
                       eng_prefix[_val = _a * _1 * val(si::seconds)] >> 'S' ;
-        c_unit      = omit[lexeme["*C_UNIT"]] >>
+        c_unit      = "*C_UNIT" >>
                       double_[_a = _1] >>
                       eng_prefix[_val = _a * _1 * val(si::farads)] >> 'F' ;
-        r_unit      = omit[lexeme["*R_UNIT"]] >>
+        r_unit      = "*R_UNIT" >>
                       double_[_a = _1] >>
                       eng_prefix[_val = _a * _1 * val(si::ohms)] >> "OHM" ;
-        l_unit      = omit[lexeme["*L_UNIT"]] >>
+        l_unit      = "*L_UNIT" >>
                       double_[_a = _1] >>
                       eng_prefix[_val = _a * _1 * val(si::henrys)] >> (lit("HENRY") | 'H') ;
 
@@ -111,7 +111,7 @@ namespace EDASkel {
         name_map_entry = ('*' >> lexeme[+digit] >> netname)[
            phx::bind(name_map_symtab.add, _1,
                      phx::bind(&SpefVisitor::name_map_entry, phx::ref(visitor_), _2))] ;
-        name_map = omit[lexeme["*NAME_MAP"]] >> *name_map_entry ;
+        name_map = "*NAME_MAP" >> *name_map_entry ;
 
         port_def = (lexeme['*' >> name_map_symtab] >> char_("IOB") >>
                     // stuff I don't understand yet
@@ -161,7 +161,7 @@ namespace EDASkel {
 
         nets = *net_def ;
 
-        spef_file %= -omit[lexeme["SPEF"]] >> standard >> design_name   // TODO: any order?
+        spef_file %= -lit("SPEF") >> standard >> design_name   // TODO: any order?
                                            >> omit[datestr] >> vendor >> program >> version
                                            >> design_flow
                                            >> omit[divider] >> omit[delimiter] >> omit[bus_delimiter]
