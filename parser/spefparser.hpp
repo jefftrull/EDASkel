@@ -92,7 +92,7 @@ namespace EDASkel {
         bus_delimiter = "*BUS_DELIMITER" >> char_ >> char_ ;
 
         eng_prefixes.add("K", 1E3)("M", 1E-3)("U", 1E-6)("N", 1E-9)("P", 1E-12)("F", 1E-15);
-        eng_prefix = lexeme[eng_prefixes] | attr(1.0) ;  // defaults to 1
+        eng_prefix = eng_prefixes | attr(1.0) ;  // defaults to 1
 
         t_unit      = "*T_UNIT" >>
                       double_[_a = _1] >>
@@ -115,11 +115,11 @@ namespace EDASkel {
 
         port_def = (lexeme['*' >> name_map_symtab] >> char_("IOB") >>
                     // stuff I don't understand yet
-                    *omit[("*C" >> lexeme[double_] >> lexeme[double_]) |
+                    *omit[("*C" >> double_ >> double_) |
                           ("*L" >> double_) |
                           ("*S" >> double_ >> double_)])[
                             phx::bind(&SpefVisitor::port_definition, phx::ref(visitor_), _1, _2)] ;
-        ports = lexeme["*PORTS"] >> *port_def;
+        ports = "*PORTS" >> *port_def;
 
         connection = '*' >> ((lit('P') >> '*' >> name_map_symtab)[
                                phx::bind(&SpefVisitor::net_port_connection, phx::ref(visitor_), _r1, _1)] |
