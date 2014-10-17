@@ -89,14 +89,15 @@ int main(int argc, char **argv) {
   // do not skip whitespace
   lefin.unsetf(std::ios::skipws);
   LefDefIter beg = LefDefIter(lefin), end;
-  LefTokens<LefDefLexer>::iterator_type lef_it = lefTokens.begin(beg, LefDefIter());
-  LefTokens<LefDefLexer>::iterator_type lef_end = lefTokens.end();
   lef lef_ast;
-  if (!parse(lef_it, lef_end, lefParser, lef_ast) ||
+  if (!tokenize_and_parse(beg, end, lefTokens, lefParser, lef_ast) ||
       (beg != end)) {
-    std::cerr << "LEF parse failed\n";
-    if (beg != end)
-      std::cerr << "did not consume all input; remaining is:\n" << std::string(beg, end) << std::endl;
+    if (beg != end) {
+      std::cerr << "did not consume all input; ";
+      std::cerr << distance(beg, end) << " characters remain:" << std::endl;
+      std::copy(beg, end, std::ostream_iterator<char>(std::cerr, ""));
+      std::cerr << std::endl;
+    }
     return 1;
   }
   LefChecker<Library> lefchk;
