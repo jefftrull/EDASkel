@@ -47,9 +47,7 @@ BOOST_AUTO_TEST_CASE ( diearea_checks ) {
   testdef.unsetf(std::ios::skipws);
   LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );
+  BOOST_CHECK( tokenize_and_parse(beg, end, defTokens, defParser, result) );
 
   // turn syntax result into database contents (while checking)
   Library lib;
@@ -69,9 +67,7 @@ BOOST_AUTO_TEST_CASE ( diearea_checks ) {
   testdefbad.unsetf(std::ios::skipws);
   beg = LefDefIter(testdefbad);
   def result_badboundary;
-  it = defTokens.begin(beg, end);
-  lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, result_badboundary) );
+  BOOST_CHECK( tokenize_and_parse(beg, end, defTokens, defParser, result_badboundary) );
 
   Database db_badboundary;
   // our default policy says we don't abort but we do skip errors
@@ -97,9 +93,7 @@ BOOST_AUTO_TEST_CASE ( policy_checks ) {
   testdef.unsetf(std::ios::skipws);
   LefDefIter beg = LefDefIter(testdef), end;
   def result;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );
+  BOOST_CHECK( tokenize_and_parse(beg, end, defTokens, defParser, result) );
 
   // turn syntax result into database contents (while checking)
   Library lib;
@@ -115,9 +109,7 @@ BOOST_AUTO_TEST_CASE ( lefdef_combined_basic ) {
   testlef.unsetf(std::ios::skipws);
   LefDefIter beg(testlef), end;
   lef lefresult;
-  LefTokens<LefDefLexer>::iterator_type lef_it = lefTokens.begin(beg, LefDefIter());
-  LefTokens<LefDefLexer>::iterator_type lef_end = lefTokens.end();
-  BOOST_CHECK( parse(lef_it, lef_end, lefParser, lefresult) );
+  BOOST_CHECK( tokenize_and_parse(beg, end, lefTokens, lefParser, lefresult) );
   BOOST_CHECK( beg == end );
   Library lib;
   LefChecker<Library> lchk;
@@ -143,9 +135,7 @@ BOOST_AUTO_TEST_CASE ( lefdef_combined_basic ) {
   testdef.unsetf(std::ios::skipws);
   def defresult;
   beg = LefDefIter(testdef);
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, defresult) );
+  BOOST_CHECK( tokenize_and_parse(beg, end, defTokens, defParser, defresult) );
   BOOST_CHECK( beg == end );
 
   DefChecker<Database, Library, DieAreaAbortPolicy> chk;

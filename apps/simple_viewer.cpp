@@ -108,21 +108,14 @@ struct CommandState {
     // do not skip whitespace
     lefin.unsetf(ios::skipws);
     LefDefIter beg = LefDefIter(lefin), end;
-    LefTokens<LefDefLexer>::iterator_type lef_it = lefTokens.begin(beg, LefDefIter());
-    LefTokens<LefDefLexer>::iterator_type lef_end = lefTokens.end();
     lef lef_ast;
-    if (!parse(lef_it, lef_end, lefParser, lef_ast) ||
-        (lef_it != lef_end)) {
-      if (lef_it != lef_end) {
+    if (!tokenize_and_parse(beg, end, lefTokens, lefParser, lef_ast) ||
+        (beg != end)) {
+      if (beg != end) {
         cerr << "did not consume all input; ";
-        cerr << distance(lef_it, lef_end) << " tokens remain:" << endl;
-        transform(lef_it, lef_end,
-                       ostream_iterator<boost::iterator_range<LefDefIter> >(cerr, "|"),
-                       [](LefTokens<LefDefLexer>::iterator_type::value_type const& tok) {
-                         // token's value is a variant which initially stores the original iterator
-                         // range matched by the token, i.e., a range of characters
-                         return boost::get<boost::iterator_range<LefDefIter> >(tok.value());
-                       });
+        cerr << distance(beg, end) << " characters remain:" << endl;
+        copy(beg, end, ostream_iterator<char>(cerr, ""));
+        cerr << endl;
       }
       throw SetupException("LEF parse failed");
     }
@@ -137,19 +130,14 @@ struct CommandState {
     }
     defin.unsetf(ios::skipws);
     beg = LefDefIter(defin);
-    DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, end);
-    DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
     def def_ast;
-    if (!parse(it, lex_end, defParser, def_ast) ||
+    if (!tokenize_and_parse(beg, end, defTokens, defParser, def_ast) ||
         (beg != end)) {
-      if (it != lex_end) {
+      if (beg != end) {
         cerr << "did not consume all input; ";
-        cerr << distance(it, lex_end) << " tokens remain:" << endl;
-        transform(it, lex_end,
-                       ostream_iterator<boost::iterator_range<LefDefIter> >(cerr, "|"),
-                       [](DefTokens<LefDefLexer>::iterator_type::value_type const& tok) {
-                         return boost::get<boost::iterator_range<LefDefIter> >(tok.value());
-                       });
+        cerr << distance(beg, end) << " characters remain:" << endl;
+        copy(beg, end, ostream_iterator<char>(cerr, ""));
+        cerr << endl;
       }
       throw SetupException("DEF parse failed");
     }

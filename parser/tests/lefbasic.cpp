@@ -38,10 +38,9 @@ void parse_check(std::string const& str, lef& result) {
   std::stringstream testlef(str);
   testlef.unsetf(std::ios::skipws);
   LefDefIter beg(testlef), end;
-  LefTokens<LefDefLexer>::iterator_type it = lefTokens.begin(beg, LefDefIter());
-  LefTokens<LefDefLexer>::iterator_type lex_end = lefTokens.end();
-  BOOST_CHECK( parse(it, lex_end, lefParser, result) );  // we should match
-  BOOST_CHECK( beg == end );                             // we should consume all input
+  BOOST_CHECK( tokenize_and_parse(beg, end,
+                                  lefTokens, lefParser, result) );  // we should match
+  BOOST_CHECK( beg == end );                                        // we should consume all input
 
 }
 
@@ -101,13 +100,11 @@ BOOST_AUTO_TEST_CASE( site_nospace ) {
   std::stringstream testlef("SITEMYSITENAME CLASS PAD ; SYMMETRY R90 ; SIZE 11.01 BY 22 ; END MYSITENAME");
   testlef.unsetf(std::ios::skipws);
   LefDefIter beg(testlef), end;
-  LefTokens<LefDefLexer>::iterator_type it = lefTokens.begin(beg, LefDefIter());
-  LefTokens<LefDefLexer>::iterator_type lex_end = lefTokens.end();
   lef result;
   // because every LEF statement is optional, the parse will actually pass
-  BOOST_CHECK( parse(it, lex_end, lefParser, result) );
-  // but no input will be consumed
-  BOOST_CHECK( it == lefTokens.begin(beg, LefDefIter()));  // same as it was initialized to be
+  BOOST_CHECK( tokenize_and_parse(beg, end, lefTokens, lefParser, result) );
+  // some input may be consumed for tokenization, but at least some will remain:a
+  BOOST_CHECK( beg != end );
 
 }
 

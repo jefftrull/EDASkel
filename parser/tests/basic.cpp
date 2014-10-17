@@ -38,10 +38,9 @@ void parse_check(std::string const& str, def& result) {
   std::stringstream testdef(str);
   testdef.unsetf(std::ios::skipws);
   LefDefIter beg(testdef), end;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, LefDefIter());
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
-  BOOST_CHECK( parse(it, lex_end, defParser, result) );  // we should match
-  BOOST_CHECK( beg == end );                             // we should consume all input
+  BOOST_CHECK( tokenize_and_parse(beg, end,
+                                  defTokens, defParser, result) );  // we should match
+  BOOST_CHECK( beg == end );                                        // we should consume all input
 
 }
 
@@ -49,10 +48,8 @@ void parse_check_fail(std::string const& str) {
   std::stringstream testdef(str);
   testdef.unsetf(std::ios::skipws);
   LefDefIter beg(testdef), end;
-  DefTokens<LefDefLexer>::iterator_type it = defTokens.begin(beg, LefDefIter());
-  DefTokens<LefDefLexer>::iterator_type lex_end = defTokens.end();
   def result;
-  BOOST_CHECK( !parse(it, lex_end, defParser, result) );  // we should NOT match
+  BOOST_CHECK( !tokenize_and_parse(beg, end, defTokens, defParser, result) );  // we should NOT match
 
 }
 
