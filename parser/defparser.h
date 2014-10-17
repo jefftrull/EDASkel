@@ -78,9 +78,9 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator,
 
       // instance names: letter followed by letters, numbers, underscore, hyphen, square brackets, slashes (hierarchy)
       // BOZO support escapes
-      iname %= lexeme[alpha >> *(alnum | char_('-') | char_('_') | char_('[') | char_(']') | char_('/'))] ;
+      iname %= alpha >> *(alnum | char_('-') | char_('_') | char_('[') | char_(']') | char_('/')) ;
       // celltypes: assuming only underscore might be used out of the non-alphanumeric chars
-      ctype %= lexeme[alpha >> *(alnum | char_('_'))] ;
+      ctype %= alpha >> *(alnum | char_('_')) ;
 
       // components required instance name and celltype; optional any (or none) of placement and weight, in any order:
       component = ('-' > iname[at_c<0>(_val) = _1] > ctype[at_c<1>(_val) = _1] >
@@ -129,7 +129,7 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator,
   // optional placement info (placed vs. fixed, location, orientation)
   typename Rule<defplcinfo()>::type plcinfo;
 
-  typename Rule<std::string()>::type orient, iname, ctype;
+  boost::spirit::qi::rule<Iterator, std::string()> iname, ctype, orient;
 
 
   // boost::spirit::qi::rules neither inheriting nor synthesizing an attribute
@@ -154,7 +154,7 @@ struct net_parser : boost::spirit::qi::grammar<Iterator,
    {
      using namespace boost::spirit::qi;
 
-     nname %= lexeme[alpha >> *(alnum | char_('-') | char_('_') | char_('[') | char_(']') | char_('/'))] ;
+     nname %= alpha >> *(alnum | char_('-') | char_('_') | char_('[') | char_(']') | char_('/')) ;
 
      connection = '(' > comp_symtab > nname > ')' ;
 
@@ -162,7 +162,7 @@ struct net_parser : boost::spirit::qi::grammar<Iterator,
   }
 
   typedef lefdefskipper<Iterator> skipper_t;
-  boost::spirit::qi::rule<Iterator, std::string(), skipper_t> nname;
+  boost::spirit::qi::rule<Iterator, std::string()> nname;
   boost::spirit::qi::rule<Iterator, std::pair<std::string, std::string>(), skipper_t> connection;
   boost::spirit::qi::rule<Iterator, defnet(), skipper_t> net;
   comp_symtab_t const& comp_symtab;
@@ -198,10 +198,10 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
 
       // identifiers
       // design name: letter followed by letters, numbers, underscore, or hyphen
-      dname %= lexeme[alpha >> *(alnum | char_('-') | char_('_'))] ;
+      dname %= alpha >> *(alnum | char_('-') | char_('_')) ;
 
       // celltypes: assuming only underscore might be used out of the non-alphanumeric chars
-      ctype %= lexeme[alpha >> *(alnum | char_('_'))] ;
+      ctype %= alpha >> *(alnum | char_('_')) ;
 
       // orientation
       orient = repeat(1)[char_("NSEW")] |       // a single cardinal direction, OR
@@ -285,8 +285,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator,
   // rects "( llx lly ) ( urx ury )" synthesize defrect structs containing two points
   typename Rule<defrect()>::type rect, diearea_stmt;
 
-  typedef typename Rule<std::string()>::type StringRule;
-  StringRule orient, dname, ctype;
+  boost::spirit::qi::rule<Iterator, std::string()> dname, ctype, orient;
 
   // Site (or named row) statement
   typename Rule<siterepeat()>::type siterpt_stmt;
