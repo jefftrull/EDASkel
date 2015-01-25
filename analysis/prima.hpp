@@ -78,21 +78,28 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
   // Step 4: Set n = floor(q/N)+1 if q/N is not an integer, and q/N otherwise
   size_t n = (q % N) ? (q/N + 1) : (q/N);
 
-  // Step 5: Block Arnoldi (see Boyer for detailed explanation)
+  // Step 5: Block Arnoldi (see Boley for detailed explanation)
+  // Boley and PRIMA paper use X with both subscripts and superscripts
+  // to indicate the outer (subscript) and inner (superscript) loops
+  // I have used X[] for the outer, Xk[] for the inner
   for (size_t k = 1; k <= n; ++k)
   {
     // because X[] will vary in number of columns, so will Xk[]
     MatrixXXList Xk(k+1);
 
+    // Note to self: think about these next couple of LOC
+    // X is dense and dynamic;  C is sparse; G_QR is a sparse QR
+    // Is this the right approach?  Will copies/conversions happen?
+
     // set V = C * X[k-1]
     auto V = C * X[k-1];
 
     // solve G*X[k][0] = V for X[k][0]
-    Xk[0] = G_QR.solve(V);
+    Xk[0] = G_QR.solve(V);    // So Xk[0] = G^-1*C*X[k-1], i.e. A*X[k-1]
+                              // Boley: "expand Krylov space"
 
-    for (size_t j = 1; j <= k; ++j)
+    for (size_t j = 1; j <= k; ++j)   // "Modified Gram-Schmidt"
     {
-      // H = X[k-j].transpose() * X[k][j-1]
       auto H = X[k-j].transpose() * Xk[j-1];
 
       // X[k][j] = X[k][j-1] - X[k-j]*H
