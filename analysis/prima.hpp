@@ -87,7 +87,7 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
   // pre-calculate G^-1*C for use in inner loop
   SparseMatrix<Float> GinvC = G_QR.solve(C);
 
-  for (size_t k = 1; k <= n; ++k)
+  for (size_t k = 1; k < n; ++k)
   {
     // because X[] will vary in number of columns, so will Xk[]
     MatrixXXList Xk(k+1);
@@ -123,8 +123,7 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
 
   // Step 6: Set Xfinal to the concatenation of X[0] to X[n-1],
   //         truncated to q columns
-  // Note this implies we calculated X[n] unnecessarily... I'm not sure what to make of this
-  size_t cols = accumulate(X.begin(), X.end()-1, 0,
+  size_t cols = accumulate(X.begin(), X.end(), 0,
                            [](size_t sum, MatrixXX const& m) { return sum + m.cols(); });
   cols = std::min(q, cols);  // truncate to q
 
