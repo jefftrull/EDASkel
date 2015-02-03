@@ -83,20 +83,21 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
   // Boley and PRIMA paper use X with both subscripts and superscripts
   // to indicate the outer (subscript) and inner (superscript) loops
   // I have used X[] for the outer, Xk[] for the inner
+
+  // pre-calculate G^-1*C for use in inner loop
+  SparseMatrix<Float> GinvC = G_QR.solve(C);
+
   for (size_t k = 1; k <= n; ++k)
   {
     // because X[] will vary in number of columns, so will Xk[]
     MatrixXXList Xk(k+1);
 
-    // Note to self: think about these next couple of LOC
-    // X is dense and dynamic;  C is sparse; G_QR is a sparse QR
-    // Is this the right approach?  Will copies/conversions happen?
-
+    // Prima paper says:
     // set V = C * X[k-1]
-    auto V = C * X[k-1];
-
     // solve G*X[k][0] = V for X[k][0]
-    Xk[0] = G_QR.solve(V);    // So Xk[0] = G^-1*C*X[k-1], i.e. A*X[k-1]
+
+    // X[k][0] = G^-1*V = G^-1*C*X[k-1] = (G^-1*C)*X[k-1]
+    Xk[0] = GinvC*X[k-1];     // So Xk[0] = G^-1*C*X[k-1], i.e. A*X[k-1]
                               // Boley: "expand Krylov space"
 
     for (size_t j = 1; j <= k; ++j)   // "Modified Gram-Schmidt"
