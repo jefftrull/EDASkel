@@ -79,6 +79,7 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
   size_t n = (q % N) ? (q/N + 1) : (q/N);
 
   // Step 5: Block Arnoldi (see Boley for detailed explanation)
+  // In some texts this is called "band Arnoldi".
   // Boley and PRIMA paper use X with both subscripts and superscripts
   // to indicate the outer (subscript) and inner (superscript) loops
   // I have used X[] for the outer, Xk[] for the inner
@@ -100,13 +101,14 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
 
     for (size_t j = 1; j <= k; ++j)   // "Modified Gram-Schmidt"
     {
-      auto H = X[k-j].transpose() * Xk[j-1];
+      auto H = X[k-j].transpose() * Xk[j-1];   // H[k-j][k-1] per Boley
 
       // X[k][j] = X[k][j-1] - X[k-j]*H
       Xk[j] = Xk[j-1] - X[k-j] * H;
     }
 
     // set X[k] to the orthonormal basis of X[k][k] via QR factorization
+    // per Boley the "R" produced is H[k][k-1]
     if (Xk[k].cols() == 1)
     {
       // a single column is automatically orthogonalized; just normalize
