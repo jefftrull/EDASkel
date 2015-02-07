@@ -21,6 +21,7 @@
 #include <vector>
 #include <Eigen/Dense>
 #include <Eigen/SparseQR>
+#include <Eigen/SparseLU>
 
 namespace EDASkel {
 namespace analysis {
@@ -57,7 +58,7 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
   // Step 1 of PRIMA creates the B and L matrices, and is performed by the caller.
 
   // Step 2: Solve GR = B for R
-  SparseQR<SparseMatrix<Float>, COLAMDOrdering<int> > G_QR(G);
+  SparseLU<SparseMatrix<Float>, COLAMDOrdering<int> > G_QR(G);
   assert(G_QR.info() == Success);
   SparseMatrix<Float> R = G_QR.solve(B);
   assert(G_QR.info() == Success);
