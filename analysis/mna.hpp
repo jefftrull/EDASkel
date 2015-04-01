@@ -302,7 +302,7 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
         std::transform(Bprime.begin(), Bprime.end(), std::back_inserter(Bnew),
                        [k, G2R_L, G2R_LU]
                        (Matrix<Float, scount, icount> bn) {
-                           MatrixD B2R = bn.bottomRows(bn.rows() - k).colwise().reverse();
+                           auto B2R = bn.bottomRows(bn.rows() - k).colwise().reverse();
                            bn.block(k, 0, bn.rows() - k, bn.cols()) =
                                G2R_L.fullPivLu().solve(G2R_LU.permutationP() * B2R).colwise().reverse();
                            return bn;
