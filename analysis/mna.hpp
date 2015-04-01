@@ -289,6 +289,7 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
         // To apply it to an unreversed matrix, we reverse the columns, apply,
         // then reverse the result:
         Gnew = (Gprime.rowwise().reverse() * exchange_columns).rowwise().reverse();
+        // Note "rowwise" is for some reason the right way to do this by column (?!)
 
         // insert already-permuted rows that came from LU, but in reverse order
         Gnew.block(k, 0, Gprime.rows() - k, Gprime.cols()) = G2R_U.reverse();
@@ -296,23 +297,15 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
         // Step 4: "Carry out the same row operations in the B matrix"
         // Note: not necessary to do it for C, because all coefficients are zero in those rows
 
-        // 4.1 reverse the rows in B2
-        typedef PermutationMatrix<Dynamic, Dynamic, std::size_t> PermutationD;
-        PermutationD reverse_rows;                // order of rows is completely reversed
-        reverse_rows.setIdentity(G2R.rows());     // start with null permutation
-        for (std::size_t i = 0; i < (G2R.rows() / 2); ++i) {
-            reverse_rows.applyTranspositionOnTheRight(i, (G2R.rows()-1) - i);
-        }
-
-        // 4.2 extract and apply L operation from reversed G2
+        // extract and apply L operation from reversed G2
         MatrixD G2R_L = G2R_LU.matrixLU().leftCols(G2R.rows()).template triangularView<UnitLower>();
         std::transform(Bprime.begin(), Bprime.end(), std::back_inserter(Bnew),
-                       [reverse_rows, k, G2R_L, G2R_LU]
+                       [k, G2R_L, G2R_LU]
                        (Matrix<Float, scount, icount> const& bp) {
-                           MatrixD B2R = reverse_rows * bp.bottomRows(bp.rows() - k);
+                           MatrixD B2R = bp.bottomRows(bp.rows() - k).colwise().reverse();
                            Matrix<Float, scount, icount> bn = bp;
                            bn.block(k, 0, bn.rows() - k, bn.cols()) =
-                               reverse_rows.transpose() * G2R_L.fullPivLu().solve(G2R_LU.permutationP() * B2R);
+                               G2R_L.fullPivLu().solve(G2R_LU.permutationP() * B2R).colwise().reverse();
                            return bn;
                        });
 
