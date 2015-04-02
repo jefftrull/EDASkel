@@ -266,54 +266,49 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     MatrixD Cnew, Gnew, Dnew;
     MatrixVector<Float, scount, icount> Bnew;
 
-    if (Cprime.rows() == (k+1)) {
-        // if G22 is only a single row, there is no point attempting to decompose it
-        Cnew = Cprime; Gnew = Gprime; Bnew = Bprime; Dnew = Dprime;
-    } else {
-        // decompose the bottom rows
-        // Upon close review of the first example in the paper, the author is not only
-        // converting from the last row, but also *from the last column*, i.e., he
-        // performs a standard gaussian elimination on the matrix rotated 180 degrees
+    // decompose the bottom rows
+    // Upon close review of the first example in the paper, the author is not only
+    // converting from the last row, but also *from the last column*, i.e., he
+    // performs a standard gaussian elimination on the matrix rotated 180 degrees
 
-        // Plan of attack: reverse G2, perform LU decomposition, reverse result, reverse permutations
-        MatrixD G2R = Gprime.bottomRows(C.rows() - k).reverse();
+    // Plan of attack: reverse G2, perform LU decomposition, reverse result, reverse permutations
+    MatrixD G2R = Gprime.bottomRows(C.rows() - k).reverse();
 
-        auto G2R_LU = G2R.fullPivLu();
-        MatrixD G2R_U = (G2R_LU.matrixLU().template triangularView<Upper>());
+    auto G2R_LU = G2R.fullPivLu();
+    MatrixD G2R_U = (G2R_LU.matrixLU().template triangularView<Upper>());
 
-        // Since the order of the rows is irrelevant, I'll perform the decomposition, then
-        // combine reversing the rows with the row reordering the LU decomposition produces
+    // Since the order of the rows is irrelevant, I'll perform the decomposition, then
+    // combine reversing the rows with the row reordering the LU decomposition produces
 
-        auto exchange_columns = G2R_LU.permutationQ();
-        // This permutation was computed from a reverse of the original matrix
-        // To apply it to an unreversed matrix, we reverse the columns, apply,
-        // then reverse the result:
-        Gnew = (Gprime.rowwise().reverse() * exchange_columns).rowwise().reverse();
-        // Note "rowwise" is for some reason the right way to do this by column (?!)
+    auto exchange_columns = G2R_LU.permutationQ();
+    // This permutation was computed from a reverse of the original matrix
+    // To apply it to an unreversed matrix, we reverse the columns, apply,
+    // then reverse the result:
+    Gnew = (Gprime.rowwise().reverse() * exchange_columns).rowwise().reverse();
+    // Note "rowwise" is for some reason the right way to do this by column (?!)
 
-        // insert already-permuted rows that came from LU, but in reverse order
-        Gnew.block(k, 0, Gprime.rows() - k, Gprime.cols()) = G2R_U.reverse();
+    // insert already-permuted rows that came from LU, but in reverse order
+    Gnew.block(k, 0, Gprime.rows() - k, Gprime.cols()) = G2R_U.reverse();
 
-        // Step 4: "Carry out the same row operations in the B matrix"
-        // Note: not necessary to do it for C, because all coefficients are zero in those rows
+    // Step 4: "Carry out the same row operations in the B matrix"
+    // Note: not necessary to do it for C, because all coefficients are zero in those rows
 
-        // extract and apply L operation from reversed G2
-        MatrixD G2R_L = G2R_LU.matrixLU().leftCols(G2R.rows()).template triangularView<UnitLower>();
-        std::transform(Bprime.begin(), Bprime.end(), std::back_inserter(Bnew),
-                       [k, G2R_L, G2R_LU]
-                       (Matrix<Float, scount, icount> bn) {
-                           auto B2R = bn.bottomRows(bn.rows() - k).colwise().reverse();
-                           bn.block(k, 0, bn.rows() - k, bn.cols()) =
-                               G2R_L.fullPivLu().solve(G2R_LU.permutationP() * B2R).colwise().reverse();
-                           return bn;
-                       });
+    // extract and apply L operation from reversed G2
+    MatrixD G2R_L = G2R_LU.matrixLU().leftCols(G2R.rows()).template triangularView<UnitLower>();
+    std::transform(Bprime.begin(), Bprime.end(), std::back_inserter(Bnew),
+                   [k, G2R_L, G2R_LU]
+                   (Matrix<Float, scount, icount> bn) {
+                       auto B2R = bn.bottomRows(bn.rows() - k).colwise().reverse();
+                       bn.block(k, 0, bn.rows() - k, bn.cols()) =
+                           G2R_L.fullPivLu().solve(G2R_LU.permutationP() * B2R).colwise().reverse();
+                       return bn;
+                   });
 
-        // Step 5: "Interchange the columns in the G, C, and D matrices... such that G22 is non-singular"
-        // Since we have done a full pivot factorization of G2 I assume G22 is already non-singular,
-        // so the only thing left to do is reorder the C and D matrices according to the G2 factorization
-        Cnew = (Cprime.rowwise().reverse() * exchange_columns).rowwise().reverse();
-        Dnew = (Dprime.rowwise().reverse() * exchange_columns).rowwise().reverse();
-    }
+    // Step 5: "Interchange the columns in the G, C, and D matrices... such that G22 is non-singular"
+    // Since we have done a full pivot factorization of G2 I assume G22 is already non-singular,
+    // so the only thing left to do is reorder the C and D matrices according to the G2 factorization
+    Cnew = (Cprime.rowwise().reverse() * exchange_columns).rowwise().reverse();
+    Dnew = (Dprime.rowwise().reverse() * exchange_columns).rowwise().reverse();
 
     // Step 6: compute reduced matrices using equations given in paper
     auto G11 = Gnew.topLeftCorner(k, k);
