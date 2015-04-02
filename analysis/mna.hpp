@@ -316,14 +316,14 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     }
 
     // Step 6: compute reduced matrices using equations given in paper
-    MatrixD G11 = Gnew.topLeftCorner(k, k);
-    MatrixD G12 = Gnew.topRightCorner(k, Gnew.rows() - k);
-    MatrixD G21 = Gnew.bottomLeftCorner(Gnew.rows() - k, k);
-    MatrixD G22 = Gnew.bottomRightCorner(Gnew.rows() - k, Gnew.rows() - k);
-    MatrixD C11 = Cnew.topLeftCorner(k, k);
-    MatrixD C12 = Cnew.topRightCorner(k, Cnew.rows() - k);
-    MatrixD D01 = Dnew.leftCols(k);
-    MatrixD D02 = Dnew.rightCols(Dnew.cols() - k);
+    auto G11 = Gnew.topLeftCorner(k, k);
+    auto G12 = Gnew.topRightCorner(k, Gnew.rows() - k);
+    auto G21 = Gnew.bottomLeftCorner(Gnew.rows() - k, k);
+    auto G22 = Gnew.bottomRightCorner(Gnew.rows() - k, Gnew.rows() - k);
+    auto C11 = Cnew.topLeftCorner(k, k);
+    auto C12 = Cnew.topRightCorner(k, Cnew.rows() - k);
+    auto D01 = Dnew.leftCols(k);
+    auto D02 = Dnew.rightCols(Dnew.cols() - k);
 
     assert(!isSingular(G22));
     auto    G22_LU = G22.fullPivLu();
@@ -348,7 +348,7 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     // n+1's first (equation 9d)
     std::transform(Bnew.begin(), Bnew.end(), std::back_inserter(Btrans),
                    [k, G12, C12, G22_LU](Matrix<Float, scount, icount> const& Bn) {
-                       Matrix<Float, Dynamic, icount> Bn2 = Bn.bottomRows(Bn.rows() - k);
+                       auto Bn2 = Bn.bottomRows(Bn.rows() - k);
                        return -C12 * G22_LU.solve(Bn2);
                    });
     Btrans.push_back(Matrix<Float, Dynamic, icount>::Zero(k, icount));  // contribution from n-1 is 0 (nonexistent)
@@ -359,8 +359,8 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
                                          Matrix<Float, Dynamic, icount> const& Bnm1_contribution)
                    -> Matrix<Float, Dynamic, icount> {  // without explicitly declared return type Eigen
                                                         // will keep references to these locals:
-                       Matrix<Float, Dynamic, icount> Bn1 = Bn.topRows(k);
-                       Matrix<Float, Dynamic, icount> Bn2 = Bn.bottomRows(Bn.rows() - k);
+                       auto Bn1 = Bn.topRows(k);
+                       auto Bn2 = Bn.bottomRows(Bn.rows() - k);
 
                        return Bn1 - G12 * G22_LU.solve(Bn2) + Bnm1_contribution;
                    });
