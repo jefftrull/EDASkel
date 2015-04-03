@@ -87,8 +87,8 @@ void stamp_i(typename std::vector<Eigen::Triplet<Float> >& tlist,
 }
 
 
-template<class M>
-bool isSingular(const M& m) {
+template<typename Scalar, int Rows, int Cols, int Options, int MaxRows, int MaxCols>
+bool isSingular(Matrix<Scalar, Rows, Cols, Options, MaxRows, MaxCols> const& m) {
    // A singular matrix has at least one zero eigenvalue -
    // in theory, at least... but due to machine precision we can have "nearly singular"
    // matrices that misbehave.  Comparing rank instead is safer because it uses thresholds
@@ -96,7 +96,18 @@ bool isSingular(const M& m) {
 
    assert(m.rows() == m.cols());   // singularity has no meaning for a non-square matrix
    return (m.fullPivLu().rank() != m.rows());
+}
 
+template<class Derived, unsigned Mode>
+bool isSingular(TriangularView<Derived, Mode> const& m) {
+   // a "triangular view" is singular if any diagonal element is 0
+   // we could use "diagonal" to do this reduction if it were a proper Matrix
+   for (int i=0; i < m.rows(); ++i) {
+      if (m.coeff(i, i) == 0.0) {
+         return true;
+      }
+   }
+   return false;
 }
 
 // Convenience template for using Eigen's special allocator with vectors
@@ -294,13 +305,13 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     // Note: not necessary to do it for C, because all coefficients are zero in those rows
 
     // extract and apply L operation from reversed G2
-    MatrixD G2R_L = G2R_LU.matrixLU().leftCols(G2R.rows()).template triangularView<UnitLower>();
+    auto G2R_L = G2R_LU.matrixLU().leftCols(G2R.rows()).template triangularView<UnitLower>();
     std::transform(Bprime.begin(), Bprime.end(), std::back_inserter(Bnew),
                    [k, G2R_L, G2R_LU]
                    (Matrix<Float, scount, icount> bn) {
                        auto B2R = bn.bottomRows(bn.rows() - k).colwise().reverse();
                        bn.block(k, 0, bn.rows() - k, bn.cols()) =
-                           G2R_L.fullPivLu().solve(G2R_LU.permutationP() * B2R).colwise().reverse();
+                           G2R_L.solve(G2R_LU.permutationP() * B2R).colwise().reverse();
                        return bn;
                    });
 
@@ -314,23 +325,22 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     auto G11 = Gnew.topLeftCorner(k, k);
     auto G12 = Gnew.topRightCorner(k, Gnew.rows() - k);
     auto G21 = Gnew.bottomLeftCorner(Gnew.rows() - k, k);
-    auto G22 = Gnew.bottomRightCorner(Gnew.rows() - k, Gnew.rows() - k);
+    auto G22 = Gnew.bottomRightCorner(Gnew.rows() - k, Gnew.rows() - k).template triangularView<Lower>();
     auto C11 = Cnew.topLeftCorner(k, k);
     auto C12 = Cnew.topRightCorner(k, Cnew.rows() - k);
     auto D01 = Dnew.leftCols(k);
     auto D02 = Dnew.rightCols(Dnew.cols() - k);
 
     assert(!isSingular(G22));
-    auto    G22_LU = G22.fullPivLu();
 
-    MatrixD Gfinal  = G11 - G12 * G22_LU.solve(G21);
-    MatrixD Cfinal  = C11 - C12 * G22_LU.solve(G21);
+    MatrixD Gfinal  = G11 - G12 * G22.solve(G21);
+    MatrixD Cfinal  = C11 - C12 * G22.solve(G21);
     Matrix<Float, ocount, Dynamic> Dfinal
-                    = D01 - D02 * G22_LU.solve(G21);
+                    = D01 - D02 * G22.solve(G21);
 
     Matrix<Float, Dynamic, icount> B02 = Bnew.back().bottomRows(Bnew.back().rows() - k);
     Matrix<Float, ocount, icount> E1
-                    =       D02 * G22_LU.solve(B02);
+                    =       D02 * G22.solve(B02);
 
     // reduce the entire series of B's to the new size
     // Performing the same substitution as in Natarajan beginning with eqn [5]
@@ -342,22 +352,22 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     MatrixVector<Float, Dynamic, icount> Btrans;
     // n+1's first (equation 9d)
     std::transform(Bnew.begin(), Bnew.end(), std::back_inserter(Btrans),
-                   [k, G12, C12, G22_LU](Matrix<Float, scount, icount> const& Bn) {
+                   [k, G12, C12, G22](Matrix<Float, scount, icount> const& Bn) {
                        auto Bn2 = Bn.bottomRows(Bn.rows() - k);
-                       return -C12 * G22_LU.solve(Bn2);
+                       return -C12 * G22.solve(Bn2);
                    });
     Btrans.push_back(Matrix<Float, Dynamic, icount>::Zero(k, icount));  // contribution from n-1 is 0 (nonexistent)
 
     // n's next, shifted by one (equation 9c)
     std::transform(Bnew.begin(), Bnew.end(), Btrans.begin()+1, Btrans.begin()+1,
-                   [k, G12, G22_LU](Matrix<Float, scount, icount> const& Bn,
+                   [k, G12, G22](Matrix<Float, scount, icount> const& Bn,
                                          Matrix<Float, Dynamic, icount> const& Bnm1_contribution)
                    -> Matrix<Float, Dynamic, icount> {  // without explicitly declared return type Eigen
                                                         // will keep references to these locals:
                        auto Bn1 = Bn.topRows(k);
                        auto Bn2 = Bn.bottomRows(Bn.rows() - k);
 
-                       return Bn1 - G12 * G22_LU.solve(Bn2) + Bnm1_contribution;
+                       return Bn1 - G12 * G22.solve(Bn2) + Bnm1_contribution;
                    });
 
     // If Cfinal is singular, we need to repeat this analysis on the new matrices
