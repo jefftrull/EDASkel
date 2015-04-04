@@ -274,64 +274,75 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     Matrix<Float, ocount, scount> Dprime = D.transpose() * Q;          // columns only
 
     // Step 3: "Convert [G21 G22] matrix into row echelon form starting from the last row"
-    MatrixD Cnew, Gnew, Dnew;
-    MatrixVector<Float, scount, icount> Bnew;
 
     // decompose the bottom rows
-    // Upon close review of the first example in the paper, the author is not only
-    // converting from the last row, but also *from the last column*, i.e., he
-    // performs a standard gaussian elimination on the matrix rotated 180 degrees
+    // The author performed a standard gaussian elimination on the bottom rows of the G
+    // matrix, rotated 180 degrees, i.e. as though the matrix were upside down, to get
+    // a lower triangular matrix in G22 when the original orientation is restored.
+    // Christoph Hertzberg pointed out to me (on IRC) that given pivoting etc. the
+    // initial orientation of the matrix is irrelevant and we can simply reorder the
+    // necessary bits afterward.  Thus, my new plan:
 
-    // Plan of attack: reverse G2, perform LU decomposition, reverse result, reverse permutations
-    MatrixD G2R = Gprime.bottomRows(C.rows() - k).reverse();
+    // Perform LU decomposition, then exchange G21 and G22, reversing the former, i.e.:
+    // X X X  Y Y Y        (G2)       Q Q Q  X 0 0
+    // 0 X X  Z Z Z    ============>  Z Z Z  X X 0
+    // 0 0 X  Q Q Q                   Y Y Y  X X X
+    // In this approach only the original G21 gets column reversed
+    // In addition, for performance we should keep these blocks as lazy expressions to
+    // avoid reconstructing the full-sized matrix
 
-    auto G2R_LU = G2R.fullPivLu();
-    MatrixD G2R_U = (G2R_LU.matrixLU().template triangularView<Upper>());
+    auto G2_LU = Gprime.bottomRows(C.rows() - k).fullPivLu();
+    // former lower left gets reversed and becomes lower right
+    MatrixD G22R = G2_LU.matrixLU().leftCols(C.rows() - k).reverse();
+    auto G22   = G22R.template triangularView<Lower>();
+    // former lower right just gets row permutation to match G22
+    auto G21   = G2_LU.matrixLU().rightCols(k).colwise().reverse();  // reverses rows
 
-    // Since the order of the rows is irrelevant, I'll perform the decomposition, then
-    // combine reversing the rows with the row reordering the LU decomposition produces
-
-    auto exchange_columns = G2R_LU.permutationQ();
-    // This permutation was computed from a reverse of the original matrix
-    // To apply it to an unreversed matrix, we reverse the columns, apply,
-    // then reverse the result:
-    Gnew = (Gprime.rowwise().reverse() * exchange_columns).rowwise().reverse();
-    // Note "rowwise" is for some reason the right way to do this by column (?!)
-
-    // insert already-permuted rows that came from LU, but in reverse order
-    Gnew.block(k, 0, Gprime.rows() - k, Gprime.cols()) = G2R_U.reverse();
+    // top blocks of G get the column permutations but nothing else
+    // both get column permutation from LU
+    auto G1  = Gprime.topRows(k) * G2_LU.permutationQ();
+    // upper left gets same column reversal as lower right did and becomes G12
+    auto G12 = G1.leftCols(C.rows() - k).rowwise().reverse();    // reverses columns
+    // upper right just becomes G11
+    auto G11 = G1.rightCols(k);
 
     // Step 4: "Carry out the same row operations in the B matrix"
-    // Note: not necessary to do it for C, because all coefficients are zero in those rows
-
+    // This means the row permutation and multiplication by L from the LU,
+    // plus the row reversing permutation we did to make G22 lower triangular.
+    // These operations are only applied to the lower part of B
+ 
     // extract and apply L operation from reversed G2
-    auto G2R_L = G2R_LU.matrixLU().leftCols(G2R.rows()).template triangularView<UnitLower>();
+    auto G2_L = G2_LU.matrixLU().leftCols(C.rows() - k).template triangularView<UnitLower>();
+    assert(!isSingular(G2_L));
+    MatrixVector<Float, scount, icount> Bnew;
     std::transform(Bprime.begin(), Bprime.end(), std::back_inserter(Bnew),
-                   [k, G2R_L, G2R_LU]
+                   [k, G2_L, G2_LU]
                    (Matrix<Float, scount, icount> bn) {
-                       auto B2R = bn.bottomRows(bn.rows() - k).colwise().reverse();
-                       bn.block(k, 0, bn.rows() - k, bn.cols()) =
-                           G2R_L.solve(G2R_LU.permutationP() * B2R).colwise().reverse();
+                       auto B2 = bn.bottomRows(bn.rows() - k);
+                       bn.bottomRows(bn.rows() - k) =
+                           G2_L.solve(G2_LU.permutationP() * B2).colwise().reverse();
                        return bn;
                    });
 
     // Step 5: "Interchange the columns in the G, C, and D matrices... such that G22 is non-singular"
     // Since we have done a full pivot factorization of G2 I assume G22 is already non-singular,
     // so the only thing left to do is reorder the C and D matrices according to the G2 factorization
-    Cnew = (Cprime.rowwise().reverse() * exchange_columns).rowwise().reverse();
-    Dnew = (Dprime.rowwise().reverse() * exchange_columns).rowwise().reverse();
+
+    // same column permutations as G1 for C1 (only applies to top rows; bottom is zero)
+    auto C1  = Cprime.topRows(k) * G2_LU.permutationQ();
+    auto C12 = C1.leftCols(C.rows() - k).rowwise().reverse();    // reverses columns
+    auto C11 = C1.rightCols(k);
+
+    // D columns also get permuted
+    MatrixD pq_view = G2_LU.permutationQ();
+    auto D1  = Dprime * G2_LU.permutationQ();
+    auto D02 = D1.leftCols(C.rows() - k).rowwise().reverse();
+    auto D01 = D1.rightCols(k);
 
     // Step 6: compute reduced matrices using equations given in paper
-    auto G11 = Gnew.topLeftCorner(k, k);
-    auto G12 = Gnew.topRightCorner(k, Gnew.rows() - k);
-    auto G21 = Gnew.bottomLeftCorner(Gnew.rows() - k, k);
-    auto G22 = Gnew.bottomRightCorner(Gnew.rows() - k, Gnew.rows() - k).template triangularView<Lower>();
-    auto C11 = Cnew.topLeftCorner(k, k);
-    auto C12 = Cnew.topRightCorner(k, Cnew.rows() - k);
-    auto D01 = Dnew.leftCols(k);
-    auto D02 = Dnew.rightCols(Dnew.cols() - k);
 
     assert(!isSingular(G22));
+    // G22 is a "TriangularView" so has a simple solve method based on back-substitution
 
     MatrixD Gfinal  = G11 - G12 * G22.solve(G21);
     MatrixD Cfinal  = C11 - C12 * G22.solve(G21);
