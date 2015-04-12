@@ -165,8 +165,6 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
       using namespace boost::spirit::qi;
       namespace qi = boost::spirit::qi;         // BOZO silly to have both this and the previous
       using boost::spirit::_1;                  // access attributes for component count check
-      using boost::phoenix::val;                // for error handling
-      using boost::phoenix::construct;          // for error handling
       using boost::phoenix::at_c;               // to refer to pieces of wrapped structs
       using boost::phoenix::push_back;          // to store results in containers
       using boost::phoenix::ref;                // for storing parsing info into parser var (instead of attributes)

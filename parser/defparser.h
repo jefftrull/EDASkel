@@ -169,8 +169,6 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
     using boost::phoenix::bind;
     using boost::phoenix::at_c;
     using boost::spirit::_1;
-    using boost::spirit::_2;
-    using boost::spirit::_3;
     using boost::spirit::_val;
 
     point %= '(' >> tok.int_ >> tok.int_ >> ')' ;       // points are parenthesized pairs, no comma
