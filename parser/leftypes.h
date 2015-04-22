@@ -42,15 +42,15 @@ struct Site {
   std::string name;
   SiteClass class_;
   boost::optional<std::vector<SiteSymmetry> > symmetry;
-  float width, height;
+  double width, height;
 };
 
 struct lefpoint {
-  float x, y;
+  double x, y;
 };
 
 struct lefextent {
-  float width, height;
+  double width, height;
 };
 
 struct lefforeign {
@@ -89,20 +89,20 @@ BOOST_FUSION_ADAPT_STRUCT(
   (std::string, name)
   (SiteClass, class_)
   (boost::optional<std::vector<SiteSymmetry> >, symmetry)
-  (float, width)
-  (float, height)
+  (double, width)
+  (double, height)
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
   LefParse::lefpoint,
-  (float, x)
-  (float, y)
+  (double, x)
+  (double, y)
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
   LefParse::lefextent,
-  (float, width)
-  (float, height)
+  (double, width)
+  (double, height)
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
