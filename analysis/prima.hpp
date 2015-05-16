@@ -46,9 +46,10 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
   assert(C.rows() == G.rows());     // input matrices are of the same size
   assert(B.rows() == G.rows());
   assert(L.rows() == G.rows());
-  size_t N = B.cols();
-  assert(N < C.rows());             // must have more state variables than ports
-  assert(q < C.rows());             // desired state count must be less than current number
+  std::size_t N = B.cols();
+  std::size_t state_count = static_cast<std::size_t>(C.rows());
+  assert(N < state_count);          // must have more state variables than ports
+  assert(q < state_count);          // desired state count must be less than current number
 
   // unchecked precondition: the state variables associated with the ports must be the last N
 
@@ -128,7 +129,7 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
                            [](size_t sum, MatrixXX const& m) { return sum + m.cols(); });
   cols = std::min(q, cols);  // truncate to q
 
-  MatrixXX Xfinal(C.rows(), cols);
+  MatrixXX Xfinal(state_count, cols);
   size_t col = 0;
   for (size_t k = 0; (k <= n) && (col < cols); ++k)
   {
