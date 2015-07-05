@@ -13,6 +13,11 @@ add_executable( spef load_spef.cpp )
 
 include_directories(${TCL_INCLUDE_PATH})
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  # suppress issue in Qt5 headers
+  add_definitions( -Wno-inconsistent-missing-override )
+endif()
+
 if( TCL_FOUND )
   add_executable( sv simple_viewer.cpp ${DV_MOC_SRC})
   target_link_libraries( sv Qt5::Widgets lefdef ${Boost_LIBRARIES} qttclnotifier ${TCL_LIBRARY} )
