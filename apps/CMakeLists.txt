@@ -15,7 +15,6 @@ include_directories(${TCL_INCLUDE_PATH})
 
 if( TCL_FOUND )
   add_executable( sv simple_viewer.cpp ${DV_MOC_SRC})
-  qt5_use_modules( sv Widgets )
-  target_link_libraries( sv lefdef ${Boost_LIBRARIES} qttclnotifier ${TCL_LIBRARY} )
+  target_link_libraries( sv Qt5::Widgets lefdef ${Boost_LIBRARIES} qttclnotifier ${TCL_LIBRARY} )
 endif()
 
