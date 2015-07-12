@@ -2,7 +2,7 @@
 find_package( Qt5Widgets REQUIRED )
 
 add_executable ( basicgui basic.cpp )
-qt5_use_modules( basicgui Widgets )
+target_link_libraries( basicgui Qt5::Widgets )
 
 if (MSVC)
   set_target_properties( basicgui PROPERTIES COMPILE_FLAGS "/EHa" )
