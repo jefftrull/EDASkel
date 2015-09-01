@@ -98,7 +98,7 @@ struct rlc_tank {
     // Use Eigen reductions to find zero rows
     auto zero_rows = (C.array() == 0.0).rowwise().all();   // per row "all zeros"
 
-    Matrix4d permut = Matrix4d::Identity();   // null permutation to start
+    PermutationMatrix<4, 4, std::size_t> permut;
     std::size_t i, j;
     for (i = 0, j=3; i < j;) {
       // loop invariant: rows > j are all zero; rows < i are not
@@ -106,8 +106,7 @@ struct rlc_tank {
       while ((j > 0) && zero_rows(j)) --j;
       if (i < j) {
         // exchange rows i and j via the permutation vector
-        permut(i, i) = 0; permut(j, j) = 0;
-        permut(i, j) = 1; permut(j, i) = 1;
+        permut.applyTranspositionOnTheRight(i, j);
         ++i; --j;
       }
     }

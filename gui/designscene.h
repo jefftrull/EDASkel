@@ -62,7 +62,8 @@ class DesignScene : public QGraphicsScene {
       QRectF boundary = boundingRect();
       painter->drawRect(boundary);
       // add dogear to indicate origin corner (lower left, for N instances)
-      painter->drawLine(0, boundary.bottom()/2, boundary.right()/2, 0);
+      painter->drawLine(QPointF(0, boundary.bottom()/2),
+                        QPointF(boundary.right()/2, 0));
     }
 
   };

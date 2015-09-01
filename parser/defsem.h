@@ -15,6 +15,8 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+#include <boost/numeric/conversion/cast.hpp>
+
 #include "deftypes.h"
 
 #if !defined(EDASKEL_DEF_SEMANTIC)
@@ -68,6 +70,8 @@ namespace DefParse {
     class DefChecker {
   public:
     bool CheckAndInsert(const def& defin, const Lib& lib, DB& db) {
+      using boost::numeric_cast;
+
       typedef typename DB::Rect Rect;
       typedef typename DB::Point Point;
 
@@ -107,8 +111,8 @@ namespace DefParse {
 	int xstep = 0; int ystep = 0;
 	if (!site_not_found) {
 	  // "dbupermicron" is expected to be large enough so these calculations produce an integer result:
-	  xstep = (int)(defin.dbupermicron * sptr->getWidth());
-	  ystep = (int)(defin.dbupermicron * sptr->getHeight());
+          xstep = numeric_cast<int>(numeric_cast<float>(defin.dbupermicron) * sptr->getWidth());
+          ystep = numeric_cast<int>(numeric_cast<float>(defin.dbupermicron) * sptr->getHeight());
 	}
 	if (rs.repeat) {
 	  xcount = rs.repeat->xrepeat;
@@ -131,8 +135,8 @@ namespace DefParse {
 	int fary = rs.origy + (ycount - 1) * ystep;
 	if (!site_not_found) {
 	  // also add in site width/height
-	  farx += (int)(defin.dbupermicron * sptr->getWidth());
-	  fary += (int)(defin.dbupermicron * sptr->getHeight());
+          farx += numeric_cast<int>(numeric_cast<float>(defin.dbupermicron) * sptr->getWidth());
+          fary += numeric_cast<int>(numeric_cast<float>(defin.dbupermicron) * sptr->getHeight());
 	}
 	bool out_of_diearea = ((rs.origx < defin.diearea.ll.x) || (farx < defin.diearea.ll.x) ||
 			       (rs.origy < defin.diearea.ll.y) || (fary < defin.diearea.ll.y) ||
