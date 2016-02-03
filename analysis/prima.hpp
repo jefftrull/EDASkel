@@ -59,10 +59,9 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
   // Step 1 of PRIMA creates the B and L matrices, and is performed by the caller.
 
   // Step 2: Solve GR = B for R
-  SparseLU<SparseMatrix<Float>, COLAMDOrdering<int> > G_QR(G);
-  assert(G_QR.info() == Success);
-  SparseMatrix<Float> R = G_QR.solve(B);
-  assert(G_QR.info() == Success);
+  SparseLU<SparseMatrix<Float>, COLAMDOrdering<int> > G_LU(G);
+  assert(G_LU.info() == Success);
+  SparseMatrix<Float> R = G_LU.solve(B);
 
   // Step 3: Set X[0] to the orthonormal basis of R as determined by QR factorization
   typedef Matrix<Float, Dynamic, Dynamic> MatrixXX;
@@ -87,7 +86,7 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
   // I have used X[] for the outer, Xk[] for the inner
 
   // pre-calculate G^-1*C for use in inner loop
-  SparseMatrix<Float> GinvC = G_QR.solve(C);
+  SparseMatrix<Float> GinvC = G_LU.solve(C);
 
   for (size_t k = 1; k < n; ++k)
   {
