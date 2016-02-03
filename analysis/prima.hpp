@@ -72,9 +72,12 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
   
   SparseQR<SparseMatrix<Float>, COLAMDOrdering<int> > R_QR(R);
   assert(R_QR.info() == Success);
-  SparseMatrix<Float> rQ;
-  rQ = R_QR.matrixQ();
-  MatrixXXList X(1, rQ.leftCols(R_QR.rank()));
+  // QR stores the Q "matrix" as a series of Householder reflection operations
+  // that it will perform for you with the * operator.  If you store it in a matrix
+  // it obligingly produces an NxN matrix but if you want the "thin" result only,
+  // creating a thin identity matrix and then applying the reflections saves both
+  // memory and time:
+  MatrixXXList X(1, R_QR.matrixQ() * MatrixXX::Identity(B.rows(), R_QR.rank()));
 
   // Step 4: Set n = floor(q/N)+1 if q/N is not an integer, and q/N otherwise
   size_t n = (q % N) ? (q/N + 1) : (q/N);
@@ -117,8 +120,7 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
       X.push_back(Xk[k].normalized());
     } else {
       auto xkkQR = Xk[k].fullPivHouseholderQr();
-      MatrixXX xkkQ = xkkQR.matrixQ();
-      X.push_back(xkkQ.leftCols(xkkQR.rank()));
+      X.push_back(xkkQR.matrixQ() * MatrixXX::Identity(Xk[k].rows(), xkkQR.rank()));
     }
   }
 
