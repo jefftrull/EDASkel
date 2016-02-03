@@ -86,7 +86,9 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
   // In some texts this is called "band Arnoldi".
   // Boley and PRIMA paper use X with both subscripts and superscripts
   // to indicate the outer (subscript) and inner (superscript) loops
-  // I have used X[] for the outer, Xk[] for the inner
+  // I have used X[] for the outer, Xk for the inner
+  // X[k][j] value is just the value for the current inner loop, updated from the previous
+  // so a single Xkj will suffice
 
   // pre-calculate G^-1*C for use in inner loop
   SparseMatrix<Float> GinvC = G_LU.solve(C);
@@ -94,33 +96,33 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
   for (size_t k = 1; k < n; ++k)
   {
     // because X[] will vary in number of columns, so will Xk[]
-    MatrixXXList Xk(k+1);
+    MatrixXX Xkj;             // X[k][j] - vector in PRIMA paper but values not reused
 
     // Prima paper says:
     // set V = C * X[k-1]
     // solve G*X[k][0] = V for X[k][0]
 
     // X[k][0] = G^-1*V = G^-1*C*X[k-1] = (G^-1*C)*X[k-1]
-    Xk[0] = GinvC*X[k-1];     // So Xk[0] = G^-1*C*X[k-1], i.e. A*X[k-1]
+    Xkj = GinvC*X[k-1];       // So Xk[0] = G^-1*C*X[k-1], i.e. A*X[k-1]
                               // Boley: "expand Krylov space"
 
     for (size_t j = 1; j <= k; ++j)   // "Modified Gram-Schmidt"
     {
-      auto H = X[k-j].transpose() * Xk[j-1];   // H[k-j][k-1] per Boley
+      auto H = X[k-j].transpose() * Xkj;   // H[k-j][k-1] per Boley
 
       // X[k][j] = X[k][j-1] - X[k-j]*H
-      Xk[j] = Xk[j-1] - X[k-j] * H;
+      Xkj = Xkj - X[k-j] * H;              // update X[k][j] from X[k][j-1]
     }
 
     // set X[k] to the orthonormal basis of X[k][k] via QR factorization
     // per Boley the "R" produced is H[k][k-1]
-    if (Xk[k].cols() == 1)
+    if (Xkj.cols() == 1)
     {
       // a single column is automatically orthogonalized; just normalize
-      X.push_back(Xk[k].normalized());
+      X.push_back(Xkj.normalized());
     } else {
-      auto xkkQR = Xk[k].fullPivHouseholderQr();
-      X.push_back(xkkQR.matrixQ() * MatrixXX::Identity(Xk[k].rows(), xkkQR.rank()));
+      auto xkkQR = Xkj.fullPivHouseholderQr();
+      X.push_back(xkkQR.matrixQ() * MatrixXX::Identity(Xkj.rows(), xkkQR.rank()));
     }
   }
 
