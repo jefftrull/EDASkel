@@ -37,7 +37,7 @@ namespace LefParse {
 
 // Tokens
 enum TokenIds {
-  T_NAMESCASESENSITIVE = 1000, T_ON, T_OFF,
+  T_NAMESCASESENSITIVE = 1000, T_VERSION, T_ON, T_OFF,
   T_LAYER, T_END, T_VIA, T_VIARULE, T_CLASS, T_PAD, T_CORE, T_ENDCAP,
   T_SITE, T_SYMMETRY, T_BY, T_SPACING, T_UNITS, T_FOREIGN, T_ORIGIN,
   T_SIZE, T_PIN, T_OBS, T_MACRO, T_LIBRARY, T_PORT,
@@ -64,6 +64,7 @@ struct LefTokens : boost::spirit::lex::lexer<Lexer>
 
     this->self =
       lex::string("NAMESCASESENSITIVE", T_NAMESCASESENSITIVE)
+      | lex::string("(?i:version)", T_VERSION)
       | lex::string("(?i:on)", T_ON)
       | lex::string("(?i:off)", T_OFF)
       | lex::string("(?i:layer)", T_LAYER)
@@ -171,6 +172,8 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
       using qi::raw_token;                      // to turn token IDs into qi parsers
 
       // top-level elements in a LEF file
+
+      version = raw_token(T_VERSION) > tok.double_ > ';' ;
 
       casesens = raw_token(T_NAMESCASESENSITIVE) >
 	(raw_token(T_ON)[ref(case_on) = true] |
@@ -289,13 +292,14 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
       // strangely a LEF file does not begin with anything distinctive... just goes right into the data
       // BOZO siterule should store site name into symtab
       // evidently EVERY statement is optional
-      lef_file = *(casesens | units | spacing | via | viarule |
+      lef_file = *(version | casesens | units | spacing | via | viarule |
                    layerdef [push_back(at_c<2>(_val), _1)] |
 		   siterule [push_back(at_c<0>(_val), _1)] |
 		   macro [push_back(at_c<1>(_val), _1)])
 	>> -(raw_token(T_END) > raw_token(T_LIBRARY)) ;
 
       // Debugging assistance
+      BOOST_SPIRIT_DEBUG_NODE(version) ;
       BOOST_SPIRIT_DEBUG_NODE(casesens);
       BOOST_SPIRIT_DEBUG_NODE(layer);
       BOOST_SPIRIT_DEBUG_NODE(via);
@@ -328,7 +332,7 @@ struct lefparser : boost::spirit::qi::grammar<Iterator, lef()>
 
   // rules neither inheriting nor synthesizing an attribute
   typedef boost::spirit::qi::rule<Iterator> NoAttrRule;
-  NoAttrRule spacing, units, casesens, obs;
+  NoAttrRule spacing, units, casesens, obs, version ;
 
   boost::spirit::qi::rule<Iterator, leflayer(),
                           boost::spirit::qi::locals<std::string> > layerdef;
