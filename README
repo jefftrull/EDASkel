@@ -14,12 +14,12 @@ edaskel@att.net
 
 Building EDASkel
 ----------------
-You need a recent copy of Boost (at least 1.43 - download from www.boost.org) and of Qt (4.6.2). Presently the use of Boost is only from the header-only portion, so compiling it is not necessary. The steps are as follows:
+You need a recent copy of Boost (at least 1.53 - download from www.boost.org) and of Qt (4.6.2). You need to have at least 'program_options' library compiled. The steps are as follows:
 
 (cd to this directory)
 mkdir build
 cd build
-cmake -DBOOST_ROOT=~/boost_1_43_0 ..    # assuming you downloaded boost into your homedir
+cmake -DBOOST_ROOT=~/boost_1_53_0 ..    # assuming you downloaded boost into your homedir
 make
 
 If the build succeeded you should be able to do:
