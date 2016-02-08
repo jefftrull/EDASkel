@@ -33,6 +33,7 @@ namespace DefParse {
 // DEF tokens
 enum TokenIds {
   T_VERSION = 1000,        // can't start at 0 == EOF
+  T_DIVIDERCHAR,
   T_DIEAREA, T_WEIGHT, T_SOURCE, T_DIST, T_NETLIST,
   T_USER, T_TIMING, T_COMPONENTS, T_END, T_DO, T_BY,
   T_STEP, T_ROW, T_SITE, T_UNITS, T_DISTANCE, T_MICRONS,
@@ -47,7 +48,8 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
   DefTokens()
     : history_("^HISTORY[^;]*;"),
       double_("-?[0-9]+\\.[0-9]+"),
-      int_("-?[0-9]+")
+      int_("-?[0-9]+"),
+      string_("\".*\"")
   {
     namespace lex = boost::spirit::lex;
     // for lex semantic actions
@@ -81,6 +83,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
                   [ _val = construct<std::string>(begin(_a)+8, end(_a) -1) ]
           ]
       | lex::string("VERSION", T_VERSION)
+      | lex::string("DIVIDERCHAR", T_DIVIDERCHAR)
       | lex::string("DIEAREA", T_DIEAREA)
       | lex::string("WEIGHT", T_WEIGHT)
       | lex::string("SOURCE", T_SOURCE)
@@ -108,8 +111,8 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
       | lex::string("PLACED", T_PLACED)
       | lex::string("FIXED", T_FIXED)
       | nonkwd_
-      | double_ | int_
-      | '+' | '-' | '(' | ')' | ';'
+      | double_ | int_ | string_
+      | '+' | '-' | '(' | ')' | ';' | "\".*\""
       ;
 
     // whitespace and comments
@@ -131,6 +134,8 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
   boost::spirit::lex::token_def<double> double_;
   boost::spirit::lex::token_def<int> int_;
 
+  // quoted strings
+  boost::spirit::lex::token_def<std::string> string_;
 };
 
 // a starter DEF grammar
@@ -278,6 +283,8 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       // top-level elements in a DEF file
       version_stmt = raw_token(T_VERSION) > tok.double_ > ';' ;
 
+      dividerchar_stmt = raw_token(T_DIVIDERCHAR) > tok.string_ > ';' ;
+
       point %= '(' >> tok.int_ >> tok.int_ >> ')' ;       // points are parenthesized pairs, no comma
       rect %= point >> point ;                            // rects are just two points in a row
       diearea_stmt %= raw_token(T_DIEAREA) > rect > ';' ;
@@ -323,11 +330,9 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 
       unparsed = vias_section | specialnets_section | pins_section | tracks_stmt | gcellgrid_stmt | history_stmt ;
 
-      def_file = raw_token(T_DESIGN) > tok.nonkwd_[at_c<0>(_val) = _1] > ';' >
-                 *(version_stmt[at_c<1>(_val) = _1] |
-		   diearea_stmt[at_c<2>(_val) = _1] |
-		   dbu[at_c<3>(_val) = _1] |
-      	           comps_section[at_c<4>(_val) = _1] |
+      def_file = *(version_stmt | dividerchar_stmt | diearea_stmt | dbu) >
+                 raw_token(T_DESIGN) > tok.nonkwd_[at_c<0>(_val) = _1] > ';' >
+                 *(comps_section[at_c<4>(_val) = _1] |
       	           nets_section[at_c<5>(_val) = _1] |
 		   rowsite_stmt[push_back(at_c<6>(_val), _1)] |
                    tok.history_[push_back(at_c<7>(_val), _1)] |
@@ -337,6 +342,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       // Debugging assistance
 
       BOOST_SPIRIT_DEBUG_NODE(version_stmt);
+      BOOST_SPIRIT_DEBUG_NODE(dividerchar_stmt);
       BOOST_SPIRIT_DEBUG_NODE(diearea_stmt);
       BOOST_SPIRIT_DEBUG_NODE(comps_section);
       BOOST_SPIRIT_DEBUG_NODE(tracks_stmt);
@@ -365,6 +371,9 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 
   // VERSION takes no parameters (a.k.a. "inherited attributes") and synthesizes a double for its attribute
   boost::spirit::qi::rule<Iterator, double()> version_stmt;
+
+  // DIVIDERCHAR takes no parameters (a.k.a. "inherited attributes") and synthesizes a string for its attribute
+  boost::spirit::qi::rule<Iterator, std::string()> dividerchar_stmt;
 
   // points "( x y )" produces defpoint structs (see deftypes.h)
   boost::spirit::qi::rule<Iterator, defpoint()> point;
