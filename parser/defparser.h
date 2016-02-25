@@ -24,6 +24,7 @@
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
 #include <boost/spirit/include/phoenix_fusion.hpp>
+#include <boost/phoenix/stl/container.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include "deftypes.h"
@@ -33,6 +34,7 @@ namespace DefParse {
 // DEF tokens
 enum TokenIds {
   T_VERSION = 1000,        // can't start at 0 == EOF
+  T_DIVIDERCHAR,
   T_DIEAREA, T_WEIGHT, T_SOURCE, T_DIST, T_NETLIST,
   T_USER, T_TIMING, T_COMPONENTS, T_END, T_DO, T_BY,
   T_STEP, T_ROW, T_SITE, T_UNITS, T_DISTANCE, T_MICRONS,
@@ -70,6 +72,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
     // letter followed by letters, numbers, underscore, hyphen, square brackets, slashes (hierarchy)
     // with potentially embedded, quoted bracketed numbers, and optionally a final unquoted bracketed number
     nonkwd_ = "[a-zA-Z]([a-zA-Z0-9_/]|-|(\\\\\\[[0-9+]\\\\\\]))*(\\[[0-9]+\\])?";
+    quotedstring_ = "\\\"[^\n]*\\\"";     // anything within double quotes within a line
     
     this->self +=
       // history is highest priority - may contain keywords!
@@ -80,7 +83,9 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
                   // and cannot be indexed (random access)
                   [ _val = construct<std::string>(begin(_a)+8, end(_a) -1) ]
           ]
+      | quotedstring_
       | lex::string("VERSION", T_VERSION)
+      | lex::string("DIVIDERCHAR", T_DIVIDERCHAR)
       | lex::string("DIEAREA", T_DIEAREA)
       | lex::string("WEIGHT", T_WEIGHT)
       | lex::string("SOURCE", T_SOURCE)
@@ -126,7 +131,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
   // attribute-less tokens are all done above by tokenid per hkaiser recommendation
 
   // string attribute tokens (different kinds of identifiers, mostly)
-  boost::spirit::lex::token_def<std::string> nonkwd_, history_;
+  boost::spirit::lex::token_def<std::string> nonkwd_, history_, quotedstring_;
   // numbers
   boost::spirit::lex::token_def<double> double_;
   boost::spirit::lex::token_def<int> int_;
@@ -268,15 +273,28 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 
   template <typename TokenDef>
     defparser(TokenDef const& tok) : defparser::base_type(def_file),
+                                     divider('/'),
                                      component(tok, compsym), net(tok, compsym)
     {
       using namespace boost::spirit::qi;
+      using boost::spirit::ascii::char_;
       using boost::spirit::_1;                  // access attributes for component count check
       using boost::phoenix::push_back;          // to store results in containers
       using boost::phoenix::at_c;               // to refer to pieces of wrapped structs
+      using boost::phoenix::size;               // lazy STL container size
+      using boost::phoenix::ref;
 
       // top-level elements in a DEF file
       version_stmt = raw_token(T_VERSION) > tok.double_ > ';' ;
+      dividerchar_stmt = raw_token(T_DIVIDERCHAR)
+                       > tok.quotedstring_[
+                           if_(size(_1) == 3)[
+                             _val = _1[1]                 // take the first non-quote character
+                           ].else_[
+                             _pass = false                // fail this rule (>1 char in quotes)
+                           ]
+                         ]
+                       > ';' ;
 
       point %= '(' >> tok.int_ >> tok.int_ >> ')' ;       // points are parenthesized pairs, no comma
       rect %= point >> point ;                            // rects are just two points in a row
@@ -325,6 +343,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 
       def_file = raw_token(T_DESIGN) > tok.nonkwd_[at_c<0>(_val) = _1] > ';' >
                  *(version_stmt[at_c<1>(_val) = _1] |
+                   dividerchar_stmt[ref(divider) = _1] |
 		   diearea_stmt[at_c<2>(_val) = _1] |
 		   dbu[at_c<3>(_val) = _1] |
       	           comps_section[at_c<4>(_val) = _1] |
@@ -337,6 +356,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       // Debugging assistance
 
       BOOST_SPIRIT_DEBUG_NODE(version_stmt);
+      BOOST_SPIRIT_DEBUG_NODE(dividerchar_stmt);
       BOOST_SPIRIT_DEBUG_NODE(diearea_stmt);
       BOOST_SPIRIT_DEBUG_NODE(comps_section);
       BOOST_SPIRIT_DEBUG_NODE(tracks_stmt);
@@ -353,6 +373,8 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 
   // a symbol table holding all the components that were found
   comp_symtab_t compsym;
+  // global state for the parser (presently unused)
+  char          divider;
 
   // a single instance within the COMPONENTS section (name, celltype, placement)
   comp_parser<Iterator, Lexer> component;
@@ -365,6 +387,8 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 
   // VERSION takes no parameters (a.k.a. "inherited attributes") and synthesizes a double for its attribute
   boost::spirit::qi::rule<Iterator, double()> version_stmt;
+
+  boost::spirit::qi::rule<Iterator, char()> dividerchar_stmt;
 
   // points "( x y )" produces defpoint structs (see deftypes.h)
   boost::spirit::qi::rule<Iterator, defpoint()> point;

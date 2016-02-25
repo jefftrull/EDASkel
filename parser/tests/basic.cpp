@@ -78,6 +78,20 @@ BOOST_AUTO_TEST_CASE ( version_parse_spaced_keywd ) {
 
 }
 
+BOOST_AUTO_TEST_CASE ( dividerchar_simple ) {
+  def result;
+  parse_check("DESIGN test ;\nVERSION 5.6 ;\nDIVIDERCHAR \"/\" ;\nEND DESIGN\n", result);
+}
+
+BOOST_AUTO_TEST_CASE ( dividerchar_invalid ) {
+  // more than one character for DIVIDERCHAR
+  parse_check_fail("DESIGN test ;\nVERSION 5.6 ;\nDIVIDERCHAR \"//\" ;\nEND DESIGN\n");
+  // none at all
+  parse_check_fail("DESIGN test ;\nVERSION 5.6 ;\nDIVIDERCHAR \"\" ;\nEND DESIGN\n");
+  // unquoted
+  parse_check_fail("DESIGN test ;\nVERSION 5.6 ;\nDIVIDERCHAR / ;\nEND DESIGN\n");
+}
+
 BOOST_AUTO_TEST_CASE ( components_parse_empty ) {
   def result;
   parse_check("DESIGN test ;\nCOMPONENTS 0 ;\nEND COMPONENTS\nEND DESIGN\n", result);

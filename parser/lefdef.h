@@ -30,7 +30,7 @@ namespace EDASkel {
   typedef boost::spirit::istream_iterator LefDefIter;
   // lexer needs the iterator type and a list of token attribute types
   typedef boost::spirit::lex::lexertl::position_token<LefDefIter,
-    boost::mpl::vector<int, double, std::string> > LefDefToken;
+    boost::mpl::vector<char, int, double, std::string> > LefDefToken;
   typedef boost::spirit::lex::lexertl::actor_lexer<LefDefToken> LefDefLexer;
 
 }
