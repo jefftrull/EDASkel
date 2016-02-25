@@ -341,8 +341,10 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 
       unparsed = vias_section | specialnets_section | pins_section | tracks_stmt | gcellgrid_stmt | history_stmt ;
 
-      def_file = raw_token(T_DESIGN) > tok.nonkwd_[at_c<0>(_val) = _1] > ';' >
-                 *(version_stmt[at_c<1>(_val) = _1] |
+      design_name_stmt = raw_token(T_DESIGN) > tok.nonkwd_ > ';' ;
+
+      def_file = *(design_name_stmt[at_c<0>(_val) = _1] |
+                   version_stmt[at_c<1>(_val) = _1] |
                    dividerchar_stmt[ref(divider) = _1] |
 		   diearea_stmt[at_c<2>(_val) = _1] |
 		   dbu[at_c<3>(_val) = _1] |
@@ -403,6 +405,8 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
   boost::spirit::qi::rule<Iterator, rowsite()> rowsite_stmt;
 
   boost::spirit::qi::rule<Iterator, int()> dbu;
+
+  boost::spirit::qi::rule<Iterator, std::string()> design_name_stmt;
 
   // a catchall rule for everything I don't (yet) parse.  No attribute synthesized.
   boost::spirit::qi::rule<Iterator, boost::spirit::qi::locals<std::string> > tracks_stmt, gcellgrid_stmt, history_stmt;
