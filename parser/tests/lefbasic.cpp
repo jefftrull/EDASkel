@@ -54,6 +54,12 @@ BOOST_AUTO_TEST_CASE( case_check ) {
 
 }
 
+BOOST_AUTO_TEST_CASE( version_simple ) {
+  lef result;
+  parse_check("VERSION 5.6 ;\nEND LIBRARY\n", result);
+  BOOST_CHECK_EQUAL( 5.6, result.version );
+}
+
 BOOST_AUTO_TEST_CASE( macro_basic_check ) {
 
   lef result;

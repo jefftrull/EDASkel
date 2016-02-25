@@ -69,6 +69,7 @@ struct lefmacro {
 };  
 
 struct lef {
+  double version;
   std::vector<Site> sites;
   std::vector<lefmacro> macros;
   std::vector<leflayer> layers;
@@ -127,6 +128,7 @@ BOOST_FUSION_ADAPT_STRUCT(
   (std::vector<LefParse::Site>, sites)
   (std::vector<LefParse::lefmacro>, macros)
   (std::vector<LefParse::leflayer>, layers)
+  (double, version)
 )
 
 #endif
