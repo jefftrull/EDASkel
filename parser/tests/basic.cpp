@@ -92,6 +92,16 @@ BOOST_AUTO_TEST_CASE ( dividerchar_invalid ) {
   parse_check_fail("DESIGN test ;\nVERSION 5.6 ;\nDIVIDERCHAR / ;\nEND DESIGN\n");
 }
 
+BOOST_AUTO_TEST_CASE ( busbitchars_simple ) {
+  def result;
+  parse_check("DESIGN test ;\nVERSION 5.6 ;\nBUSBITCHARS \"<>\" ;\nEND DESIGN\n", result);
+}
+
+BOOST_AUTO_TEST_CASE ( busbitchars_invalid ) {
+  // not enough characters
+  parse_check_fail("DESIGN test ;\nVERSION 5.6 ;\nBUSBITCHARS \">\" ;\nEND DESIGN\n");
+}
+
 BOOST_AUTO_TEST_CASE ( header_alternate_order ) {
   // order of initial information is flexible according to spec.  One tool produces this:
   def result;

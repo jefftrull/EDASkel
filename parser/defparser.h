@@ -25,6 +25,7 @@
 #include <boost/spirit/include/phoenix.hpp>
 #include <boost/spirit/include/phoenix_fusion.hpp>
 #include <boost/phoenix/stl/container.hpp>
+#include <boost/fusion/include/std_pair.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include "deftypes.h"
@@ -34,7 +35,7 @@ namespace DefParse {
 // DEF tokens
 enum TokenIds {
   T_VERSION = 1000,        // can't start at 0 == EOF
-  T_DIVIDERCHAR,
+  T_BUSBITCHARS, T_DIVIDERCHAR,
   T_DIEAREA, T_WEIGHT, T_SOURCE, T_DIST, T_NETLIST,
   T_USER, T_TIMING, T_COMPONENTS, T_END, T_DO, T_BY,
   T_STEP, T_ROW, T_SITE, T_UNITS, T_DISTANCE, T_MICRONS,
@@ -85,6 +86,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
           ]
       | quotedstring_
       | lex::string("VERSION", T_VERSION)
+      | lex::string("BUSBITCHARS", T_BUSBITCHARS)
       | lex::string("DIVIDERCHAR", T_DIVIDERCHAR)
       | lex::string("DIEAREA", T_DIEAREA)
       | lex::string("WEIGHT", T_WEIGHT)
@@ -273,7 +275,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 
   template <typename TokenDef>
     defparser(TokenDef const& tok) : defparser::base_type(def_file),
-                                     divider('/'),
+                                     bus_start('['), bus_end(']'), divider('/'),
                                      component(tok, compsym), net(tok, compsym)
     {
       using namespace boost::spirit::qi;
@@ -283,15 +285,25 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       using boost::phoenix::at_c;               // to refer to pieces of wrapped structs
       using boost::phoenix::size;               // lazy STL container size
       using boost::phoenix::ref;
+      using boost::phoenix::construct;
 
       // top-level elements in a DEF file
       version_stmt = raw_token(T_VERSION) > tok.double_ > ';' ;
+      busbitchars_stmt = raw_token(T_BUSBITCHARS)
+                       > tok.quotedstring_[
+                           if_(size(_1) == 4)[
+                             _val = construct<std::pair<char, char>>(_1[1], _1[2])
+                           ].else_[
+                             _pass = false                // fail this rule (>1 char in quotes)
+                           ]
+                         ]
+                       > ';' ;
       dividerchar_stmt = raw_token(T_DIVIDERCHAR)
                        > tok.quotedstring_[
                            if_(size(_1) == 3)[
                              _val = _1[1]                 // take the first non-quote character
                            ].else_[
-                             _pass = false                // fail this rule (>1 char in quotes)
+                             _pass = false
                            ]
                          ]
                        > ';' ;
@@ -346,6 +358,8 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       def_file = *(design_name_stmt[at_c<0>(_val) = _1] |
                    version_stmt[at_c<1>(_val) = _1] |
                    dividerchar_stmt[ref(divider) = _1] |
+                   busbitchars_stmt[ref(bus_start) = at_c<0>(_1),
+                                    ref(bus_end)   = at_c<1>(_1)] |
 		   diearea_stmt[at_c<2>(_val) = _1] |
 		   dbu[at_c<3>(_val) = _1] |
       	           comps_section[at_c<4>(_val) = _1] |
@@ -358,6 +372,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       // Debugging assistance
 
       BOOST_SPIRIT_DEBUG_NODE(version_stmt);
+      BOOST_SPIRIT_DEBUG_NODE(busbitchars_stmt);
       BOOST_SPIRIT_DEBUG_NODE(dividerchar_stmt);
       BOOST_SPIRIT_DEBUG_NODE(diearea_stmt);
       BOOST_SPIRIT_DEBUG_NODE(comps_section);
@@ -375,7 +390,9 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
 
   // a symbol table holding all the components that were found
   comp_symtab_t compsym;
+
   // global state for the parser (presently unused)
+  char          bus_start, bus_end;
   char          divider;
 
   // a single instance within the COMPONENTS section (name, celltype, placement)
@@ -391,6 +408,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
   boost::spirit::qi::rule<Iterator, double()> version_stmt;
 
   boost::spirit::qi::rule<Iterator, char()> dividerchar_stmt;
+  boost::spirit::qi::rule<Iterator, std::pair<char,char>()> busbitchars_stmt;
 
   // points "( x y )" produces defpoint structs (see deftypes.h)
   boost::spirit::qi::rule<Iterator, defpoint()> point;
