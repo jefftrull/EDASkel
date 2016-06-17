@@ -35,7 +35,7 @@ namespace DefParse {
 // DEF tokens
 enum TokenIds {
   T_VERSION = 1000,        // can't start at 0 == EOF
-  T_BUSBITCHARS, T_DIVIDERCHAR,
+  T_BUSBITCHARS, T_DIVIDERCHAR, T_TECHNOLOGY,
   T_DIEAREA, T_WEIGHT, T_SOURCE, T_DIST, T_NETLIST,
   T_USER, T_TIMING, T_COMPONENTS, T_END, T_DO, T_BY,
   T_STEP, T_ROW, T_SITE, T_UNITS, T_DISTANCE, T_MICRONS,
@@ -88,6 +88,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
       | lex::string("VERSION", T_VERSION)
       | lex::string("BUSBITCHARS", T_BUSBITCHARS)
       | lex::string("DIVIDERCHAR", T_DIVIDERCHAR)
+      | lex::string("TECHNOLOGY", T_TECHNOLOGY)
       | lex::string("DIEAREA", T_DIEAREA)
       | lex::string("WEIGHT", T_WEIGHT)
       | lex::string("SOURCE", T_SOURCE)
@@ -286,6 +287,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       using boost::phoenix::size;               // lazy STL container size
       using boost::phoenix::ref;
       using boost::phoenix::construct;
+      namespace phx = boost::phoenix;
 
       // top-level elements in a DEF file
       version_stmt = raw_token(T_VERSION) > tok.double_ > ';' ;
@@ -307,6 +309,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
                            ]
                          ]
                        > ';' ;
+      technology_stmt = raw_token(T_TECHNOLOGY) > tok.nonkwd_ > ';' ;
 
       point %= '(' >> tok.int_ >> tok.int_ >> ')' ;       // points are parenthesized pairs, no comma
       rect %= point >> point ;                            // rects are just two points in a row
@@ -360,6 +363,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
                    dividerchar_stmt[ref(divider) = _1] |
                    busbitchars_stmt[ref(bus_start) = at_c<0>(_1),
                                     ref(bus_end)   = at_c<1>(_1)] |
+                   technology_stmt[phx::ref(technology) = _1] |
 		   diearea_stmt[at_c<2>(_val) = _1] |
 		   dbu[at_c<3>(_val) = _1] |
       	           comps_section[at_c<4>(_val) = _1] |
@@ -374,6 +378,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       BOOST_SPIRIT_DEBUG_NODE(version_stmt);
       BOOST_SPIRIT_DEBUG_NODE(busbitchars_stmt);
       BOOST_SPIRIT_DEBUG_NODE(dividerchar_stmt);
+      BOOST_SPIRIT_DEBUG_NODE(technology_stmt);
       BOOST_SPIRIT_DEBUG_NODE(diearea_stmt);
       BOOST_SPIRIT_DEBUG_NODE(comps_section);
       BOOST_SPIRIT_DEBUG_NODE(tracks_stmt);
@@ -394,6 +399,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
   // global state for the parser (presently unused)
   char          bus_start, bus_end;
   char          divider;
+  std::string   technology;
 
   // a single instance within the COMPONENTS section (name, celltype, placement)
   comp_parser<Iterator, Lexer> component;
@@ -407,8 +413,9 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
   // VERSION takes no parameters (a.k.a. "inherited attributes") and synthesizes a double for its attribute
   boost::spirit::qi::rule<Iterator, double()> version_stmt;
 
-  boost::spirit::qi::rule<Iterator, char()> dividerchar_stmt;
   boost::spirit::qi::rule<Iterator, std::pair<char,char>()> busbitchars_stmt;
+  boost::spirit::qi::rule<Iterator, char()> dividerchar_stmt;
+  boost::spirit::qi::rule<Iterator, std::string()> technology_stmt;
 
   // points "( x y )" produces defpoint structs (see deftypes.h)
   boost::spirit::qi::rule<Iterator, defpoint()> point;
