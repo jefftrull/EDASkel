@@ -107,6 +107,64 @@ BOOST_AUTO_TEST_CASE ( technology_simple ) {
   parse_check("DESIGN test ;\nVERSION 5.6 ;\nTECHNOLOGY MYTECH ;\nEND DESIGN\n", result);
 }
 
+BOOST_AUTO_TEST_CASE ( nicolati ) {
+  def result;
+  parse_check(
+    "VERSION 5.6 ;\n"
+    "DIVIDERCHAR \"/\" ;\n"
+    "BUSBITCHARS \"[]\" ;\n"
+    "DESIGN top ;\n"
+    "TECHNOLOGY MYTECH ;\n"
+    "UNITS DISTANCE MICRONS 1000 ;\n"
+    "\n"
+    "COMPONENTS 1 ;\n"
+    " - U272 NOR4X1 + UNPLACED ;\n"
+    "END COMPONENTS\n"
+    "\n"
+    "PINS 4 ;\n"
+    " - signal[1] + NET net_signal[1] + DIRECTION OUTPUT + USE SIGNAL ;\n"
+    " - vdd! + NET vdd! + SPECIAL + DIRECTION INOUT + USE POWER ;\n"
+    " - gnd! + NET gnd! + SPECIAL + DIRECTION INOUT + USE GROUND ;\n"
+    " - clk + NET clk + DIRECTION INPUT + USE SIGNAL ;\n"
+    "END PINS\n"
+    "\n"
+    "SPECIALNETS 2 ;\n"
+    " - vdd!\n"
+    "   ( * vdd! )\n"
+    "\n"
+    "   + USE POWER\n"
+    "   ;\n"
+    " - gnd!\n"
+    "   ( * gnd! )\n"
+    "\n"
+    "   + USE GROUND\n"
+    "   ;\n"
+    "END SPECIALNETS\n"
+    "\n"
+    "NETS 3 ;\n"
+    " - n74\n"
+    "   ( U267 A )\n"
+    "   ( U265 Z )\n"
+    "\n"
+    "   + USE SIGNAL\n"
+    "   ;\n"
+    "\n"
+    " - vdd!\n"
+    "   ( hier1/hier_2/myreg_reg D )\n"
+    "\n"
+    "   + USE POWER\n"
+    "   ;\n"
+    "\n"
+    " - gnd!\n"
+    "   ( trial/another_reg TE )\n"
+    "\n"
+    "   + USE GROUND\n"
+    "   ;\n"
+    "END NETS\n"
+    "END DESIGN\n"
+    , result);
+}
+
 BOOST_AUTO_TEST_CASE ( header_alternate_order ) {
   // order of initial information is flexible according to spec.  One tool produces this:
   def result;
