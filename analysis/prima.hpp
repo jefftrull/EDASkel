@@ -90,9 +90,6 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
   // X[k][j] value is just the value for the current inner loop, updated from the previous
   // so a single Xkj will suffice
 
-  // pre-calculate G^-1*C for use in inner loop
-  SparseMatrix<Float> GinvC = G_LU.solve(C);
-
   for (size_t k = 1; k < n; ++k)
   {
     // because X[] will vary in number of columns, so will Xk[]
@@ -102,11 +99,9 @@ Prima(Eigen::SparseMatrix<Float> const& C,   // derivative conductance terms
     // set V = C * X[k-1]
     // solve G*X[k][0] = V for X[k][0]
 
-    // X[k][0] = G^-1*V = G^-1*C*X[k-1] = (G^-1*C)*X[k-1]
-    Xkj = GinvC*X[k-1];       // So Xk[0] = G^-1*C*X[k-1], i.e. A*X[k-1]
-                              // Boley: "expand Krylov space"
+    Xkj = G_LU.solve(C*X[k-1]);            // Boley: "expand Krylov space"
 
-    for (size_t j = 1; j <= k; ++j)   // "Modified Gram-Schmidt"
+    for (size_t j = 1; j <= k; ++j)        // "Modified Gram-Schmidt"
     {
       auto H = X[k-j].transpose() * Xkj;   // H[k-j][k-1] per Boley
 
