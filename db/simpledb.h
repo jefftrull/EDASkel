@@ -281,7 +281,9 @@ namespace SimpleDB {
       // see if there's a site definition that matches the chosen location
       auto matching_it =
         std::find_if(m_rows.begin(), m_rows.end(),
-                     std::bind(&site_match, std::placeholders::_1, x, y));
+                     [x, y](RowSiteInst const & rsi) {
+                       return site_match(rsi, x, y);
+                     });
 
       if (matching_it != m_rows.end()) {
         return matching_it->getSiteName();
