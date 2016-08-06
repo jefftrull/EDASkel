@@ -171,15 +171,15 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
     using boost::spirit::_1;
     using boost::spirit::_val;
 
-    point %= '(' >> tok.int_ >> tok.int_ >> ')' ;       // points are parenthesized pairs, no comma
+    point = '(' >> tok.int_ >> tok.int_ >> ')' ;       // points are parenthesized pairs, no comma
 
     orient %= tok.nonkwd_[_pass = ((_1 == "N")  || (_1 == "S") ||  (_1 == "E")  || (_1 == "W") ||
                                    (_1 == "FN") || (_1 == "FS") || (_1 == "FE") || (_1 == "FW"))] ;
 
-    plcinfo %= '+' >> ((token(T_FIXED) > point > orient) |
+    plcinfo = '+' >> ((token(T_FIXED) > point > orient) |
                        (token(T_PLACED) > point > orient)) ;    // location and orientation
 
-    weight %= '+' >> (raw_token(T_WEIGHT) > tok.int_) ;
+    weight = '+' >> (raw_token(T_WEIGHT) > tok.int_) ;
 
     source = '+' >> (raw_token(T_SOURCE) > (raw_token(T_DIST) | raw_token(T_NETLIST) | raw_token(T_USER) | raw_token(T_TIMING))) ;
 
@@ -278,9 +278,9 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       // top-level elements in a DEF file
       version_stmt = raw_token(T_VERSION) > tok.double_ > ';' ;
 
-      point %= '(' >> tok.int_ >> tok.int_ >> ')' ;       // points are parenthesized pairs, no comma
-      rect %= point >> point ;                            // rects are just two points in a row
-      diearea_stmt %= raw_token(T_DIEAREA) > rect > ';' ;
+      point = '(' >> tok.int_ >> tok.int_ >> ')' ;       // points are parenthesized pairs, no comma
+      rect = point >> point ;                            // rects are just two points in a row
+      diearea_stmt = raw_token(T_DIEAREA) > rect > ';' ;
 
       // define some major elements
 
