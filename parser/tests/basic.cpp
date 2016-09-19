@@ -178,6 +178,21 @@ BOOST_AUTO_TEST_CASE ( components_parse_empty ) {
   BOOST_CHECK( result.components.empty() );
 }
   
+BOOST_AUTO_TEST_CASE ( components_parse_unplaced ) {
+  def result;
+  parse_check("DESIGN test-hyphenated ;\nVERSION 1.211 ;\nDIEAREA ( 0 0 ) ( 100000 200000 ) ;\nCOMPONENTS 1 ;\n - I111_uscore/hiername INVX2 + UNPLACED ;\nEND COMPONENTS\nEND DESIGN\n", result);
+
+  BOOST_CHECK_EQUAL( result.name, "test-hyphenated" );
+  BOOST_CHECK_EQUAL( result.diearea.ll.x, 0 );
+  BOOST_CHECK_EQUAL( result.diearea.ll.y, 0 );
+  BOOST_CHECK_EQUAL( result.diearea.ur.x, 100000 );
+  BOOST_CHECK_EQUAL( result.diearea.ur.y, 200000 );
+  BOOST_REQUIRE_EQUAL( result.components.size(), 1 );    // exactly one component read
+  BOOST_CHECK_EQUAL( result.components[0].name, "I111_uscore/hiername" );
+  BOOST_CHECK_EQUAL( result.components[0].celltype, "INVX2" );
+  BOOST_REQUIRE( (!result.components[0].placement) );     // it has NO placement
+}
+
 BOOST_AUTO_TEST_CASE ( components_parse_simple ) {
   def result;
   parse_check("DESIGN test-hyphenated ;\nVERSION 1.211 ;\nDIEAREA ( 0 0 ) ( 100000 200000 ) ;\nCOMPONENTS 1 ;\n - I111_uscore/hiername INVX2 + FIXED ( -4107 82000 ) FN ;\nEND COMPONENTS\nSITE CORE1 0 0 N DO 200 BY 1 STEP 100 500 ;\nEND DESIGN\n", result);

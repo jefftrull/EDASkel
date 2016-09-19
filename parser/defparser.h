@@ -40,7 +40,8 @@ enum TokenIds {
   T_USER, T_TIMING, T_COMPONENTS, T_END, T_DO, T_BY,
   T_STEP, T_ROW, T_SITE, T_UNITS, T_DISTANCE, T_MICRONS,
   T_TRACKS, T_GCELLGRID, T_DESIGN, T_PINS, T_NETS,
-  T_SPECIALNETS, T_VIAS, T_PLACED, T_FIXED, T_ANY
+  T_SPECIALNETS, T_VIAS, T_PLACED, T_FIXED, T_COVER, T_UNPLACED,
+  T_ANY
 };
 
 
@@ -115,6 +116,8 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
       | lex::string("VIAS", T_VIAS)
       | lex::string("PLACED", T_PLACED)
       | lex::string("FIXED", T_FIXED)
+      | lex::string("COVER", T_COVER)
+      | lex::string("UNPLACED", T_UNPLACED)
       | nonkwd_
       | double_ | int_
       | '+' | '-' | '(' | ')' | ';'
@@ -184,8 +187,11 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
     orient %= tok.nonkwd_[_pass = ((_1 == "N")  || (_1 == "S") ||  (_1 == "E")  || (_1 == "W") ||
                                    (_1 == "FN") || (_1 == "FS") || (_1 == "FE") || (_1 == "FW"))] ;
 
-    plcinfo %= '+' >> ((token(T_FIXED) > point > orient) |
-                       (token(T_PLACED) > point > orient)) ;    // location and orientation
+    plcinfo %= '+' >> ((token(T_FIXED) > point > orient)  |
+                       (token(T_PLACED) > point > orient) |
+                       (token(T_COVER) > point > orient)) ;    // location and orientation
+
+    unplaced = '+' >> token(T_UNPLACED) ;
 
     weight %= '+' >> (raw_token(T_WEIGHT) > tok.int_) ;
 
@@ -193,7 +199,8 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
 
     // components required instance name and celltype; optional any (or none) of placement and weight, in any order:
     comp = ( '-' > tok.nonkwd_[at_c<0>(_val) = _1] > tok.nonkwd_[at_c<1>(_val) = _1] >
-             (plcinfo[at_c<2>(_val) = _1] ^ omit[weight] ^ source ^ eps ) >
+             ((plcinfo[at_c<2>(_val) = _1] | unplaced) ^
+              omit[weight] ^ source ^ eps ) >
              ';' )[bind(comp_symtab.add, _1, _1)];  // turn symbol table add into "lazy" function
 
     BOOST_SPIRIT_DEBUG_NODE(point);
@@ -223,6 +230,7 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
 
   // optional placement info (placed vs. fixed, location, orientation)
   boost::spirit::qi::rule<Iterator, defplcinfo()> plcinfo;
+  boost::spirit::qi::rule<Iterator>               unplaced;
 
   // WEIGHT/SOURCE - presently no attributes or locals (parsed but not stored)
   boost::spirit::qi::rule<Iterator> weight, source;
