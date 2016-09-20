@@ -41,6 +41,7 @@ enum TokenIds {
   T_STEP, T_ROW, T_SITE, T_UNITS, T_DISTANCE, T_MICRONS,
   T_TRACKS, T_GCELLGRID, T_DESIGN, T_PINS, T_NETS,
   T_SPECIALNETS, T_VIAS, T_PLACED, T_FIXED, T_COVER, T_UNPLACED,
+  T_USE, T_ANALOG, T_CLOCK, T_GROUND, T_POWER, T_RESET, T_SCAN, T_SIGNAL, T_TIEOFF,
   T_ANY
 };
 
@@ -118,6 +119,15 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
       | lex::string("FIXED", T_FIXED)
       | lex::string("COVER", T_COVER)
       | lex::string("UNPLACED", T_UNPLACED)
+      | lex::string("USE", T_USE)
+      | lex::string("ANALOG", T_ANALOG)
+      | lex::string("CLOCK", T_CLOCK)
+      | lex::string("GROUND", T_GROUND)
+      | lex::string("POWER", T_POWER)
+      | lex::string("RESET", T_RESET)
+      | lex::string("SCAN", T_SCAN)
+      | lex::string("SIGNAL", T_SIGNAL)
+      | lex::string("TIEOFF", T_TIEOFF)
       | nonkwd_
       | double_ | int_
       | '+' | '-' | '(' | ')' | ';'
@@ -266,13 +276,21 @@ struct net_parser : boost::spirit::qi::grammar<Iterator, defnet()>
                                        phx::cref(comp_symtab), _a)]
                > tok.nonkwd_[at_c<0>(_val) = _a, at_c<1>(_val) = _1] > ')' ;
 
-    net = '-' > tok.nonkwd_ > *connection > ';' ;
+    usage = '+' >> (token(T_USE) > (token(T_ANALOG) | token(T_CLOCK) | token(T_GROUND) | token(T_POWER) | token(T_RESET) | token(T_SCAN) | token(T_SIGNAL) | token(T_TIEOFF))) ;
+
+    net = '-' > tok.nonkwd_ > *connection > -usage > ';' ;
+
+    BOOST_SPIRIT_DEBUG_NODE(net);
+    BOOST_SPIRIT_DEBUG_NODE(usage);
+    BOOST_SPIRIT_DEBUG_NODE(connection);
+
   }
 
   boost::spirit::qi::rule<Iterator,
                           boost::spirit::locals<std::string>,
                           defconnection()> connection;
   boost::spirit::qi::rule<Iterator, defnet()> net;
+  boost::spirit::qi::rule<Iterator, std::string()> usage;
 
   comp_symtab_t const& comp_symtab;
 };   
@@ -389,6 +407,7 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
       BOOST_SPIRIT_DEBUG_NODE(technology_stmt);
       BOOST_SPIRIT_DEBUG_NODE(diearea_stmt);
       BOOST_SPIRIT_DEBUG_NODE(comps_section);
+      BOOST_SPIRIT_DEBUG_NODE(nets_section);
       BOOST_SPIRIT_DEBUG_NODE(tracks_stmt);
 
       on_error<fail>

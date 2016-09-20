@@ -285,7 +285,7 @@ BOOST_AUTO_TEST_CASE( history ) {
 
 BOOST_AUTO_TEST_CASE( net_simple ) {
   def result;
-  parse_check("DESIGN test ;\nCOMPONENTS 2;\n- X C ;\n- Y C ;\nEND COMPONENTS\nNETS 3 ;\n- ALPHA ( X P1 ) ( Y P2 ) ;\n- BETA ;\n- GAMMA ;\nEND NETS\nEND DESIGN\n", result);
+  parse_check("DESIGN test ;\nCOMPONENTS 2;\n- X C ;\n- Y C ;\nEND COMPONENTS\nNETS 3 ;\n- ALPHA ( X P1 ) ( Y P2 ) + USE SIGNAL ;\n- BETA ;\n- GAMMA ;\nEND NETS\nEND DESIGN\n", result);
 
   BOOST_CHECK_EQUAL( result.name, "test" );
   BOOST_REQUIRE_EQUAL( 3, result.nets.size() );

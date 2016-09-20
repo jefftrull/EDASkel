@@ -52,6 +52,7 @@ typedef std::pair<std::string, std::string> defconnection;
 struct defnet {
   std::string name;
   std::vector<defconnection> connections;
+  boost::optional<std::string> usage;  // should be enum?
 };
 
 // BOOST_FUSION_ADAPT_STRUCT is a macro and will be confused by this embedded comma unless:
