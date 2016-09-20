@@ -74,7 +74,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
     // some identifiers (esp instance names) may be as complex as:
     // letter followed by letters, numbers, underscore, hyphen, square brackets, slashes (hierarchy)
     // with potentially embedded, quoted bracketed numbers, and optionally a final unquoted bracketed number
-    nonkwd_ = "[a-zA-Z]([a-zA-Z0-9_/]|-|(\\\\\\[[0-9+]\\\\\\]))*(\\[[0-9]+\\])?";
+    nonkwd_ = "[a-zA-Z]([a-zA-Z0-9_/]|-|(\\\\\\[[0-9+]\\\\\\]))*!?(\\[[0-9]+\\])?";
     quotedstring_ = "\\\"[^\n]*\\\"";     // anything within double quotes within a line
     
     this->self +=
