@@ -180,7 +180,9 @@ struct error_info_impl
 typedef boost::spirit::qi::symbols<char, std::string> comp_symtab_t;  // for reference checking
 
 template <typename Iterator, typename Lexer>
-struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
+struct comp_parser : boost::spirit::qi::grammar<Iterator,
+                                                boost::spirit::locals<std::string>,
+                                                defcomponent()>
 {
   template <typename TokenDef>
     comp_parser(TokenDef const& tok, comp_symtab_t& compsym) :
@@ -192,30 +194,30 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
     using boost::spirit::_1;
     using boost::spirit::_val;
 
-    point %= '(' >> tok.int_ >> tok.int_ >> ')' ;       // points are parenthesized pairs, no comma
+    point = '(' >> tok.int_ >> tok.int_ >> ')' ;       // points are parenthesized pairs, no comma
 
     orient %= tok.nonkwd_[_pass = ((_1 == "N")  || (_1 == "S") ||  (_1 == "E")  || (_1 == "W") ||
                                    (_1 == "FN") || (_1 == "FS") || (_1 == "FE") || (_1 == "FW"))] ;
 
-    plcinfo %= '+' >> ((token(T_FIXED) > point > orient)  |
-                       (token(T_PLACED) > point > orient) |
-                       (token(T_COVER) > point > orient)) ;    // location and orientation
+    plcinfo = '+' >> ((token(T_FIXED) > point > orient)  |
+                      (token(T_PLACED) > point > orient) |
+                      (token(T_COVER) > point > orient)) ;    // location and orientation
 
     unplaced = '+' >> token(T_UNPLACED) ;
 
-    weight %= '+' >> (raw_token(T_WEIGHT) > tok.int_) ;
+    weight = '+' >> (raw_token(T_WEIGHT) > tok.int_) ;
 
     source = '+' >> (raw_token(T_SOURCE) > (raw_token(T_DIST) | raw_token(T_NETLIST) | raw_token(T_USER) | raw_token(T_TIMING))) ;
 
     // components required instance name and celltype; optional any (or none) of placement and weight, in any order:
-    comp = ( '-' > tok.nonkwd_[at_c<0>(_val) = _1] > tok.nonkwd_[at_c<1>(_val) = _1] >
-             ((plcinfo[at_c<2>(_val) = _1] | unplaced) ^
-              omit[weight] ^ source ^ eps ) >
-             ';' )[bind(comp_symtab.add, _1, _1)];  // turn symbol table add into "lazy" function
+    comp %=  '-' > tok.nonkwd_[_a = _1] > tok.nonkwd_[bind(comp_symtab.add, _a, _1)]
+           > (plcinfo ^ unplaced ^ omit[weight] ^ omit[source] ^ eps) > ';' ;
 
     BOOST_SPIRIT_DEBUG_NODE(point);
     BOOST_SPIRIT_DEBUG_NODE(weight);
     BOOST_SPIRIT_DEBUG_NODE(source);
+    BOOST_SPIRIT_DEBUG_NODE(plcinfo);
+    BOOST_SPIRIT_DEBUG_NODE(unplaced);
     BOOST_SPIRIT_DEBUG_NODE(comp);
 
     on_error<fail>
@@ -227,7 +229,7 @@ struct comp_parser : boost::spirit::qi::grammar<Iterator, defcomponent()>
   }
 
   // top level COMPONENT
-  boost::spirit::qi::rule<Iterator, defcomponent()> comp;
+  boost::spirit::qi::rule<Iterator, boost::spirit::locals<std::string>, defcomponent()> comp;
 
   // Symbol table storage for components
   comp_symtab_t& comp_symtab;
@@ -268,13 +270,11 @@ struct net_parser : boost::spirit::qi::grammar<Iterator, defnet()>
 
     using boost::spirit::_1;
     using boost::spirit::_a;
-    using boost::spirit::_val;
-    using boost::phoenix::at_c;
     namespace phx = boost::phoenix;
-    connection = '(' > tok.nonkwd_[_a = _1] // component name
-               > eps[_pass = phx::bind(static_cast<findfn_t>(&comp_symtab_t::find),
-                                       phx::cref(comp_symtab), _a)]
-               > tok.nonkwd_[at_c<0>(_val) = _a, at_c<1>(_val) = _1] > ')' ;
+    connection %= '(' > tok.nonkwd_[_a = _1] // component name
+                > eps[_pass = phx::bind(static_cast<findfn_t>(&comp_symtab_t::find),
+                                        phx::cref(comp_symtab), _a)]
+                > tok.nonkwd_ > ')' ;
 
     usage = '+' >> (token(T_USE) > (token(T_ANALOG) | token(T_CLOCK) | token(T_GROUND) | token(T_POWER) | token(T_RESET) | token(T_SCAN) | token(T_SIGNAL) | token(T_TIEOFF))) ;
 
@@ -337,9 +337,9 @@ struct defparser : boost::spirit::qi::grammar<Iterator, def()>
                        > ';' ;
       technology_stmt = raw_token(T_TECHNOLOGY) > tok.nonkwd_ > ';' ;
 
-      point %= '(' >> tok.int_ >> tok.int_ >> ')' ;       // points are parenthesized pairs, no comma
-      rect %= point >> point ;                            // rects are just two points in a row
-      diearea_stmt %= raw_token(T_DIEAREA) > rect > ';' ;
+      point = '(' >> tok.int_ >> tok.int_ >> ')' ;       // points are parenthesized pairs, no comma
+      rect = point >> point ;                            // rects are just two points in a row
+      diearea_stmt = raw_token(T_DIEAREA) > rect > ';' ;
 
       // define some major elements
 
