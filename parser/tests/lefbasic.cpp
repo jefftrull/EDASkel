@@ -103,9 +103,6 @@ BOOST_AUTO_TEST_CASE( site_nospace ) {
   lef result;
   // because every LEF statement is optional, the parse will actually pass
   BOOST_CHECK( tokenize_and_parse(beg, end, lefTokens, lefParser, result) );
-  // some input may be consumed for tokenization, but at least some will remain:a
-  BOOST_CHECK( beg != end );
-
 }
 
 BOOST_AUTO_TEST_CASE( simple_comment ) {
