@@ -222,7 +222,8 @@ struct signal_coupling {
       // see https://forum.kde.org/viewtopic.php?f=74&t=117474
       SparseMatrix<double> A = G_QR.solve(C);
       assert(G_QR.info() == Success);
-      std::cerr << "eigenvalues of original model are:\n" << EigenSolver<MatrixXd>(A).eigenvalues() << std::endl;
+      MatrixXd Adense = A;
+      std::cerr << "eigenvalues of original model are:\n" << EigenSolver<MatrixXd>(Adense).eigenvalues() << std::endl;
       auto GprimeQR = Gprime.fullPivHouseholderQr();
       Matrix<double, Dynamic, Dynamic> Aprime = GprimeQR.solve(Cprime);
       std::cerr << "eigenvalues of reduced model are:\n" << EigenSolver<decltype(Aprime)>(Aprime).eigenvalues() << std::endl;
