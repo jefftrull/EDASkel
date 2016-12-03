@@ -366,7 +366,7 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     std::transform(Bnew.begin(), Bnew.end(), std::back_inserter(Btrans),
                    [k, G12, C12, G22](Matrix<Float, scount, icount> const& Bn) {
                        auto Bn2 = Bn.bottomRows(Bn.rows() - k);
-                       return -C12 * G22.solve(Bn2);
+                       return Matrix<Float, Dynamic, icount>(-C12 * G22.solve(Bn2));
                    });
     Btrans.push_back(Matrix<Float, Dynamic, icount>::Zero(k, icount));  // contribution from n-1 is 0 (nonexistent)
 
