@@ -164,7 +164,8 @@ struct signal_coupling {
       auto V3 = Xfinal.bottomRows(N);
       // V3 generally lacks full column rank, so reduce its columns until this is true.
       auto V3QR = V3.fullPivHouseholderQr();
-      auto V3_fullrank = V3QR.matrixQ().leftCols(V3QR.rank());
+      auto V3QR_Q = V3QR.matrixQ();
+      auto V3_fullrank = V3QR_Q.leftCols(V3QR.rank());
       std::size_t v3cols = V3_fullrank.cols();
 
       // G is split into D11 (12x12 corresponding to resistors) and Av
