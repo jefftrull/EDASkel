@@ -253,7 +253,7 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     }
 
     MatrixD U = lu.matrixLU().template triangularView<Upper>();
-    MatrixD L = lu.matrixLU().template triangularView<UnitLower>();
+    auto L    = lu.matrixLU().template triangularView<UnitLower>();
 
     // Step 2: "perform the same elementary operations on G and B"
     // given that C = P.inverse() * L * U * Q.inverse()
@@ -263,12 +263,11 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     auto P = lu.permutationP();
     auto Q = lu.permutationQ();
 
-    assert(!isSingular(L));
-    MatrixD Gprime = L.fullPivLu().solve(P * G * Q);                   // rows and columns
+    MatrixD Gprime = L.solve(P * G * Q);                   // rows and columns
     MatrixVector<Float, scount, icount> Bprime;
     std::transform(B.begin(), B.end(), std::back_inserter(Bprime),
-                   [L, P](Matrix<Float, scount, icount> const& b) -> Matrix<Float, scount, icount> {
-                       return L.fullPivLu().solve(P * b);              // rows only
+                   [&L, &P](Matrix<Float, scount, icount> const& b) -> Matrix<Float, scount, icount> {
+                       return L.solve(P * b);              // rows only
                    });
 
     // The D input is like L in PRIMA but this algorithm uses the transpose
