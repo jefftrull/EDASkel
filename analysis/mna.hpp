@@ -259,7 +259,7 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     // given that C = P.inverse() * L * U * Q.inverse()
     // (from source it seems that permutationP/Q is inverse)
     // then to get the new G we reverse those operations:
-    auto Cprime = U;   // note we may have small non-zero values in bottom rows, but they will be ignored
+    auto & Cprime = U;   // note we may have small non-zero values in bottom rows, but they will be ignored
     auto P = lu.permutationP();
     auto Q = lu.permutationQ();
 
@@ -316,7 +316,7 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     assert(!isSingular(G2_L));
     MatrixVector<Float, scount, icount> Bnew;
     std::transform(Bprime.begin(), Bprime.end(), std::back_inserter(Bnew),
-                   [k, G2_L, G2_LU]
+                   [k, &G2_L, &G2_LU]
                    (Matrix<Float, scount, icount> bn) {
                        auto B2 = bn.bottomRows(bn.rows() - k);
                        bn.bottomRows(bn.rows() - k) =
@@ -363,7 +363,7 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     MatrixVector<Float, Dynamic, icount> Btrans;
     // n+1's first (equation 9d)
     std::transform(Bnew.begin(), Bnew.end(), std::back_inserter(Btrans),
-                   [k, G12, C12, G22](Matrix<Float, scount, icount> const& Bn) {
+                   [k, &G12, &C12, &G22](Matrix<Float, scount, icount> const& Bn) {
                        auto Bn2 = Bn.bottomRows(Bn.rows() - k);
                        return Matrix<Float, Dynamic, icount>(-C12 * G22.solve(Bn2));
                    });
@@ -371,8 +371,8 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
 
     // n's next, shifted by one (equation 9c)
     std::transform(Bnew.begin(), Bnew.end(), Btrans.begin()+1, Btrans.begin()+1,
-                   [k, G12, G22](Matrix<Float, scount, icount> const& Bn,
-                                         Matrix<Float, Dynamic, icount> const& Bnm1_contribution)
+                   [k, &G12, &G22](Matrix<Float, scount, icount> const& Bn,
+                                   Matrix<Float, Dynamic, icount> const& Bnm1_contribution)
                    -> Matrix<Float, Dynamic, icount> {  // without explicitly declared return type Eigen
                                                         // will keep references to these locals:
                        auto Bn1 = Bn.topRows(k);
