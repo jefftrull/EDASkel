@@ -172,9 +172,9 @@ struct signal_coupling {
       // (Voltage source inputs), which is 12x3 to line up with D11 although
       // only the top 3x3 has data
 
-      auto G11_prime = V1.transpose() * G.block(0, 0, 12, 12) * V1;  // D11
+      auto G11_prime = V1.transpose() * G.block(0, 0, 12, 12).selfadjointView<Upper>() * V1;  // D11
       auto G12_prime = V1.transpose() * G.block(0, 12, 12, N) * V3_fullrank;  // Va
-      auto C11_prime = V1.transpose() * C.block(0, 0, 12, 12) * V1;  // E11
+      auto C11_prime = V1.transpose() * C.block(0, 0, 12, 12).selfadjointView<Upper>() * V1;  // E11
 
       // construct C/G in new state variables using SPRIM directions
       // TODO try using sparse matrices
@@ -219,8 +219,10 @@ struct signal_coupling {
       // They are not guaranteed to be the same but should be "similar" (?)
       SparseQR<SparseMatrix<double>, COLAMDOrdering<int> > G_QR(G);
       assert(G_QR.info() == Success);
-      // warning: in Pre-Eigen-3.2 debug builds this triggers an assertion failure due to an Eigen bug
-      // see https://forum.kde.org/viewtopic.php?f=74&t=117474
+
+      // This next step is what makes it pointless to use selfadj for C
+      // according to ggael (and SparseSolverBase.h) a sparse RHS is converted into dense
+      // temporary "panels" for solution
       SparseMatrix<double> A = G_QR.solve(C);
       assert(G_QR.info() == Success);
       MatrixXd Adense = A;
