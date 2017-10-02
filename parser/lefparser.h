@@ -19,7 +19,7 @@
 #define EDASKEL_LEF_PARSER
 
 #include <vector>
-#include <iostream>
+#include <iosfwd>
 
 #include <boost/spirit/include/lex_lexertl.hpp>
 
