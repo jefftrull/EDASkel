@@ -20,6 +20,6 @@ endif()
 
 if( TCL_FOUND )
   add_executable( sv simple_viewer.cpp ${DV_MOC_SRC})
-  target_link_libraries( sv Qt5::Widgets lefdef ${Boost_LIBRARIES} qttclnotifier ${TCL_LIBRARY} )
+  target_link_libraries( sv Qt5::Widgets lefdef qttclnotifier ${TCL_LIBRARY} Boost::program_options )
 endif()
 
