@@ -114,14 +114,14 @@ BOOST_AUTO_TEST_CASE ( lefdef_combined_basic ) {
   LefChecker<Library> lchk;
   BOOST_CHECK( lchk.CheckAndInsert(lefresult, lib) );
   // specific library checks here
-  typedef Library::CellPtr CellPtr;
+  using CellPtr = Library::CellPtr;
   CellPtr cell = lib.findCell("INX2");
   BOOST_REQUIRE( cell != CellPtr() );
   BOOST_CHECK_CLOSE( cell->getWidth(), 2.0, 0.001f );
   BOOST_CHECK_CLOSE( cell->getHeight(), 2.0, 0.001f );
   BOOST_CHECK( cell->getSymmetry().size() == 2 );
 
-  typedef Library::SitePtr SitePtr;
+  using SitePtr = Library::SitePtr;
   SitePtr site = lib.findSite("CORE0");
   BOOST_REQUIRE( site != SitePtr() );
   BOOST_REQUIRE( site->getSymmetry().size() == 1 );
@@ -167,7 +167,7 @@ BOOST_AUTO_TEST_CASE ( lefdef_combined_basic ) {
   sitename = db.siteAt(100, 300);
   BOOST_CHECK( !sitename );
 
-  typedef Database::InstPtr InstPtr;
+  using InstPtr = Database::InstPtr;
   InstPtr inst = db.findInst("inst1");
   BOOST_REQUIRE( inst != InstPtr() );
   BOOST_CHECK( inst->getCellName() == "INX2" );

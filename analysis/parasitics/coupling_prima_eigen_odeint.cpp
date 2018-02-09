@@ -28,7 +28,7 @@ bool canLDLTDecompose(const M& m) {
        (eigenvalues.array().real() <= 0.0).all());       // or non-positive
 }
 
-typedef vector<double> state_type;
+using state_type = vector<double>;
 
 struct signal_coupling {
   static const size_t q = 8; // desired number of state variables in the reduced system

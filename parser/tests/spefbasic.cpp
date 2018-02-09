@@ -27,7 +27,7 @@ using namespace EDASkel::SpefParse;
 using boost::spirit::qi::phrase_parse;
 
 struct Visitor {
-  typedef size_t name_token_value_t;
+  using name_token_value_t = size_t;
   name_token_value_t name_map_entry(std::string n) {
     name_token_value_t id = names.size();
     names.push_back(n);

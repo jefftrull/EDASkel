@@ -6,7 +6,7 @@ using namespace std;
 #include <boost/numeric/odeint.hpp>
 using namespace boost::numeric;
 
-typedef vector<double> state_type;
+using state_type = vector<double>;
 
 struct rlc_tank {
   double r_, l_, c_;

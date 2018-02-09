@@ -29,7 +29,7 @@
 #include <boost/graph/connected_components.hpp>
 
 // vertex (circuit node) properties are just a string with the name we got out of SPEF;
-typedef std::string vertex_property_t;
+using vertex_property_t = std::string;
 
 // edge (circuit component) properties are the type (resistor or capacitor) with the component value
 using namespace boost::units;
@@ -43,7 +43,7 @@ typedef boost::adjacency_list<boost::vecS, boost::listS, boost::undirectedS,
 struct Visitor {
   Visitor() : g(new CktGraph()), gnd(add_vertex(*g)) {}
 
-  typedef size_t name_token_value_t;
+  using name_token_value_t = size_t;
   name_token_value_t name_map_entry(std::string n) {
     name_token_value_t id = names.size();
     names.push_back(std::move(n));
@@ -198,7 +198,7 @@ int main(int argc, char **argv) {
    // Divide resistor-only circuit graph into connected components
 
    // define required color and component property maps
-   typedef ResGraph::vertices_size_type comp_number_t;
+   using comp_number_t = ResGraph::vertices_size_type;
    typedef map<ResGraph::vertex_descriptor, comp_number_t> CCompsStorageMap;
    CCompsStorageMap comps;      // component map for algorithm results
    typedef map<ResGraph::vertex_descriptor, boost::default_color_type> ColorsStorageMap;

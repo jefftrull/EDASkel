@@ -42,7 +42,7 @@ void stamp_i(M& matrix, std::size_t vnodeno, std::size_t istateno)
    matrix(istateno, vnodeno) = -1;
 }
 
-typedef vector<double> state_type;
+using state_type = vector<double>;
 
 struct rlc_tank {
   double r_, l_, c_;

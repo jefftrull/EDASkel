@@ -6,7 +6,7 @@ using namespace std;
 #include <boost/numeric/odeint.hpp>
 using namespace boost::numeric;
 
-typedef vector<double> state_type;
+using state_type = vector<double>;
 
 struct signal_coupling {
   double agg_r1_, agg_c1_;   // aggressor first stage pi model (prior to coupling point)

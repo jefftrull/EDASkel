@@ -11,7 +11,7 @@ using namespace Eigen;
 
 #include "analysis/mna.hpp"
 
-typedef vector<double> state_type;
+using state_type = vector<double>;
 
 struct signal_coupling {
   static const size_t states = 10;
