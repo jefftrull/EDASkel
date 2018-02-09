@@ -46,7 +46,7 @@ class DesignScene : public QGraphicsScene {
     bool highlighted_;
   public:
     InstItemBase() : highlighted_(false)  {}
-    ~InstItemBase() {}
+    ~InstItemBase() = default;
 
     void setHighlight(bool highlighted) {
       highlighted_ = highlighted;
@@ -110,7 +110,7 @@ class DesignScene : public QGraphicsScene {
                  arg(inst_->getOrient().c_str()));
     }
     
-    virtual QRectF boundingRect() const {
+    QRectF boundingRect() const override {
       // look up cell dimensions
       // TODO: handle rectilinear polygon boundaries
       // TODO: handle other coordinate sizes (e.g., long, float)
@@ -130,7 +130,8 @@ class DesignScene : public QGraphicsScene {
   template<class DB, class Lib>
   explicit DesignScene(const DB& db,
 		       const Lib& lib,
-		       QObject* parent = 0) : QGraphicsScene(parent), highlightedInst(nullptr) {
+		       QObject* parent = nullptr)
+      : QGraphicsScene(parent), highlightedInst(nullptr) {
     // basic setup
     setBackgroundBrush(Qt::black);
     int dbu = db.getDbuPerMicron();

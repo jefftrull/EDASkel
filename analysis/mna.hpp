@@ -363,7 +363,7 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     MatrixVector<Float, Dynamic, icount> Btrans;
     // n+1's first (equation 9d)
     std::transform(Bnew.begin(), Bnew.end(), std::back_inserter(Btrans),
-                   [k, &G12, &C12, &G22](Matrix<Float, scount, icount> const& Bn) {
+                   [k, &C12, &G22](Matrix<Float, scount, icount> const& Bn) {
                        auto Bn2 = Bn.bottomRows(Bn.rows() - k);
                        return Matrix<Float, Dynamic, icount>(-C12 * G22.solve(Bn2));
                    });

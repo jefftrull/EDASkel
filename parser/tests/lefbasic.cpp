@@ -31,7 +31,6 @@ namespace EDASkel {
   extern lefparser<LefTokens<LefDefLexer>::iterator_type, LefTokens<LefDefLexer>::lexer_def > lefParser;
 }
 using namespace boost::spirit::qi;
-using boost::spirit::qi::space;
 
 // boilerplate parsing code
 void parse_check(std::string const& str, lef& result) {

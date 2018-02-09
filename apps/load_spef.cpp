@@ -46,7 +46,7 @@ struct Visitor {
   typedef size_t name_token_value_t;
   name_token_value_t name_map_entry(std::string n) {
     name_token_value_t id = names.size();
-    names.push_back(n);
+    names.push_back(std::move(n));
     return id;   // just the offset within the name map, for now
   }
 
@@ -147,7 +147,7 @@ struct IsResistor : boost::static_visitor<bool> {
 // a predicate class for creating a resistor-only filtered graph
 struct ResistorsOnly {
   ResistorsOnly() {}
-  ResistorsOnly(std::shared_ptr<CktGraph> g) : graph_(g) {}
+  ResistorsOnly(std::shared_ptr<CktGraph> g) : graph_(std::move(g)) {}
   bool operator()(CktGraph::edge_descriptor e) const {
     // access edge property (res/cap variant) and apply predicate visitor
     return boost::apply_visitor(IsResistor(), (*graph_)[e]);

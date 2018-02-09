@@ -39,7 +39,6 @@ namespace EDASkel {
   extern lefparser<LefTokens<LefDefLexer>::iterator_type, LefTokens<LefDefLexer>::lexer_def > lefParser;
 }
 using namespace boost::spirit::qi;
-using boost::spirit::qi::space;
 
 BOOST_AUTO_TEST_CASE ( diearea_checks ) {
   // parse syntax into "def" parse syntax structure

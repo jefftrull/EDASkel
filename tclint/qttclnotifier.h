@@ -62,7 +62,7 @@ namespace QtTclNotify {
     void handle_timer();
   private:
     QtTclNotifier();    // singleton
-    ~QtTclNotifier();
+    ~QtTclNotifier() = default;
 
     template<int TclActivityType> static void perform_callback(int fd);
     HandlerMap m_handlers;

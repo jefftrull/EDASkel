@@ -141,7 +141,7 @@ QtTclNotifier* QtTclNotifier::getInstance() {
 }
 
 // initialize static data storage
-QtTclNotifier* QtTclNotifier::m_notifier = 0;
+QtTclNotifier* QtTclNotifier::m_notifier = nullptr;
 // xtor/dtor for singleton class.  Called when getInstance() is first called
 QtTclNotifier::QtTclNotifier() {
   m_timer = new QTimer(this);
@@ -149,7 +149,6 @@ QtTclNotifier::QtTclNotifier() {
   QObject::connect(m_timer, SIGNAL(timeout()),
 		   this, SLOT(handle_timer()));
 }
-QtTclNotifier::~QtTclNotifier() {}
 
 // STUB METHODS
 

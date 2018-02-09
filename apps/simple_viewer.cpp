@@ -55,8 +55,8 @@ struct CommandState {
   CommandState(Tcl_Interp* interp) : interp_(interp) {
     // get arc and argv from interp
     // (Tcl_Main does not supply them to us, but does create Tcl variables of the same name)
-    Tcl_Obj* argv_obj = Tcl_GetVar2Ex(interp_, "argv", NULL, TCL_GLOBAL_ONLY);
-    if (argv_obj == NULL) {
+    Tcl_Obj* argv_obj = Tcl_GetVar2Ex(interp_, "argv", nullptr, TCL_GLOBAL_ONLY);
+    if (argv_obj == nullptr) {
       throw SetupException("could not get value of argv");
     }
     Tcl_Obj** objv;
@@ -159,8 +159,8 @@ struct CommandState {
     view->show();
 
     // register static methods using "clientData" to hold the "this" pointer
-    Tcl_CreateObjCommand(interp_, "instances", &CommandState::instances, this, NULL);
-    Tcl_CreateObjCommand(interp_, "highlight", &CommandState::highlight, this, NULL);
+    Tcl_CreateObjCommand(interp_, "instances", &CommandState::instances, this, nullptr);
+    Tcl_CreateObjCommand(interp_, "highlight", &CommandState::highlight, this, nullptr);
 
     // Ensure final cleanup invokes our destructor
     Tcl_CreateExitHandler(&CommandState::cleanup, this);
@@ -186,7 +186,7 @@ private:
   int instances(int objc, Tcl_Obj* const objv[]) {
     // syntax check here for now
     if (objc != 1) {
-      Tcl_WrongNumArgs(interp_, 1, objv, NULL);
+      Tcl_WrongNumArgs(interp_, 1, objv, nullptr);
       return TCL_ERROR;
     }
 
@@ -209,7 +209,7 @@ private:
 
     // attempt to highlight
     if (!scene_->highlightInstance(Tcl_GetString(objv[1]))) {
-      Tcl_AppendResult(interp_, "could not find instance ", Tcl_GetString(objv[1]), NULL);
+      Tcl_AppendResult(interp_, "could not find instance ", Tcl_GetString(objv[1]), nullptr);
       return TCL_ERROR;
     }
     return TCL_OK;

@@ -30,7 +30,7 @@
 
 BOOST_AUTO_TEST_CASE( basic ) {
   int argc = 0;
-  QApplication app(argc, 0);
+  QApplication app(argc, nullptr);
 
   using namespace std;
   using namespace SimpleDB;

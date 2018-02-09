@@ -223,7 +223,7 @@ namespace SimpleDB {
   private:
     std::string m_sitename;   // better would be a pointer to a library site
     std::string m_rowname;
-    Orient m_orient;
+      // Orient m_orient;
     RowDir m_dir;
     int m_count;              // count of sites in the direction (horz/vert) of the row
     DesPoint m_startloc;

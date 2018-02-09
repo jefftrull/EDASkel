@@ -35,14 +35,15 @@ class DesignView : public QGraphicsView {
   Q_OBJECT
 public:
   explicit DesignView(DesignScene* scene,
-                      QWidget* parent = 0 ) : QGraphicsView(scene, parent) {
+                      QWidget* parent = nullptr )
+      : QGraphicsView(scene, parent) {
 
     // compensate for Qt's use of 0,0 to mean "upper left"
     // as designers we expect to see coordinates increasing up and to the right
     scale(1.0, -1.0);  // the scene is upside down in Qt coordinates
 
   }
-  void keyPressEvent(QKeyEvent* event) {
+  void keyPressEvent(QKeyEvent* event) override {
     // intercept a few keystrokes so we can zoom and "fit"
     if (event->key() == Qt::Key_F)
       fitInView(sceneRect(), Qt::KeepAspectRatio);  // show all of design
