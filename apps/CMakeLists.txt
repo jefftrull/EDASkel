@@ -2,6 +2,7 @@ find_package( Qt5Widgets REQUIRED )
 
 # here's where we handle the Qt "moc" process
 # have to make it a bit more explicit than in a qmake-based flow
+QT5_WRAP_CPP(DS_MOC_SRC ../gui/designscene.h)
 QT5_WRAP_CPP(DV_MOC_SRC ../gui/designview.h)
 
 if( MSVC )
@@ -20,7 +21,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 endif()
 
 if( TCL_FOUND )
-  add_executable( sv simple_viewer.cpp ${DV_MOC_SRC})
+  add_executable( sv simple_viewer.cpp ${DS_MOC_SRC} ${DV_MOC_SRC} )
   target_link_libraries( sv Qt5::Widgets lefdef qttclnotifier ${TCL_LIBRARY} Boost::program_options )
 endif()
 

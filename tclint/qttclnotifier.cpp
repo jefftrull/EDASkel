@@ -46,22 +46,22 @@ void QtTclNotifier::CreateFileHandler(int fd, int mask, Tcl_FileProc* proc, Clie
       getInstance()->m_handlers.erase(old_handler_it);
     }
       
-    QtTclFileHandler* hdlr = new QtTclFileHandler(proc, clientData, mask);
+    QtTclFileHandler* hdlr = new QtTclFileHandler(getInstance(), proc, clientData, mask);
     if (mask & TCL_READABLE) {
       // create read activity socket notifier as a child of the handler (so will be destroyed at the same time)
       QSocketNotifier* rdntf = new QSocketNotifier(fd, QSocketNotifier::Read, hdlr);
-      QObject::connect(rdntf, SIGNAL(activated(int)),
-		       getInstance(), SLOT(readReady(int)));
+      QObject::connect(rdntf, &QSocketNotifier::activated,
+		       getInstance(), &QtTclNotifier::readReady);
     }
     if (mask & TCL_WRITABLE) {
       QSocketNotifier* wrntf = new QSocketNotifier(fd, QSocketNotifier::Write, hdlr);
-      QObject::connect(wrntf, SIGNAL(activated(int)),
-		       getInstance(), SLOT(writeReady(int)));
+      QObject::connect(wrntf, &QSocketNotifier::activated,
+		       getInstance(), &QtTclNotifier::writeReady);
     }
     if (mask & TCL_EXCEPTION) {
       QSocketNotifier* exntf = new QSocketNotifier(fd, QSocketNotifier::Exception, hdlr);
-      QObject::connect(exntf, SIGNAL(activated(int)),
-		       getInstance(), SLOT(exception(int)));
+      QObject::connect(exntf, &QSocketNotifier::activated,
+		       getInstance(), &QtTclNotifier::exception);
     }
     getInstance()->m_handlers.insert(std::make_pair(fd, hdlr));
 
@@ -146,8 +146,8 @@ QtTclNotifier* QtTclNotifier::m_notifier = nullptr;
 QtTclNotifier::QtTclNotifier() {
   m_timer = new QTimer(this);
   m_timer->setSingleShot(true);
-  QObject::connect(m_timer, SIGNAL(timeout()),
-		   this, SLOT(handle_timer()));
+  QObject::connect(m_timer, &QTimer::timeout,
+		   this, &QtTclNotifier::handle_timer);
 }
 
 // STUB METHODS

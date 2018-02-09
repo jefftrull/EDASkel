@@ -76,8 +76,8 @@ namespace QtTclNotify {
   // This way they will get destroyed when the parent does and I won't have to clean them up
   class QtTclFileHandler : public QObject {
     Q_OBJECT
-      public:
-    QtTclFileHandler(Tcl_FileProc* proc, ClientData clientData, int mask) : m_proc(proc), m_clientData(clientData), m_mask(mask) {}
+  public:
+    QtTclFileHandler(QObject * parent, Tcl_FileProc* proc, ClientData clientData, int mask) : QObject(parent), m_proc(proc), m_clientData(clientData), m_mask(mask) {}
     void perform_callback(int type, int fd);
   private:
     Tcl_FileProc* m_proc;      // function to call

@@ -40,6 +40,8 @@
 namespace EDASkel {
 
 class DesignScene : public QGraphicsScene {
+  Q_OBJECT
+
   // base class of templated child class so we can "erase" the db/lib details and use
   // the highlight interface uniformly
   class InstItemBase : public QGraphicsItem {
@@ -102,7 +104,7 @@ class DesignScene : public QGraphicsScene {
 
       // create a formatted "Tool Tip" (hover text) to identify this inst
       typename DB::Point orig = inst_->getOrigin();
-      setToolTip(QString("%1 (%2) (%3, %4) %5").
+      setToolTip(QStringLiteral("%1 (%2) (%3, %4) %5").
                  arg(inst_->getName().c_str()).
                  arg(inst_->getCellName().c_str()).
                  arg(orig.x()).
@@ -127,6 +129,7 @@ class DesignScene : public QGraphicsScene {
   std::map<std::string, InstItemBase*> instNameMap;
 
  public:
+  ~DesignScene() = default;
   template<class DB, class Lib>
   explicit DesignScene(const DB& db,
 		       const Lib& lib,

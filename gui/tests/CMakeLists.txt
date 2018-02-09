@@ -1,7 +1,10 @@
 # Qt5 support from KDAB requires component-level access at this time:
 find_package( Qt5Widgets REQUIRED )
 
-add_executable ( basicgui basic.cpp )
+QT5_WRAP_CPP(DS_MOC_SRC ../designscene.h)
+QT5_WRAP_CPP(DV_MOC_SRC ../designview.h)
+
+add_executable ( basicgui basic.cpp ${DS_MOC_SRC} ${DV_MOC_SRC} )
 target_link_libraries( basicgui Qt5::Widgets Boost::boost )
 
 if (MSVC)
