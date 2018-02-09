@@ -10,6 +10,7 @@ if( MSVC )
 endif()
 
 add_executable( spef load_spef.cpp )
+target_link_libraries( spef Boost::boost )
 
 include_directories(${TCL_INCLUDE_PATH})
 

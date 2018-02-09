@@ -5,10 +5,11 @@ foreach( tname basic lefbasic semantic )
     # fix compiler warning
     set_target_properties( ${tname} PROPERTIES COMPILE_FLAGS "/EHa" )
   endif()
-  target_link_libraries( ${tname} lefdef )
+  target_link_libraries( ${tname} lefdef Boost::boost )
 endforeach()
 
 add_executable( spefbasic spefbasic.cpp )
+target_link_libraries( spefbasic Boost::boost )
 add_test( spefbasic spefbasic )
 if (MSVC)
   set_target_properties( spefbasic PROPERTIES COMPILE_FLAGS "/EHa" )

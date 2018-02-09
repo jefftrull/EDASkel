@@ -13,3 +13,4 @@ if( MSVC )
 endif()
 
 add_library( lefdef lefdef.cpp )
+target_link_libraries( lefdef Boost::boost )

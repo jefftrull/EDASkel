@@ -1,23 +1,24 @@
-cmake_minimum_required( VERSION 2.8.12 )
+cmake_minimum_required( VERSION 3.9.1 )
 
 PROJECT( new_app )
 ENABLE_TESTING()
 find_package( Boost 1.53 REQUIRED COMPONENTS program_options )
-include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 if (MSVC)
   # prevent auto linking
   add_definitions( -DBOOST_ALL_NO_LIB=1 )
 endif()
 
 # global flags
+set( CMAKE_CXX_STANDARD 14 )
 if (CMAKE_COMPILER_IS_GNUCC OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
   add_definitions(-Wall -Wextra -Werror)  # be conservative about checks
-  add_definitions(-std=c++0x)             # enable C++11
   if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     # some helpful additional checks suggested by http://blog.llvm.org/2013/09/clang-warnings.html
     add_definitions( -Wheader-guard -Wlogical-not-parentheses -Wduplicate-enum -Wdangling-field
       -Wstring-plus-int -Wstring-conversion -Wsizeof-array-argument -Wsometimes-uninitialized
       -Woverloaded-shift-op-parentheses -Wloop-analysis )
+    add_definitions(-stdlib=libc++)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
   endif()
 elseif (MSVC11)
   # VC11 workaround: emplace_back requires variadic template emulation, for which VC11 has
