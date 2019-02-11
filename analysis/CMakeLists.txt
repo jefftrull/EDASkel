@@ -1,7 +1,6 @@
 # Code in this directory requires Boost and in most cases also Eigen
 find_package( Eigen3 )
 if( EIGEN3_FOUND )
-  include_directories( SYSTEM ${EIGEN3_INCLUDE_DIR} )
   include_directories( ${CMAKE_SOURCE_DIR} )
   if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     # Clang warns on some Eigen things so we need to do this:

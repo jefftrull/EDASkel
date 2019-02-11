@@ -1,5 +1,5 @@
 foreach( tname mor )
   add_executable( ${tname} ${tname}.cpp )
-  target_link_libraries( ${tname} Boost::boost )
+  target_link_libraries( ${tname} Boost::boost Eigen3::Eigen )
   add_test( ${tname} ${tname} )
 endforeach()
