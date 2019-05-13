@@ -23,6 +23,8 @@
 
 namespace EDASkel { namespace analysis { namespace mna {
 
+using Eigen::Matrix;
+
 // Functions for implementing MNA with an Eigen matrix
 template<typename M, typename Float>
 void stamp(M& matrix, std::size_t i, std::size_t j, Float g)
@@ -99,7 +101,7 @@ bool isSingular(Matrix<Scalar, Rows, Cols, Options, MaxRows, MaxCols> const& m) 
 }
 
 template<class Derived, unsigned Mode>
-bool isSingular(TriangularView<Derived, Mode> const& m) {
+bool isSingular(Eigen::TriangularView<Derived, Mode> const& m) {
    // a "triangular view" is singular if any diagonal element is 0
    // we could use "diagonal" to do this reduction if it were a proper Matrix
    for (int i=0; i < m.rows(); ++i) {
@@ -145,6 +147,7 @@ moments(Matrix<Float, scount, scount> const & G,
 // take a circuit's linear system description in G, C, B, L form and compress it so
 // the resulting C array is non-singular.  Operation depends on runtime data, so
 // output array dimensions are "Dynamic"
+using Eigen::Dynamic;
 template<int icount, int ocount, int scount, typename Float = double>
 std::tuple<Matrix<Float, Dynamic, Dynamic>,   // G result
            Matrix<Float, Dynamic, Dynamic>,   // C result
@@ -166,7 +169,7 @@ regularize_su(Matrix<Float, scount, scount> const & G,
    std::size_t nonzero_count = state_count - zero_count;
 
    // 1. Generate permutation matrix to move zero rows to the bottom
-   PermutationMatrix<scount, scount, std::size_t> permut;
+   Eigen::PermutationMatrix<scount, scount, std::size_t> permut;
    permut.setIdentity(state_count);      // start with null permutation
    std::size_t i, j;
    for (i = 0, j=(state_count-1); i < j;) {
@@ -252,8 +255,8 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
         return std::make_tuple(G, C, B.back(), D, E);
     }
 
-    MatrixD U = lu.matrixLU().template triangularView<Upper>();
-    auto L    = lu.matrixLU().template triangularView<UnitLower>();
+    MatrixD U = lu.matrixLU().template triangularView<Eigen::Upper>();
+    auto L    = lu.matrixLU().template triangularView<Eigen::UnitLower>();
 
     // Step 2: "perform the same elementary operations on G and B"
     // given that C = P.inverse() * L * U * Q.inverse()
@@ -294,7 +297,7 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     auto G2_LU = Gprime.bottomRows(C.rows() - k).fullPivLu();
     // former lower left gets reversed and becomes lower right
     MatrixD G22R = G2_LU.matrixLU().leftCols(C.rows() - k).reverse();
-    auto G22   = G22R.template triangularView<Lower>();
+    auto G22   = G22R.template triangularView<Eigen::Lower>();
     // former lower right just gets row permutation to match G22
     auto G21   = G2_LU.matrixLU().rightCols(k).colwise().reverse();  // reverses rows
 
@@ -312,7 +315,7 @@ regularize_natarajan(Matrix<Float, scount, scount> const & G,
     // These operations are only applied to the lower part of B
  
     // extract and apply L operation from reversed G2
-    auto G2_L = G2_LU.matrixLU().leftCols(C.rows() - k).template triangularView<UnitLower>();
+    auto G2_L = G2_LU.matrixLU().leftCols(C.rows() - k).template triangularView<Eigen::UnitLower>();
     assert(!isSingular(G2_L));
     MatrixVector<Float, scount, icount> Bnew;
     std::transform(Bprime.begin(), Bprime.end(), std::back_inserter(Bnew),

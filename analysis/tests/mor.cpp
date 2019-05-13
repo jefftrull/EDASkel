@@ -21,12 +21,11 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
-using namespace Eigen;
-
 #include "../mna.hpp"
 
 BOOST_AUTO_TEST_CASE( RC_3x3 ) {
     // A simple resistive trace with a single resistor and capacitor
+    using Eigen::Matrix;
     using namespace EDASkel::analysis::mna;
 
     const size_t statecnt = 3;  // Vinput, Voutput, Iinput
@@ -79,6 +78,7 @@ BOOST_AUTO_TEST_CASE( RC_3x3 ) {
 // Examples from the Natarajan paper
 
 BOOST_AUTO_TEST_CASE( Sallen_Key_Filter ) {
+    using Eigen::Matrix;
     using namespace EDASkel::analysis::mna;
 
     const size_t statecnt = 7;
@@ -140,7 +140,7 @@ BOOST_AUTO_TEST_CASE( Sallen_Key_Filter ) {
     D0 << 0,  0,  0,  0,  1,  0,  0;
 
     // swap columns 0 and 3 so G22 will be non-singular (puts a 1 in the 3,3 position)
-    PermutationMatrix<7, 7, std::size_t> g22_column_swap;
+    Eigen::PermutationMatrix<7, 7, std::size_t> g22_column_swap;
     g22_column_swap.setIdentity(7);
     g22_column_swap.applyTranspositionOnTheRight(0, 3);
     C0 = C0 * g22_column_swap;
@@ -186,6 +186,7 @@ BOOST_AUTO_TEST_CASE( Sallen_Key_Filter ) {
 }
 
 BOOST_AUTO_TEST_CASE( Passive_Network ) {
+    using Eigen::Matrix;
     using namespace EDASkel::analysis::mna;
 
     const size_t statecnt = 7;
