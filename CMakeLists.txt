@@ -10,6 +10,7 @@ endif()
 
 # global flags
 set( CMAKE_CXX_STANDARD 14 )
+set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 if (CMAKE_COMPILER_IS_GNUCC OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
   add_definitions(-Wall -Wextra -Werror)  # be conservative about checks
   if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
