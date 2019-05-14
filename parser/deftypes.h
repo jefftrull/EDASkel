@@ -20,129 +20,76 @@
 #define EDASKEL_DEF_TYPES
 
 
-#include <boost/fusion/include/adapt_struct.hpp>
+#include <boost/fusion/include/define_struct_inline.hpp>
 #include <boost/fusion/include/std_pair.hpp>
 #include <boost/optional.hpp>
 #include <string>
+#include <vector>
 
 namespace DefParse {
 
-struct defpoint {
-  int x, y;
-};
+BOOST_FUSION_DEFINE_STRUCT_INLINE(
+    defpoint,
+    (int, x)
+    (int, y))
 
-struct defrect {
-  defpoint ll, ur;
-};
+BOOST_FUSION_DEFINE_STRUCT_INLINE(
+    defrect,
+    (defpoint, ll)
+    (defpoint, ur))
 
-struct defplcinfo {
-  std::string plcfix;       // BOZO make boolean "fixed" or something
-  defpoint origin;
-  std::string orient;       // BOZO make this enum?
-};
+BOOST_FUSION_DEFINE_STRUCT_INLINE(
+  defplcinfo,
+  (std::string, plcfix)         // BOZO make boolean "fixed" or something
+  (defpoint, origin)
+  (std::string, orient)         // BOZO make this enum?
+)
 
-struct defcomponent {
-  std::string name;
-  std::string celltype;
-  boost::optional<defplcinfo> placement;
-};
+BOOST_FUSION_DEFINE_STRUCT_INLINE(
+  defcomponent,
+  (std::string, name)
+  (std::string, celltype)
+  (boost::optional<defplcinfo>, placement)
+)
 
 typedef std::pair<std::string, std::string> defconnection;
-
-struct defnet {
-  std::string name;
-  std::vector<defconnection> connections;
-};
+BOOST_FUSION_DEFINE_STRUCT_INLINE(
+  defnet,
+  (std::string, name)
+  (std::vector<defconnection>, connections)
+)
 
 // BOOST_FUSION_ADAPT_STRUCT is a macro and will be confused by this embedded comma unless:
 typedef std::pair<int, int> IntPair;
-struct siterepeat {
-  int xrepeat;
-  int yrepeat;
-  boost::optional<IntPair> step;
-};
-
-struct rowsite {
-  boost::optional<std::string> rowname;
-  std::string sitename;
-  int origx;
-  int origy;
-  std::string orient;
-  boost::optional<siterepeat> repeat;
-};
-
-struct def {
-  std::string name;
-  double version;
-  defrect diearea;
-  int dbupermicron;
-  std::vector<defcomponent> components;
-  std::vector<defnet> nets;
-  std::vector<rowsite> rows;
-  std::vector<std::string> history;
-};
-
-}
-
-BOOST_FUSION_ADAPT_STRUCT(
-  DefParse::defpoint,
-  (int, x)
-  (int, y)
-)
-
-BOOST_FUSION_ADAPT_STRUCT(
-  DefParse::defrect,
-  (DefParse::defpoint, ll)
-  (DefParse::defpoint, ur)
-)
-
-BOOST_FUSION_ADAPT_STRUCT(
-  DefParse::defplcinfo,
-  (std::string, plcfix)
-  (DefParse::defpoint, origin)
-  (std::string, orient)
-)
-
-BOOST_FUSION_ADAPT_STRUCT(
-  DefParse::defcomponent,
-  (std::string, name)
-  (std::string, celltype)
-  (boost::optional<DefParse::defplcinfo>, placement)
-)
-
-BOOST_FUSION_ADAPT_STRUCT(
-  DefParse::defnet,
-  (std::string, name)
-  (std::vector<DefParse::defconnection>, connections)
-)
-
-BOOST_FUSION_ADAPT_STRUCT(
-  DefParse::siterepeat,
+BOOST_FUSION_DEFINE_STRUCT_INLINE(
+  siterepeat,
   (int, xrepeat)
   (int, yrepeat)
-  (boost::optional<DefParse::IntPair>, step)
+  (boost::optional<IntPair>, step)
 )
 
-BOOST_FUSION_ADAPT_STRUCT(
-  DefParse::rowsite,
+BOOST_FUSION_DEFINE_STRUCT_INLINE(
+  rowsite,
   (boost::optional<std::string>, rowname)
   (std::string, sitename)
   (int, origx)
   (int, origy)
   (std::string, orient)
-  (boost::optional<DefParse::siterepeat>, repeat)
+  (boost::optional<siterepeat>, repeat)
 )
 
-BOOST_FUSION_ADAPT_STRUCT(
-  DefParse::def,
+BOOST_FUSION_DEFINE_STRUCT_INLINE(
+  def,
   (std::string, name)
   (double, version)
-  (DefParse::defrect, diearea)
+  (defrect, diearea)
   (int, dbupermicron)
-  (std::vector<DefParse::defcomponent>, components)
-  (std::vector<DefParse::defnet>, nets)
-  (std::vector<DefParse::rowsite>, rows)
+  (std::vector<defcomponent>, components)
+  (std::vector<defnet>, nets)
+  (std::vector<rowsite>, rows)
   (std::vector<std::string>, history)
 )
+
+}
 
 #endif

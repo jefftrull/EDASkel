@@ -102,8 +102,8 @@ namespace LefParse {
 	  cptr->setOrigin(std::make_pair(macro.origin->x, macro.origin->y));
 	else
 	  cptr->setOrigin(std::make_pair(0.0f, 0.0f));  // default
-	if (macro.size)
-	  cptr->setDimensions(macro.size->width, macro.size->height);
+	if (macro.size_)
+	  cptr->setDimensions(macro.size_->width, macro.size_->height);
 	if (macro.symmetry)
 	  cptr->setSymmetry(*(macro.symmetry));
 	if (macro.site)

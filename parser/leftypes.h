@@ -31,61 +31,16 @@ using namespace EDASkel;
 
 namespace LefParse {
 
-struct leflayer {
-  std::string name;
-  LayerTypes type;
-};
-
-// I'm naming this differently from the other types in here. Is that good?
-// should this be global?
-struct Site {
-  std::string name;
-  SiteClass class_;
-  boost::optional<std::vector<SiteSymmetry> > symmetry;
-  double width, height;
-};
-
-struct lefpoint {
-  double x, y;
-};
-
-struct lefextent {
-  double width, height;
-};
-
-struct lefforeign {
-  std::string name;
-  lefpoint pt;
-};
-
-struct lefmacro {
-  std::string name;
-  boost::optional<SiteClass> class_;
-  boost::optional<lefforeign> foreign;
-  boost::optional<lefpoint> origin;
-  boost::optional<lefextent> size;
-  boost::optional<std::vector<SiteSymmetry> > symmetry;
-  boost::optional<std::string> site;
-};  
-
-struct lef {
-  std::vector<Site> sites;
-  std::vector<lefmacro> macros;
-  std::vector<leflayer> layers;
-};
-
-}
-
-// BOOST_FUSION_ADAPT_STRUCT needs to be outside the namespace for some reason
-
-BOOST_FUSION_ADAPT_STRUCT(
-  LefParse::leflayer,
+BOOST_FUSION_DEFINE_STRUCT_INLINE(
+  leflayer,
   (std::string, name)
   (LayerTypes, type)
 )
 
-BOOST_FUSION_ADAPT_STRUCT(
-  LefParse::Site,
+// I'm naming this differently from the other types in here. Is that good?
+// should this be global?
+BOOST_FUSION_DEFINE_STRUCT_INLINE(
+  Site,
   (std::string, name)
   (SiteClass, class_)
   (boost::optional<std::vector<SiteSymmetry> >, symmetry)
@@ -93,40 +48,41 @@ BOOST_FUSION_ADAPT_STRUCT(
   (double, height)
 )
 
-BOOST_FUSION_ADAPT_STRUCT(
-  LefParse::lefpoint,
+BOOST_FUSION_DEFINE_STRUCT_INLINE(
+  lefpoint,
   (double, x)
   (double, y)
 )
 
-BOOST_FUSION_ADAPT_STRUCT(
-  LefParse::lefextent,
+BOOST_FUSION_DEFINE_STRUCT_INLINE(
+  lefextent,
   (double, width)
   (double, height)
 )
 
-BOOST_FUSION_ADAPT_STRUCT(
-  LefParse::lefforeign,
+BOOST_FUSION_DEFINE_STRUCT_INLINE(
+  lefforeign,
   (std::string, name)
   (LefParse::lefpoint, pt)
 )
 
-BOOST_FUSION_ADAPT_STRUCT(
-  LefParse::lefmacro,
+BOOST_FUSION_DEFINE_STRUCT_INLINE(
+  lefmacro,
   (std::string, name)
   (boost::optional<SiteClass>, class_)
   (boost::optional<LefParse::lefforeign>, foreign)
   (boost::optional<LefParse::lefpoint>, origin)
-  (boost::optional<LefParse::lefextent>, size)
+  (boost::optional<LefParse::lefextent>, size_)    // "size" would conflict with Fusion macro
   (boost::optional<std::vector<SiteSymmetry> >, symmetry)
   (boost::optional<std::string>, site)
 )
 
-BOOST_FUSION_ADAPT_STRUCT(
-  LefParse::lef,
+BOOST_FUSION_DEFINE_STRUCT_INLINE(
+  lef,
   (std::vector<LefParse::Site>, sites)
   (std::vector<LefParse::lefmacro>, macros)
   (std::vector<LefParse::leflayer>, layers)
 )
 
+}
 #endif

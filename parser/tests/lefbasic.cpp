@@ -68,9 +68,9 @@ BOOST_AUTO_TEST_CASE( macro_basic_check ) {
   BOOST_REQUIRE( result.macros[0].origin );
   BOOST_CHECK_CLOSE( result.macros[0].origin->x, 0.0, 0.001f );
   BOOST_CHECK_CLOSE( result.macros[0].origin->y, 1.0, 0.001f );
-  BOOST_REQUIRE( result.macros[0].size );
-  BOOST_CHECK_CLOSE( result.macros[0].size->width, 1.0, 0.001f );
-  BOOST_CHECK_CLOSE( result.macros[0].size->height, 10.0, 0.001f );
+  BOOST_REQUIRE( result.macros[0].size_ );
+  BOOST_CHECK_CLOSE( result.macros[0].size_->width, 1.0, 0.001f );
+  BOOST_CHECK_CLOSE( result.macros[0].size_->height, 10.0, 0.001f );
   BOOST_REQUIRE( result.macros[0].symmetry );
   BOOST_REQUIRE_EQUAL( result.macros[0].symmetry->size(), 2 );
   BOOST_CHECK_EQUAL( (*result.macros[0].symmetry)[0], SITESYM_X );
