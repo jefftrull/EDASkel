@@ -54,7 +54,7 @@ template <typename Lexer>
 struct LefTokens : boost::spirit::lex::lexer<Lexer>
 {
   LefTokens()
-    : double_("-?([0-9]+(\\.[0-9]+)?)|(\\.[0-9]+)")
+    : double_(R"(-?([0-9]+(\.[0-9]+)?)|(\.[0-9]+))")
   {
     namespace lex = boost::spirit::lex;
     using boost::phoenix::ref;
@@ -119,7 +119,7 @@ struct LefTokens : boost::spirit::lex::lexer<Lexer>
       ;
 
     // whitespace and comments
-    this->self += lex::string("([ \\t\\n]+)|(#[^\\n]*\\n)")
+    this->self += lex::string(R"(([ \t\n]+)|(#[^\n]*\n))")
         [
 	 lex::_pass = lex::pass_flags::pass_ignore
         ];

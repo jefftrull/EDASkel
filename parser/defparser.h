@@ -46,7 +46,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
 {
   DefTokens()
     : history_("^HISTORY[^;]*;"),
-      double_("-?[0-9]+\\.[0-9]+"),
+      double_(R"(-?[0-9]+\.[0-9]+)"),
       int_("-?[0-9]+")
   {
     namespace lex = boost::spirit::lex;
@@ -69,7 +69,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
     // some identifiers (esp instance names) may be as complex as:
     // letter followed by letters, numbers, underscore, hyphen, square brackets, slashes (hierarchy)
     // with potentially embedded, quoted bracketed numbers, and optionally a final unquoted bracketed number
-    nonkwd_ = "[a-zA-Z]([a-zA-Z0-9_/]|-|(\\\\\\[[0-9+]\\\\\\]))*(\\[[0-9]+\\])?";
+    nonkwd_ = R"([a-zA-Z]([a-zA-Z0-9_/]|-|(\\\[[0-9+]\\\]))*(\[[0-9]+\])?)";
     
     this->self +=
       // history is highest priority - may contain keywords!
@@ -113,7 +113,7 @@ struct DefTokens : boost::spirit::lex::lexer<Lexer>
       ;
 
     // whitespace and comments
-    this->self += lex::string("([ \\t\\n]+)|(#[^\\n]*\\n)")
+    this->self += lex::string(R"(([ \t\n]+)|(#[^\n]*\n))")
         [
             lex::_pass = lex::pass_flags::pass_ignore
         ];
