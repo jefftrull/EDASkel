@@ -28,10 +28,11 @@
 #include <boost/units/systems/si/inductance.hpp>
 #include <boost/units/systems/si/io.hpp>
 
-#include <string>
-
 #include <boost/fusion/include/adapt_struct.hpp>
 #include <boost/fusion/include/std_pair.hpp>
+
+#include <string>
+#include <map>
 
 namespace EDASkel {
   namespace SpefParse {
