@@ -19,7 +19,7 @@ You need a recent copy of Boost (at least 1.53 - download from www.boost.org) an
 (cd to this directory)
 mkdir build
 cd build
-cmake -DBOOST_ROOT=~/boost_1_53_0 ..    # assuming you downloaded boost into your homedir
+cmake -DCMAKE_PREFIX_PATH=/path/to/BoostConfig.cmake -DEigen3_DIR=/path/to/Eigen3Config.cmake ..
 make
 
 If the build succeeded you should be able to do:
