@@ -19,7 +19,7 @@
 
 #include <vector>
 
-#include <boost/spirit/include/lex_lexertl.hpp>
+#include <boost/spirit/include/lex.hpp>
 
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
