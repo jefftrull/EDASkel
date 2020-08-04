@@ -54,7 +54,7 @@ struct Visitor {
   }
 
   void net_definition(name_token_value_t net,
-                      quantity<si::capacitance, double> lumpc) {
+                      quantity<si::capacitance, double> const & lumpc) {
     lumped_caps.emplace(net, lumpc);
   }
 
@@ -146,8 +146,8 @@ struct IsResistor : boost::static_visitor<bool> {
 
 // a predicate class for creating a resistor-only filtered graph
 struct ResistorsOnly {
-  ResistorsOnly() {}
-  ResistorsOnly(std::shared_ptr<CktGraph> g) : graph_(std::move(g)) {}
+  ResistorsOnly() = default;
+  explicit ResistorsOnly(std::shared_ptr<CktGraph> g) : graph_(std::move(g)) {}
   bool operator()(CktGraph::edge_descriptor e) const {
     // access edge property (res/cap variant) and apply predicate visitor
     return boost::apply_visitor(IsResistor(), (*graph_)[e]);
@@ -156,7 +156,7 @@ private:
   std::shared_ptr<CktGraph> graph_;
 };
 
-int main(int argc, char **argv) {
+int main(int argc, char *argv[]) {
    using namespace std;
    if (argc < 1) {
       cerr << "usage: load_spef filename" << endl;

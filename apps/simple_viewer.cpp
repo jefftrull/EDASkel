@@ -46,13 +46,13 @@ namespace EDASkel {
 }
 
 struct SetupException : std::runtime_error {
-    explicit SetupException(std::string err) : std::runtime_error(std::move(err)) {}
+    explicit SetupException(std::string const & err) : std::runtime_error(err) {}
 };
 
 // Container for the Tcl commands we define, and any data they require
 // Handles cleanup also
 struct CommandState {
-  CommandState(Tcl_Interp* interp) : interp_(interp) {
+  explicit CommandState(Tcl_Interp* interp) : interp_(interp) {
     // get arc and argv from interp
     // (Tcl_Main does not supply them to us, but does create Tcl variables of the same name)
     Tcl_Obj* argv_obj = Tcl_GetVar2Ex(interp_, "argv", nullptr, TCL_GLOBAL_ONLY);
@@ -193,7 +193,7 @@ private:
     std::vector<Tcl_Obj*> result_objv;
     auto instRange = db_.getInstances();
     std::transform(std::begin(instRange), std::end(instRange), back_inserter(result_objv),
-                   [](std::shared_ptr<SimpleDB::Instance> i) {
+                   [](std::shared_ptr<SimpleDB::Instance> const & i) {
                      return Tcl_NewStringObj(i->getName().c_str(), i->getName().length());
                    });
     Tcl_SetObjResult(interp_, Tcl_NewListObj(result_objv.size(), result_objv.data()));
