@@ -19,8 +19,8 @@
 #define BOOST_TEST_MODULE basic GUI tests
 #include <boost/test/included/unit_test.hpp>
 
-#include "../designscene.h"
-#include "../../db/simpledb.h"
+#include "../designscene.hpp"
+#include "../../db/simpledb.hpp"
 
 // Qt-using code requires a QApplication or QCoreApplication (if no GUI)
 // apparently using QGraphicsScene requires QApplication even if no QGraphicsView

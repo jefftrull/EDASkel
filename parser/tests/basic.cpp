@@ -23,7 +23,7 @@
 #include <iostream>
 #include <sstream>
 
-#include "../defparser.h"
+#include "../defparser.hpp"
 #include "../lefdef.h"
 
 using namespace DefParse;

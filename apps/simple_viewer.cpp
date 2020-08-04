@@ -24,17 +24,17 @@
 
 #include <boost/program_options.hpp>
 
-#include "../parser/lefparser.h"
-#include "../parser/lefsem.h"
-#include "../parser/defparser.h"
-#include "../parser/defsem.h"
+#include "../parser/lefparser.hpp"
+#include "../parser/lefsem.hpp"
+#include "../parser/defparser.hpp"
+#include "../parser/defsem.hpp"
 #include "../parser/lefdef.h"
 
-#include "../db/simpledb.h"
-#include "../gui/designscene.h"
+#include "../db/simpledb.hpp"
+#include "../gui/designscene.hpp"
 #include "../gui/designview.h"
 
-#include "../tclint/qttclnotifier.h"
+#include "../tclint/qttclnotifier.hpp"
 
 namespace EDASkel {
   extern DefParse::DefTokens<LefDefLexer> defTokens;

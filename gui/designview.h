@@ -27,7 +27,7 @@
 #include <QGraphicsView>
 #include <QKeyEvent>
 
-#include "designscene.h"
+#include "designscene.hpp"
 
 namespace EDASkel {
 

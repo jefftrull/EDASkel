@@ -21,11 +21,11 @@
 #include <string>
 #include <iostream>
 
-#include "../../db/simpledb.h"
-#include "../lefparser.h"
-#include "../lefsem.h"
-#include "../defparser.h"
-#include "../defsem.h"
+#include "../../db/simpledb.hpp"
+#include "../lefparser.hpp"
+#include "../lefsem.hpp"
+#include "../defparser.hpp"
+#include "../defsem.hpp"
 #include "../lefdef.h"
 
 using namespace LefParse;

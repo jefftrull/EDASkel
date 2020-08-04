@@ -65,7 +65,7 @@ namespace DefParse {
 
   // and now a member function to check the results of a DEF parse and conditionally insert
   // the elements into a database
-  // Look at simpledb.h for examples of the "Concept" DB must implement
+  // Look at simpledb.hpp for examples of the "Concept" DB must implement
   template<class DB, class Lib, template<DefCheckError> class CheckPolicy = DefCheckPolicy>
     class DefChecker {
   public:

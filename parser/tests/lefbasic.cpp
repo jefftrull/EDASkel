@@ -22,7 +22,7 @@
 #include <string>
 #include <iostream>
 
-#include "../lefparser.h"
+#include "../lefparser.hpp"
 #include "../lefdef.h"
 
 using namespace LefParse;

@@ -22,7 +22,7 @@
 
 namespace LefParse {
 
-  // For a discussion of the error handling strategy I'm using here see "defsem.h"
+  // For a discussion of the error handling strategy I'm using here see "defsem.hpp"
 
   // list of known errors
   enum LefCheckError { 
@@ -42,7 +42,7 @@ namespace LefParse {
 
   // and now a member function to check the results of a LEF parse and conditionally insert
   // the elements into a database
-  // Look at simpledb.h for examples of the "Concept" Lib must implement
+  // Look at simpledb.hpp for examples of the "Concept" Lib must implement
   template<class Lib, template<LefCheckError> class CheckPolicy = LefCheckPolicy>
     class LefChecker {
   public:

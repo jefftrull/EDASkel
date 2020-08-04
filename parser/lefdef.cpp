@@ -20,8 +20,8 @@
 // them, so this is a separate "compilation unit" that uses the parsers.
 // The other units will link to this one.
 
-#include "lefparser.h"
-#include "defparser.h"
+#include "lefparser.hpp"
+#include "defparser.hpp"
 
 #include "lefdef.h"
 

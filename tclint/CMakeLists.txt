@@ -5,6 +5,6 @@ find_package( Qt5Core )
 
 include_directories(${TCL_INCLUDE_PATH})
 
-QT5_WRAP_CPP( QTN_MOC_SRC qttclnotifier.h )
+QT5_WRAP_CPP( QTN_MOC_SRC qttclnotifier.hpp )
 add_library(qttclnotifier qttclnotifier.cpp ${QTN_MOC_SRC})
 target_link_libraries( qttclnotifier Qt5::Core )
