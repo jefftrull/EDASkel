@@ -2,7 +2,7 @@ cmake_minimum_required( VERSION 3.9.1 )
 
 PROJECT( new_app )
 ENABLE_TESTING()
-find_package( Boost 1.53 REQUIRED COMPONENTS program_options )
+find_package( Boost 1.53 REQUIRED COMPONENTS program_options CONFIG )
 if (MSVC)
   # prevent auto linking
   add_definitions( -DBOOST_ALL_NO_LIB=1 )
