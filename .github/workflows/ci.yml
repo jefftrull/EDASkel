@@ -52,7 +52,7 @@ jobs:
       if: matrix.c_compiler != 'cl'
       shell: bash
       run: |
-        apt install libxi-dev libxtst-dev
+        sudo apt install libxi-dev libxtst-dev
 
     - name: Set up vcpkg and install our dependencies
       uses: lukka/run-vcpkg@v11
