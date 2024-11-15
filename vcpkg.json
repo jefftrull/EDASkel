@@ -3,5 +3,6 @@
   "version-string": "latest",
   "dependencies": [
     "boost-program_options",
+    "boost-config"
   ]
 }
