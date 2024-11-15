@@ -5,6 +5,7 @@
       "boost-program-options",
       "boost-config",
       "qt5-base",
-      "tcl"
+      "tcl",
+      "libxtst"
   ]
 }
