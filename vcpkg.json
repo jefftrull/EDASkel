@@ -4,10 +4,12 @@
   "dependencies": [
       "boost-program-options",
       "boost-config",
+      "boost-graph",
       "boost-spirit",
       "boost-test",
       "boost-units",
       "eigen3",
+      "freetds",
       "qt5-base",
       "tcl"
   ]
