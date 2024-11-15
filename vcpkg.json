@@ -5,7 +5,7 @@
       "boost-program-options",
       "boost-config",
       "boost-spirit",
-      "boost-test"
+      "boost-test",
       "eigen3",
       "qt5-base",
       "tcl"
