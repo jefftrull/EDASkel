@@ -48,17 +48,17 @@ jobs:
       with:
         submodules: true
 
-    - name: Set up vcpkg and install our dependencies
-      uses: lukka/run-vcpkg@v11
-      with:
-        vcpkgJsonGlob: 'vcpkg.json'
-        runVcpkgInstall: true
-
     - name: Get runtime system dependencies for building Qt (?)
       if: matrix.c_compiler != 'cl'
       shell: bash
       run: |
         apt install libxi-dev libxtst-dev
+
+    - name: Set up vcpkg and install our dependencies
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgJsonGlob: 'vcpkg.json'
+        runVcpkgInstall: true
 
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
