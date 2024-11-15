@@ -2,7 +2,7 @@
   "name": "main",
   "version-string": "latest",
   "dependencies": [
-    "boost-program_options",
+    "boost-program-options",
     "boost-config"
   ]
 }
