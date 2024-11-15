@@ -45,6 +45,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: true
 
     - name: Restore from cache and setup vcpkg executable and data files.
       uses: lukka/run-vcpkg@v11
