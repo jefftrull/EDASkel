@@ -2,7 +2,9 @@
   "name": "main",
   "version-string": "latest",
   "dependencies": [
-    "boost-program-options",
-    "boost-config"
+      "boost-program-options",
+      "boost-config",
+      "qt5-base",
+      "tcl"
   ]
 }
