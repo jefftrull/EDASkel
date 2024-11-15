@@ -6,6 +6,7 @@
       "boost-config",
       "boost-spirit",
       "boost-test",
+      "boost-units",
       "eigen3",
       "qt5-base",
       "tcl"
