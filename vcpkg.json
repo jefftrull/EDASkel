@@ -5,11 +5,12 @@
       "boost-program-options",
       "boost-config",
       "boost-graph",
+      "boost-numeric",
       "boost-spirit",
       "boost-test",
       "boost-units",
       "eigen3",
-      "freetds",
+      "freetds-dev",
       "qt5-base",
       "tcl"
   ]
