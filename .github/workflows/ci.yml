@@ -52,7 +52,7 @@ jobs:
       if: matrix.c_compiler != 'cl'
       shell: bash
       run: |
-        sudo apt install libxi-dev libxtst-dev libgles-dev libx11-xcb-dev freetds-dev
+        sudo apt install libxi-dev libxtst-dev libgles-dev libx11-xcb-dev freetds-dev '^libxcb.*-dev' libx11-xcb-dev libgl1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev
 
     - name: Set up vcpkg and install our dependencies
       uses: lukka/run-vcpkg@v11
