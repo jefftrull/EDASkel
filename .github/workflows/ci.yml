@@ -7,6 +7,10 @@ on:
   pull_request:
     branches: [ "master" ]
 
+env:
+  ACTIONS_RUNNER_DEBUG: true
+  ACTIONS_STEP_DEBUG: true
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -48,6 +52,11 @@ jobs:
       with:
         submodules: true
 
+    - name: Get CMake
+      uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: 3.28.3
+
     - name: Get runtime system dependencies for building Qt (?)
       if: matrix.c_compiler != 'cl'
       shell: bash
@@ -66,11 +75,6 @@ jobs:
       shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-
-    - name: Get CMake
-      uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.28.3
 
     - name: CMake - configure, build, and run tests
       uses: lukka/run-cmake@v10
